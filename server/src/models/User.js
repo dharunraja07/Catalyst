@@ -1,0 +1,24 @@
+import mongoose from 'mongoose'
+
+const studySessionSchema = new mongoose.Schema({
+  date: { type: String, required: true },
+  minutes: { type: Number, default: 0 }
+}, { _id: false })
+
+const userSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+  password: { type: String, required: true },
+  role: { type: String, enum: ['student', 'teacher', 'admin'], default: 'student' },
+  educationLevel: { type: String, default: 'College' },
+  interestedSubjects: { type: [String], default: [] },
+  careerInterests: { type: [String], default: [] },
+  learningStyle: { type: String, enum: ['Visual', 'Reading', 'Practice', 'Mixed'], default: 'Mixed' },
+  avatarUrl: { type: String, default: '' },
+  bio: { type: String, default: '', maxlength: 280 },
+  history: { type: [String], default: [] },
+  dailyGoalMinutes: { type: Number, default: 60 },
+  studySessions: { type: [studySessionSchema], default: [] }
+}, { timestamps: true })
+
+export default mongoose.model('User', userSchema)
