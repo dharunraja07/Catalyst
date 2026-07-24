@@ -274,13 +274,13 @@ export default function StudyGroupPage() {
   return (
     <main className="min-h-[calc(100vh-80px)] bg-[var(--bg-primary)] text-[var(--text-primary)] lg:h-[calc(100vh-80px)] lg:overflow-hidden">
       {selectedGroupId && selectedGroup ? (
-        <div className="flex h-full flex-col gap-4 p-4 lg:flex-row">
-          <div className="flex w-full flex-col gap-4 lg:w-3/4">
-            <div className="rounded-[2rem] border border-[var(--border-main)] bg-[var(--bg-surface)] p-6 shadow-glow">
-              <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex h-full flex-col gap-6 p-4 sm:p-6 lg:flex-row max-w-7xl mx-auto">
+          <div className="flex w-full flex-col gap-6 lg:w-3/4">
+            <div className="saas-card shadow-glow">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--divider-main)] pb-4">
                 <div>
-                  <h1 className="text-2xl font-semibold text-[var(--text-primary)]">{selectedGroup.groupName || 'Study Group'}</h1>
-                  <p className="mt-1 text-sm text-[var(--text-secondary)]">
+                  <h1 className="section-title">{selectedGroup.groupName || 'Study Group'}</h1>
+                  <p className="small-text mt-1">
                     Members: {selectedGroup.members?.length || 0}
                   </p>
                 </div>
@@ -288,14 +288,14 @@ export default function StudyGroupPage() {
                   <button
                     type="button"
                     onClick={() => setShowAddMemberModal(true)}
-                    className="rounded-2xl border border-[var(--accent-color)]/50 bg-[var(--accent-light)] px-4 py-2 text-sm font-semibold text-[var(--accent-color)] transition hover:bg-[var(--accent-color)]/20"
+                    className="saas-button-primary min-h-[40px] px-4 text-xs"
                   >
                     + Add Member
                   </button>
                   <button
                     type="button"
                     onClick={() => setSelectedGroupId(null)}
-                    className="rounded-2xl border border-[var(--border-main)] bg-[var(--bg-secondary)] px-4 py-2 text-sm font-semibold text-[var(--text-primary)] transition hover:border-[var(--accent-color)]"
+                    className="saas-button-secondary min-h-[40px] px-4 text-xs"
                   >
                     Close
                   </button>
@@ -303,11 +303,11 @@ export default function StudyGroupPage() {
               </div>
 
               {showAddMemberModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs">
-                  <div className="rounded-[2rem] border border-[var(--border-main)] bg-[var(--bg-elevated)] p-8 shadow-2xl max-w-md w-full mx-4">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+                  <div className="saas-card max-w-md w-full shadow-2xl">
                     <div className="mb-6">
-                      <h2 className="text-2xl font-semibold text-[var(--text-primary)]">Add Member to Group</h2>
-                      <p className="mt-2 text-sm text-[var(--text-secondary)]">Search and add new members to your study group.</p>
+                      <h2 className="section-title">Add Member to Group</h2>
+                      <p className="small-text mt-1">Search and add new members to your study group.</p>
                     </div>
 
                     <form onSubmit={searchMembersToAdd} className="mb-6 flex flex-col gap-3">
@@ -316,11 +316,11 @@ export default function StudyGroupPage() {
                         value={addMemberQuery}
                         onChange={(e) => setAddMemberQuery(e.target.value)}
                         placeholder="Search by name or email"
-                        className="w-full rounded-2xl border border-[var(--border-main)] bg-[var(--bg-input)] px-4 py-3 text-[var(--text-primary)] outline-none transition focus:border-[var(--accent-color)]"
+                        className="saas-input w-full"
                       />
                       <button
                         type="submit"
-                        className="rounded-2xl bg-[var(--accent-color)] px-4 py-2 text-sm font-semibold text-[var(--accent-contrast-text)] transition hover:bg-[var(--accent-hover)]"
+                        className="saas-button-primary"
                       >
                         Search
                       </button>
@@ -329,16 +329,16 @@ export default function StudyGroupPage() {
                     {addMemberResults.length > 0 && (
                       <div className="mb-6 max-h-64 space-y-3 overflow-y-auto">
                         {addMemberResults.map((user) => (
-                          <div key={user._id} className="flex items-center justify-between rounded-2xl border border-[var(--border-main)] bg-[var(--bg-secondary)] p-4">
+                          <div key={user._id} className="flex items-center justify-between rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-4">
                             <div className="flex-1">
-                              <p className="font-semibold text-[var(--text-primary)]">{user.name}</p>
-                              <p className="text-xs text-[var(--text-muted)]">{user.email}</p>
+                              <p className="card-title text-base">{user.name}</p>
+                              <p className="caption-text">{user.email}</p>
                             </div>
                             <button
                               type="button"
                               onClick={() => addMemberToGroup(user._id)}
                               disabled={addingMember}
-                              className="rounded-full bg-[var(--accent-color)] px-3 py-1 text-xs font-semibold text-[var(--accent-contrast-text)] transition hover:bg-[var(--accent-hover)] disabled:opacity-50"
+                              className="saas-button-primary min-h-[36px] px-3 text-xs disabled:opacity-50"
                             >
                               Add
                             </button>
@@ -355,7 +355,7 @@ export default function StudyGroupPage() {
                           setAddMemberQuery('')
                           setAddMemberResults([])
                         }}
-                        className="flex-1 rounded-2xl border border-[var(--border-main)] bg-[var(--bg-secondary)] px-4 py-2 text-sm font-semibold text-[var(--text-primary)] transition hover:border-[var(--accent-color)]"
+                        className="saas-button-secondary w-full"
                       >
                         Close
                       </button>
@@ -365,40 +365,40 @@ export default function StudyGroupPage() {
               )}
             </div>
 
-            <div className="h-[45vh] rounded-[2rem] border border-[var(--border-main)] bg-[var(--bg-surface)] p-6 shadow-glow overflow-y-auto lg:h-auto lg:flex-1">
+            <div className="h-[45vh] saas-card shadow-glow overflow-y-auto lg:h-auto lg:flex-1">
               <div className="space-y-4">
                 {messages.length > 0 ? (
                   messages.map((msg) => (
-                    <div key={msg._id} className="rounded-2xl border border-[var(--border-main)] bg-[var(--bg-elevated)] p-4">
-                      <p className="text-sm font-semibold text-[var(--accent-color)]">{msg.sender?.name}</p>
-                      <p className="mt-2 text-[var(--text-primary)]">{msg.message}</p>
-                      <p className="mt-2 text-xs text-[var(--text-muted)]">
+                    <div key={msg._id} className="saas-elevated-card p-4">
+                      <p className="small-text font-bold text-[var(--accent-color)]">{msg.sender?.name}</p>
+                      <p className="body-text mt-1 text-sm">{msg.message}</p>
+                      <p className="caption-text mt-2">
                         {new Date(msg.createdAt).toLocaleString()}
                       </p>
                     </div>
                   ))
                 ) : (
-                  <p className="text-center text-[var(--text-muted)]">No messages yet. Start the conversation!</p>
+                  <p className="text-center body-text text-sm text-[var(--text-muted)] py-8">No messages yet. Start the conversation!</p>
                 )}
                 <div ref={messagesEndRef} />
               </div>
             </div>
 
-            {error && <p className="rounded-2xl bg-[var(--error-bg)] border border-[var(--error-color)]/30 px-4 py-3 text-sm text-[var(--error-color)]">{error}</p>}
-            {status && <p className="rounded-2xl bg-[var(--success-bg)] border border-[var(--success-color)]/30 px-4 py-3 text-sm text-[var(--success-color)]">{status}</p>}
-            <div className="rounded-[2rem] border border-[var(--border-main)] bg-[var(--bg-surface)] p-6 shadow-glow">
+            {error && <p className="rounded-[14px] bg-[var(--error-bg)] border border-[var(--error-color)]/30 px-4 py-3 text-sm text-[var(--error-color)]">{error}</p>}
+            {status && <p className="rounded-[14px] bg-[var(--success-bg)] border border-[var(--success-color)]/30 px-4 py-3 text-sm text-[var(--success-color)]">{status}</p>}
+            <div className="saas-card shadow-glow">
               <div className="flex flex-col gap-3 sm:flex-row">
                 <textarea
                   value={messageText}
                   onChange={(e) => setMessageText(e.target.value)}
                   placeholder="Type your message..."
-                  rows="3"
-                  className="w-full rounded-2xl border border-[var(--border-main)] bg-[var(--bg-input)] px-4 py-3 text-[var(--text-primary)] focus:border-[var(--accent-color)] focus:outline-none"
+                  rows="2"
+                  className="saas-input w-full min-h-[48px]"
                 />
                 <button
                   type="button"
                   onClick={sendMessage}
-                  className="rounded-2xl bg-[var(--accent-color)] px-6 py-3 text-sm font-semibold text-[var(--accent-contrast-text)] transition hover:bg-[var(--accent-hover)] sm:self-end"
+                  className="saas-button-primary sm:self-end"
                 >
                   Send
                 </button>
@@ -411,50 +411,48 @@ export default function StudyGroupPage() {
           </div>
         </div>
       ) : (
-        <div className="overflow-y-auto px-4 py-10 sm:px-6 lg:h-full">
-          <div className="mx-auto max-w-6xl space-y-8">
-            <section className="rounded-[2rem] border border-[var(--border-main)] bg-[var(--bg-surface)] p-8 shadow-glow">
-              <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                <div>
-                  <p className="text-sm uppercase tracking-[0.24em] text-[var(--accent-color)]">Study groups</p>
-                  <h1 className="text-3xl font-semibold text-[var(--text-primary)]">Study group collaboration</h1>
-                </div>
-                <p className="text-sm text-[var(--text-secondary)]">Search, connect, and chat with peers.</p>
+        <div className="overflow-y-auto px-4 py-8 sm:px-6 lg:h-full">
+          <div className="mx-auto max-w-7xl space-y-8">
+            <section className="saas-card shadow-glow">
+              <div className="mb-8 border-b border-[var(--divider-main)] pb-6 space-y-2">
+                <p className="caption-text uppercase tracking-[0.24em] text-[var(--accent-color)] font-semibold">Study groups</p>
+                <h1 className="page-title">Study group collaboration</h1>
+                <p className="body-text">Search, connect, and chat with peers.</p>
               </div>
 
-              {error && <p className="mb-6 rounded-2xl bg-[var(--error-bg)] border border-[var(--error-color)]/30 px-4 py-3 text-sm text-[var(--error-color)]">{error}</p>}
-              {status && <p className="mb-6 rounded-2xl bg-[var(--success-bg)] border border-[var(--success-color)]/30 px-4 py-3 text-sm text-[var(--success-color)]">{status}</p>}
+              {error && <p className="mb-6 rounded-[14px] bg-[var(--error-bg)] border border-[var(--error-color)]/30 px-4 py-3 text-sm text-[var(--error-color)]">{error}</p>}
+              {status && <p className="mb-6 rounded-[14px] bg-[var(--success-bg)] border border-[var(--success-color)]/30 px-4 py-3 text-sm text-[var(--success-color)]">{status}</p>}
 
               <form onSubmit={handleSearch} className="mb-8 flex flex-col gap-3 sm:flex-row">
                 <input
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                   placeholder="Search peers by name, email, or subject"
-                  className="w-full rounded-2xl border border-[var(--border-main)] bg-[var(--bg-input)] px-4 py-3 text-[var(--text-primary)] outline-none transition focus:border-[var(--accent-color)]"
+                  className="saas-input w-full"
                 />
-                <button className="rounded-2xl bg-[var(--accent-color)] px-5 py-3 text-sm font-semibold text-[var(--accent-contrast-text)] transition hover:bg-[var(--accent-hover)]">
+                <button className="saas-button-primary">
                   Search
                 </button>
               </form>
 
               {searchResults.length > 0 && (
-                <div className="grid gap-4 xl:grid-cols-2">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                   {searchResults.map((student) => (
-                    <div key={student._id} className="rounded-[1.75rem] border border-[var(--border-main)] bg-[var(--bg-elevated)] p-6">
+                    <div key={student._id} className="lg:col-span-6 saas-elevated-card">
                       <div className="flex items-center justify-between gap-3">
                         <div>
-                          <h2 className="text-xl font-semibold text-[var(--text-primary)]">{student.name}</h2>
-                          <p className="text-sm text-[var(--text-muted)]">{student.email}</p>
+                          <h2 className="card-title font-semibold">{student.name}</h2>
+                          <p className="caption-text">{student.email}</p>
                         </div>
                         <button
                           type="button"
                           onClick={() => sendRequest(student._id)}
-                          className="rounded-full bg-[var(--accent-color)] px-4 py-2 text-sm font-semibold text-[var(--accent-contrast-text)] transition hover:bg-[var(--accent-hover)]"
+                          className="saas-button-primary min-h-[40px] px-4 text-xs"
                         >
                           Send request
                         </button>
                       </div>
-                      <p className="mt-4 text-[var(--text-secondary)]">
+                      <p className="body-text mt-3 text-sm">
                         Subjects: {student.interestedSubjects?.join(', ') || 'N/A'}
                       </p>
                     </div>
@@ -463,30 +461,30 @@ export default function StudyGroupPage() {
               )}
             </section>
 
-            <div className="grid gap-8 xl:grid-cols-[1.5fr_1fr]">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
               {incomingRequests.length > 0 && (
-                <section className="rounded-[2rem] border border-[var(--border-main)] bg-[var(--bg-surface)] p-8 shadow-glow">
-                  <h2 className="mb-6 text-2xl font-semibold text-[var(--text-primary)]">Incoming requests</h2>
+                <section className="lg:col-span-6 saas-card shadow-glow">
+                  <h2 className="section-title mb-6">Incoming requests</h2>
                   <div className="space-y-4">
                     {incomingRequests.map((req) => (
-                      <div key={req._id} className="rounded-3xl border border-[var(--border-main)] bg-[var(--bg-elevated)] p-5">
+                      <div key={req._id} className="saas-elevated-card">
                         <div className="flex items-center justify-between gap-4">
                           <div>
-                            <p className="text-lg font-semibold text-[var(--text-primary)]">{req.sender?.name}</p>
-                            <p className="text-sm text-[var(--text-secondary)]">{req.sender?.email}</p>
+                            <p className="card-title font-semibold">{req.sender?.name}</p>
+                            <p className="caption-text">{req.sender?.email}</p>
                           </div>
                           <div className="flex gap-2">
                             <button
                               type="button"
                               onClick={() => respondToRequest(req._id, true)}
-                              className="rounded-full bg-[var(--success-color)] px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+                              className="saas-button-primary min-h-[40px] px-4 text-xs bg-[var(--success-color)] text-white"
                             >
                               Accept
                             </button>
                             <button
                               type="button"
                               onClick={() => respondToRequest(req._id, false)}
-                              className="rounded-full bg-[var(--error-color)] px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90"
+                              className="saas-button-secondary min-h-[40px] px-4 text-xs hover:border-[var(--error-color)] hover:text-[var(--error-color)]"
                             >
                               Reject
                             </button>
@@ -498,8 +496,8 @@ export default function StudyGroupPage() {
                 </section>
               )}
 
-              <section className="rounded-[2rem] border border-[var(--border-main)] bg-[var(--bg-surface)] p-8 shadow-glow">
-                <h2 className="mb-6 text-2xl font-semibold text-[var(--text-primary)]">My study groups</h2>
+              <section className={`${incomingRequests.length > 0 ? 'lg:col-span-6' : 'lg:col-span-12'} saas-card shadow-glow`}>
+                <h2 className="section-title mb-6">My study groups</h2>
                 {groups.length > 0 ? (
                   <div className="space-y-4">
                     {groups.map((group) => (
@@ -507,17 +505,17 @@ export default function StudyGroupPage() {
                         key={group._id}
                         type="button"
                         onClick={() => setSelectedGroupId(group._id)}
-                        className="w-full rounded-3xl border border-[var(--border-main)] bg-[var(--bg-elevated)] px-5 py-4 text-left transition hover:border-[var(--accent-color)] hover:bg-[var(--bg-secondary)]"
+                        className="saas-elevated-card w-full text-left transition hover:border-[var(--accent-color)]"
                       >
-                        <p className="text-lg font-semibold text-[var(--text-primary)]">{group.groupName || 'Study Group'}</p>
-                        <p className="mt-2 text-sm text-[var(--text-secondary)]">
+                        <p className="card-title font-semibold">{group.groupName || 'Study Group'}</p>
+                        <p className="body-text mt-2 text-sm">
                           Members: {group.members?.map((m) => m.name).join(', ')}
                         </p>
                       </button>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-[var(--text-muted)]">No study groups yet.</p>
+                  <p className="body-text text-sm text-[var(--text-muted)]">No study groups yet.</p>
                 )}
               </section>
             </div>

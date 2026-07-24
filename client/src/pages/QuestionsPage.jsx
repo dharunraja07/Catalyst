@@ -48,22 +48,22 @@ export default function QuestionsPage() {
   const TwoMarkQuestion = ({ question, idx, questionKey }) => {
     const isVisible = visibleAnswers[questionKey]
     return (
-      <div className="rounded-2xl border border-[var(--border-main)] bg-[var(--bg-elevated)] p-4 sm:p-6">
+      <div className="saas-card p-5">
         <div className="flex flex-col gap-4">
-          <p className="text-base font-semibold text-[var(--text-primary)]">
+          <p className="card-title font-semibold">
             {idx + 1}. {question.question}
           </p>
           <button
             type="button"
             onClick={() => toggleAnswerVisibility(questionKey)}
-            className="w-full rounded-2xl border border-[var(--accent-color)]/50 bg-[var(--accent-light)] px-4 py-2 text-sm font-semibold text-[var(--accent-color)] transition hover:bg-[var(--accent-color)]/20 sm:w-auto"
+            className="saas-button-secondary self-start min-h-[40px] px-4 text-xs font-semibold text-[var(--accent-color)]"
           >
             {isVisible ? 'Hide Answer' : 'View Answer'}
           </button>
           {isVisible && (
-            <div className="rounded-2xl bg-[var(--bg-secondary)] p-4 border-l-4 border-[var(--accent-color)]">
-              <p className="text-xs uppercase tracking-wider text-[var(--text-muted)] mb-2">Answer:</p>
-              <p className="text-[var(--text-primary)] leading-relaxed">{question.expectedAnswer}</p>
+            <div className="rounded-[14px] bg-[var(--bg-secondary)] p-4 border-l-4 border-[var(--accent-color)]">
+              <p className="caption-text uppercase font-semibold mb-1">Answer:</p>
+              <p className="body-text leading-relaxed">{question.expectedAnswer}</p>
             </div>
           )}
         </div>
@@ -74,26 +74,26 @@ export default function QuestionsPage() {
   const LongAnswerQuestion = ({ question, idx, questionKey, marks }) => {
     const isVisible = visibleAnswers[questionKey]
     return (
-      <div className="rounded-2xl border border-[var(--border-main)] bg-[var(--bg-elevated)] p-4 sm:p-6">
+      <div className="saas-card p-5">
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-            <p className="text-base font-semibold text-[var(--text-primary)]">
+            <p className="card-title font-semibold">
               {idx + 1}. {question.question}
             </p>
-            <span className="inline-flex rounded-full bg-[var(--accent-light)] px-3 py-1 text-xs font-semibold text-[var(--accent-color)] w-fit">
+            <span className="inline-flex items-center rounded-[14px] bg-[var(--accent-light)] px-3 py-1 text-xs font-semibold text-[var(--accent-color)] border border-[var(--accent-color)]/20 w-fit">
               {marks} marks
             </span>
           </div>
           <button
             type="button"
             onClick={() => toggleAnswerVisibility(questionKey)}
-            className="w-full rounded-2xl border border-[var(--accent-color)]/50 bg-[var(--accent-light)] px-4 py-2 text-sm font-semibold text-[var(--accent-color)] transition hover:bg-[var(--accent-color)]/20 sm:w-auto"
+            className="saas-button-secondary self-start min-h-[40px] px-4 text-xs font-semibold text-[var(--accent-color)]"
           >
             {isVisible ? 'Hide Answer' : 'View Answer'}
           </button>
           {isVisible && (
-            <div className="rounded-2xl bg-[var(--bg-secondary)] p-4 sm:p-6 border-l-4 border-[var(--accent-color)]">
-              <p className="text-xs uppercase tracking-wider text-[var(--text-muted)] mb-3">Expected Answer:</p>
+            <div className="rounded-[14px] bg-[var(--bg-secondary)] p-5 border-l-4 border-[var(--accent-color)]">
+              <p className="caption-text uppercase font-semibold mb-2">Expected Answer:</p>
               <div className="prose prose-invert max-w-none text-sm leading-relaxed text-[var(--text-primary)] space-y-2">
                 <ReactMarkdown>
                   {question.expectedAnswer}
@@ -107,19 +107,19 @@ export default function QuestionsPage() {
   }
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
-      <div className="overflow-hidden rounded-[2rem] border border-[var(--border-main)] bg-[var(--bg-surface)] p-8 shadow-glow">
-        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
+      <div className="saas-card shadow-glow">
+        <div className="mb-8 border-b border-[var(--divider-main)] pb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-sm uppercase tracking-[0.24em] text-[var(--accent-color)]">Practice</p>
-            <h1 className="text-3xl font-semibold text-[var(--text-primary)]">Adaptive questions</h1>
+            <p className="caption-text uppercase tracking-[0.24em] text-[var(--accent-color)] font-semibold mb-1">Practice</p>
+            <h1 className="page-title">Adaptive questions</h1>
           </div>
-          <div className="flex flex-col gap-3 sm:items-end">
-            <label className="text-sm text-[var(--text-secondary)]">Student Type</label>
+          <div className="flex items-center gap-3">
+            <label className="small-text font-medium whitespace-nowrap">Student Type</label>
             <select
               value={studentType}
               onChange={(event) => setStudentType(event.target.value)}
-              className="rounded-2xl border border-[var(--border-main)] bg-[var(--bg-input)] px-4 py-3 text-[var(--text-primary)] focus:border-[var(--accent-color)] focus:outline-none"
+              className="saas-input min-h-[44px] py-2"
             >
               <option value="">Unspecified</option>
               <option>School Student</option>
@@ -128,34 +128,34 @@ export default function QuestionsPage() {
           </div>
         </div>
 
-        <div className="mb-6 space-y-3">
+        <div className="mb-8 space-y-4">
           <textarea
             value={syllabus}
             onChange={(event) => setSyllabus(event.target.value)}
             placeholder="Paste the topic or syllabus you want to practice..."
             rows="4"
-            className="w-full rounded-2xl border border-[var(--border-main)] bg-[var(--bg-input)] px-4 py-3 text-[var(--text-primary)] focus:border-[var(--accent-color)] focus:outline-none"
+            className="saas-input w-full min-h-[120px]"
           />
           <div className="flex justify-end">
             <button
               type="button"
               onClick={handleGenerateQuestions}
               disabled={generating}
-              className="rounded-2xl bg-[var(--accent-color)] px-6 py-3 text-sm font-semibold text-[var(--accent-contrast-text)] transition hover:bg-[var(--accent-hover)] disabled:cursor-not-allowed disabled:opacity-70"
+              className="saas-button-primary"
             >
               {generating ? 'Generating...' : 'Generate Questions'}
             </button>
           </div>
         </div>
 
-        {aiError && <p className="mb-6 rounded-2xl bg-[var(--error-bg)] border border-[var(--error-color)]/30 px-4 py-3 text-sm text-[var(--error-color)]">{aiError}</p>}
+        {aiError && <p className="mb-6 rounded-[14px] bg-[var(--error-bg)] border border-[var(--error-color)]/30 px-4 py-3 text-sm text-[var(--error-color)]">{aiError}</p>}
 
-        <div className="grid gap-6">
+        <div className="grid gap-8">
           {practiceData.twoMarkQuestions.length > 0 && (
-            <section className="rounded-[1.75rem] border border-[var(--border-main)] bg-[var(--bg-elevated)] p-6">
-              <h2 className="text-2xl font-semibold text-[var(--text-primary)] mb-2">2-mark Questions</h2>
-              <p className="text-sm text-[var(--text-secondary)] mb-5">Total: {practiceData.twoMarkQuestions.length} questions</p>
-              <div className="mt-5 space-y-4">
+            <section className="saas-elevated-card space-y-4">
+              <h2 className="section-title">2-mark Questions</h2>
+              <p className="small-text mb-4">Total: {practiceData.twoMarkQuestions.length} questions</p>
+              <div className="space-y-4">
                 {practiceData.twoMarkQuestions.map((question, idx) => (
                   <TwoMarkQuestion
                     key={`2m-${idx}`}
@@ -169,10 +169,10 @@ export default function QuestionsPage() {
           )}
 
           {practiceData.longAnswerQuestions.length > 0 && (
-            <section className="rounded-[1.75rem] border border-[var(--border-main)] bg-[var(--bg-elevated)] p-6">
-              <h2 className="text-2xl font-semibold text-[var(--text-primary)] mb-2">{longAnswerLabel}</h2>
-              <p className="text-sm text-[var(--text-secondary)] mb-5">Total: {practiceData.longAnswerQuestions.length} questions × {practiceData.counts?.longAnswerMarks} marks</p>
-              <div className="mt-5 space-y-4">
+            <section className="saas-elevated-card space-y-4">
+              <h2 className="section-title">{longAnswerLabel}</h2>
+              <p className="small-text mb-4">Total: {practiceData.longAnswerQuestions.length} questions × {practiceData.counts?.longAnswerMarks} marks</p>
+              <div className="space-y-4">
                 {practiceData.longAnswerQuestions.map((question, idx) => (
                   <LongAnswerQuestion
                     key={`la-${idx}`}
@@ -187,7 +187,7 @@ export default function QuestionsPage() {
           )}
 
           {!practiceData.twoMarkQuestions.length && !practiceData.longAnswerQuestions.length && (
-            <p className="text-[var(--text-muted)]">Generate practice questions to begin.</p>
+            <p className="body-text text-sm text-[var(--text-muted)]">Generate practice questions to begin.</p>
           )}
         </div>
       </div>

@@ -69,20 +69,20 @@ export default function AIAssistantPanel() {
     }
 
     return (
-        <section className="overflow-hidden rounded-[2rem] border border-[var(--border-main)] bg-[var(--bg-surface)] p-8 shadow-glow xl:sticky xl:top-6">
-            <div className="mb-5 flex items-center justify-between gap-3">
+        <section className="saas-card shadow-glow xl:sticky xl:top-6">
+            <div className="mb-5 flex items-center justify-between gap-3 border-b border-[var(--divider-main)] pb-4">
                 <div>
-                    <p className="text-sm uppercase tracking-[0.24em] text-[var(--accent-color)]">AI assistant</p>
-                    <h2 className="text-2xl font-semibold text-[var(--text-primary)]">Study companion</h2>
+                    <p className="caption-text uppercase tracking-[0.24em] text-[var(--accent-color)] font-semibold mb-1">AI assistant</p>
+                    <h2 className="section-title">Study companion</h2>
                 </div>
             </div>
 
-            {error && <p className="mb-4 rounded-2xl bg-[var(--error-bg)] border border-[var(--error-color)]/30 px-4 py-3 text-sm text-[var(--error-color)]">{error}</p>}
+            {error && <p className="mb-4 rounded-[14px] bg-[var(--error-bg)] border border-[var(--error-color)]/30 px-4 py-3 text-sm text-[var(--error-color)]">{error}</p>}
 
-            <div className="max-h-[28rem] space-y-3 overflow-y-auto rounded-[1.75rem] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-4">
+            <div className="max-h-[28rem] space-y-3 overflow-y-auto rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-4">
                 {messages.map((message, index) => (
                     <div key={`${message.role}-${index}`} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`max-w-[90%] rounded-2xl px-4 py-3 ${message.role === 'user' ? 'bg-[var(--accent-color)] text-[var(--accent-contrast-text)]' : 'bg-[var(--bg-elevated)] border border-[var(--border-main)] text-[var(--text-primary)]'}`}>
+                        <div className={`max-w-[90%] rounded-[14px] px-4 py-3 ${message.role === 'user' ? 'bg-[var(--accent-color)] text-[var(--accent-contrast-text)] font-medium' : 'bg-[var(--bg-elevated)] border border-[var(--border-main)] text-[var(--text-primary)]'}`}>
                             <div className="prose prose-invert max-w-none text-sm leading-6">
                                 <ReactMarkdown>{message.content}</ReactMarkdown>
                             </div>
@@ -91,7 +91,7 @@ export default function AIAssistantPanel() {
                 ))}
                 {isTyping && (
                     <div className="flex justify-start">
-                        <div className="rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-main)] px-4 py-3 text-[var(--text-primary)]">
+                        <div className="rounded-[14px] bg-[var(--bg-elevated)] border border-[var(--border-main)] px-4 py-3 text-[var(--text-primary)]">
                             <span className="inline-flex gap-1">
                                 <span className="h-2 w-2 animate-pulse rounded-full bg-[var(--accent-color)]" />
                                 <span className="h-2 w-2 animate-pulse rounded-full bg-[var(--accent-color)]" style={{ animationDelay: '0.15s' }} />
@@ -113,15 +113,15 @@ export default function AIAssistantPanel() {
                             handleSend()
                         }
                     }}
-                    rows="3"
+                    rows="2"
                     placeholder="Ask for help with your studies..."
-                    className="min-h-[5rem] w-full rounded-2xl border border-[var(--border-main)] bg-[var(--bg-input)] px-4 py-3 text-[var(--text-primary)] focus:border-[var(--accent-color)] focus:outline-none"
+                    className="saas-input w-full min-h-[48px]"
                 />
                 <button
                     type="button"
                     onClick={handleSend}
                     disabled={isTyping}
-                    className="self-end rounded-2xl bg-[var(--accent-color)] px-5 py-3 text-sm font-semibold text-[var(--accent-contrast-text)] transition hover:bg-[var(--accent-hover)] disabled:cursor-not-allowed disabled:opacity-70"
+                    className="saas-button-primary self-end"
                 >
                     Send
                 </button>

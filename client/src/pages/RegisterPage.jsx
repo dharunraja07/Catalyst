@@ -33,38 +33,38 @@ export default function RegisterPage() {
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-12 sm:px-6">
-      <div className="overflow-hidden rounded-[2rem] border border-[var(--border-main)] bg-[var(--bg-surface)] p-8 shadow-glow sm:p-10">
-        <div className="mb-8 space-y-3">
-          <p className="text-sm uppercase tracking-[0.25em] text-[var(--accent-color)]">Create your account</p>
-          <h1 className="text-3xl font-semibold text-[var(--text-primary)] sm:text-4xl">Join AI Learning</h1>
-          <p className="max-w-2xl text-[var(--text-secondary)]">Register to unlock diagnostics, personalized roadmaps, and career suggestions designed for your learning goals.</p>
+      <div className="saas-card shadow-glow sm:p-10">
+        <div className="mb-8 space-y-2 border-b border-[var(--divider-main)] pb-6">
+          <p className="caption-text uppercase tracking-[0.25em] text-[var(--accent-color)] font-semibold">Create your account</p>
+          <h1 className="page-title">Join AI Learning</h1>
+          <p className="body-text text-sm">Register to unlock diagnostics, personalized roadmaps, and career suggestions designed for your learning goals.</p>
         </div>
 
         <form onSubmit={handleSubmit} className="grid gap-5">
           <div className="grid gap-5 sm:grid-cols-2">
-            <label className="space-y-2 text-sm text-[var(--text-secondary)]">
-              <span>Name</span>
-              <input name="name" value={form.name} onChange={handleChange} className="w-full rounded-2xl border border-[var(--border-main)] bg-[var(--bg-input)] px-4 py-3 text-[var(--text-primary)] focus:border-[var(--accent-color)] focus:outline-none" />
+            <label className="space-y-2 small-text font-medium">
+              <span>Full Name</span>
+              <input name="name" value={form.name} onChange={handleChange} className="saas-input w-full" />
             </label>
-            <label className="space-y-2 text-sm text-[var(--text-secondary)]">
-              <span>Email</span>
-              <input name="email" type="email" value={form.email} onChange={handleChange} className="w-full rounded-2xl border border-[var(--border-main)] bg-[var(--bg-input)] px-4 py-3 text-[var(--text-primary)] focus:border-[var(--accent-color)] focus:outline-none" />
+            <label className="space-y-2 small-text font-medium">
+              <span>Email address</span>
+              <input name="email" type="email" value={form.email} onChange={handleChange} className="saas-input w-full" />
             </label>
           </div>
 
-          <label className="space-y-2 text-sm text-[var(--text-secondary)]">
+          <label className="space-y-2 small-text font-medium">
             <span>Password</span>
-            <input name="password" type="password" value={form.password} onChange={handleChange} className="w-full rounded-2xl border border-[var(--border-main)] bg-[var(--bg-input)] px-4 py-3 text-[var(--text-primary)] focus:border-[var(--accent-color)] focus:outline-none" />
+            <input name="password" type="password" value={form.password} onChange={handleChange} className="saas-input w-full" />
           </label>
 
           <div className="grid gap-5 sm:grid-cols-2">
-            <label className="space-y-2 text-sm text-[var(--text-secondary)]">
+            <label className="space-y-2 small-text font-medium">
               <span>Education Level</span>
-              <input name="educationLevel" value={form.educationLevel} onChange={handleChange} className="w-full rounded-2xl border border-[var(--border-main)] bg-[var(--bg-input)] px-4 py-3 text-[var(--text-primary)] focus:border-[var(--accent-color)] focus:outline-none" placeholder="High School, College..." />
+              <input name="educationLevel" value={form.educationLevel} onChange={handleChange} className="saas-input w-full" placeholder="High School, College..." />
             </label>
-            <label className="space-y-2 text-sm text-[var(--text-secondary)]">
+            <label className="space-y-2 small-text font-medium">
               <span>Learning Style</span>
-              <select name="learningStyle" value={form.learningStyle} onChange={handleChange} className="w-full rounded-2xl border border-[var(--border-main)] bg-[var(--bg-input)] px-4 py-3 text-[var(--text-primary)] focus:border-[var(--accent-color)] focus:outline-none">
+              <select name="learningStyle" value={form.learningStyle} onChange={handleChange} className="saas-input w-full">
                 <option>Visual</option>
                 <option>Reading</option>
                 <option>Practice</option>
@@ -73,18 +73,18 @@ export default function RegisterPage() {
             </label>
           </div>
 
-          <label className="space-y-2 text-sm text-[var(--text-secondary)]">
+          <label className="space-y-2 small-text font-medium">
             <span>Interested Subjects</span>
-            <input name="interestedSubjects" value={form.interestedSubjects} onChange={handleChange} className="w-full rounded-2xl border border-[var(--border-main)] bg-[var(--bg-input)] px-4 py-3 text-[var(--text-primary)] focus:border-[var(--accent-color)] focus:outline-none" placeholder="Mathematics, Programming" />
+            <input name="interestedSubjects" value={form.interestedSubjects} onChange={handleChange} className="saas-input w-full" placeholder="Mathematics, Programming" />
           </label>
-          <label className="space-y-2 text-sm text-[var(--text-secondary)]">
+          <label className="space-y-2 small-text font-medium">
             <span>Career Interests</span>
-            <input name="careerInterests" value={form.careerInterests} onChange={handleChange} className="w-full rounded-2xl border border-[var(--border-main)] bg-[var(--bg-input)] px-4 py-3 text-[var(--text-primary)] focus:border-[var(--accent-color)] focus:outline-none" placeholder="Technology, Analytics" />
+            <input name="careerInterests" value={form.careerInterests} onChange={handleChange} className="saas-input w-full" placeholder="Technology, Analytics" />
           </label>
 
-          {message && <p className="rounded-2xl bg-[var(--error-bg)] border border-[var(--error-color)]/30 px-4 py-3 text-sm text-[var(--error-color)]">{message}</p>}
+          {message && <p className="rounded-[14px] bg-[var(--error-bg)] border border-[var(--error-color)]/30 px-4 py-3 text-sm text-[var(--error-color)]">{message}</p>}
 
-          <button type="submit" className="rounded-2xl bg-[var(--accent-color)] px-6 py-3 text-sm font-semibold text-[var(--accent-contrast-text)] transition hover:bg-[var(--accent-hover)]">Create account</button>
+          <button type="submit" className="saas-button-primary mt-2">Create account</button>
         </form>
       </div>
     </main>

@@ -14,7 +14,7 @@ function buildMappedQuestion(item) {
 }
 
 function validateAssessmentPayload(payload) {
-    if (!payload || !Array.isArray(payload.questions) || payload.questions.length !== 15) {
+    if (!payload || !Array.isArray(payload.questions) || payload.questions.length === 0) {
         return false
     }
 
@@ -23,43 +23,19 @@ function validateAssessmentPayload(payload) {
             item &&
             typeof item.question === 'string' &&
             Array.isArray(item.options) &&
-            item.options.length === 4 &&
-            item.options.every((option) => typeof option === 'string') &&
-            typeof item.correctAnswer === 'string' &&
-            item.options.includes(item.correctAnswer) &&
-            typeof item.explanation === 'string'
+            item.options.length >= 2 &&
+            typeof item.correctAnswer === 'string'
         )
     })
 }
 
-function validatePracticePayload(payload, expectedCount) {
+function validatePracticePayload(payload) {
     if (!payload || !Array.isArray(payload.twoMarkQuestions) || !Array.isArray(payload.longAnswerQuestions)) {
         return false
     }
 
-    const hasCorrectCounts =
-        payload.twoMarkQuestions.length === expectedCount.twoMarkQuestions &&
-        payload.longAnswerQuestions.length === expectedCount.longAnswerQuestions
-
-    if (!hasCorrectCounts) {
-        return false
-    }
-
-    return payload.twoMarkQuestions.every((item) => {
-        return (
-            item &&
-            typeof item.question === 'string' &&
-            typeof item.expectedAnswer === 'string' &&
-            item.marks === 2
-        )
-    }) && payload.longAnswerQuestions.every((item) => {
-        return (
-            item &&
-            typeof item.question === 'string' &&
-            typeof item.expectedAnswer === 'string' &&
-            item.marks === expectedCount.longAnswerMarks
-        )
-    })
+    const hasQuestions = payload.twoMarkQuestions.length > 0 || payload.longAnswerQuestions.length > 0
+    return hasQuestions
 }
 
 export async function generateAssessment(req, res, next) {
@@ -69,7 +45,7 @@ export async function generateAssessment(req, res, next) {
             return res.status(400).json({ error: 'Syllabus is required' })
         }
 
-        const prompt = `Create exactly 15 multiple-choice questions based on the following syllabus. Return only valid JSON in this exact shape: {"questions":[{"question":"...","options":["...","...","...","..."],"correctAnswer":"...","explanation":"..."}]}. Every question must have exactly 4 options, and the correctAnswer must match one of the options. Syllabus: ${syllabus}`
+        const prompt = `Create 15 multiple-choice questions based on the following syllabus. Return only valid JSON in this exact shape: {"questions":[{"question":"...","options":["...","...","...","..."],"correctAnswer":"...","explanation":"..."}]}. Every question must have exactly 4 options, and the correctAnswer must match one of the options. Syllabus: ${syllabus}`
 
         let payload
         try {
@@ -107,31 +83,35 @@ export async function generatePractice(req, res, next) {
             longAnswerMarks: isSchool ? 5 : 14
         }
 
-        const prompt = `Create practice questions based on this syllabus for ${studentType || 'a general student'}. Return only valid JSON with exactly this shape: {"twoMarkQuestions":[{"question":"...","expectedAnswer":"...","marks":2}],"longAnswerQuestions":[{"question":"...","expectedAnswer":"...","marks":${expectedCounts.longAnswerMarks}}]}. The twoMarkQuestions array must contain exactly 10 questions, and the longAnswerQuestions array must contain exactly ${expectedCounts.longAnswerQuestions} questions. Syllabus: ${syllabus}`
+        const prompt = `Create practice questions based on this syllabus for ${studentType || 'a general student'}. Return only valid JSON with exactly this shape: {"twoMarkQuestions":[{"question":"...","expectedAnswer":"...","marks":2}],"longAnswerQuestions":[{"question":"...","expectedAnswer":"...","marks":${expectedCounts.longAnswerMarks}}]}. Provide 10 short 2-mark questions and ${expectedCounts.longAnswerQuestions} long answer questions. Syllabus: ${syllabus}`
 
         let payload
-        let retries = 0
-        while (retries < 2) {
-            try {
-                payload = await generateJSON(prompt, { retries: 0 })
-                if (validatePracticePayload(payload, expectedCounts)) {
-                    break
-                }
-            } catch (error) {
-                payload = null
-            }
-            retries += 1
-            if (retries >= 2) {
-                payload = null
-            }
+        try {
+            payload = await generateJSON(prompt, { retries: 1 })
+        } catch (error) {
+            console.error('Gemini generatePractice error:', error)
+            return res.status(502).json({ error: 'Failed to generate practice questions from AI service.' })
         }
 
-        if (!validatePracticePayload(payload, expectedCounts)) {
-            return res.status(502).json({ error: 'Failed to generate valid practice questions. Please try again.' })
+        if (!validatePracticePayload(payload)) {
+            return res.status(502).json({ error: 'Failed to generate valid practice questions format. Please try again.' })
         }
+
+        const normalizedTwoMark = (payload.twoMarkQuestions || []).map((q) => ({
+            question: q.question || 'Practice Question',
+            expectedAnswer: q.expectedAnswer || q.answer || 'Answer concept.',
+            marks: 2
+        }))
+
+        const normalizedLong = (payload.longAnswerQuestions || []).map((q) => ({
+            question: q.question || 'Long Answer Question',
+            expectedAnswer: q.expectedAnswer || q.answer || 'Detailed answer explanation.',
+            marks: expectedCounts.longAnswerMarks
+        }))
 
         res.json({
-            ...payload,
+            twoMarkQuestions: normalizedTwoMark,
+            longAnswerQuestions: normalizedLong,
             studentType: studentType || 'Unspecified',
             counts: expectedCounts
         })

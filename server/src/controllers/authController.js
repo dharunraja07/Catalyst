@@ -1,7 +1,9 @@
 import bcrypt from 'bcryptjs'
+import crypto from 'crypto'
 import jwt from 'jsonwebtoken'
 import User from '../models/User.js'
 import LearningProgress from '../models/LearningProgress.js'
+import { sendResetPasswordEmail } from '../utils/sendEmail.js'
 
 function generateToken(userId) {
   return jwt.sign({ id: userId }, process.env.JWT_SECRET, { expiresIn: '7d' })
@@ -97,6 +99,75 @@ export async function updateProfile(req, res, next) {
     ).select('-password')
 
     res.json(serializeUser(user))
+  } catch (error) {
+    next(error)
+  }
+}
+
+export async function forgotPassword(req, res, next) {
+  try {
+    const { email } = req.body
+    if (!email) {
+      return res.status(400).json({ error: 'Email address is required' })
+    }
+
+    const normalizedEmail = email.trim().toLowerCase()
+    const user = await User.findOne({ email: normalizedEmail })
+
+    if (user) {
+      const unhashedToken = crypto.randomBytes(32).toString('hex')
+      const hashedToken = crypto.createHash('sha256').update(unhashedToken).digest('hex')
+      
+      user.resetPasswordToken = hashedToken
+      user.resetPasswordExpires = Date.now() + 15 * 60 * 1000 // 15 minutes
+      await user.save()
+
+      try {
+        await sendResetPasswordEmail({ to: user.email, token: unhashedToken })
+      } catch (emailError) {
+        console.error('Failed to send reset password email:', emailError)
+      }
+    }
+
+    // Always return generic success message to prevent email enumeration
+    res.json({ message: 'If an account exists, a reset link has been sent.' })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export async function resetPassword(req, res, next) {
+  try {
+    const { token, password } = req.body
+    if (!token || !password) {
+      return res.status(400).json({ error: 'Token and new password are required' })
+    }
+
+    // Validate password strength: min 8 chars, 1 uppercase, 1 lowercase, 1 digit, 1 special char
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#^()_\-+=~`[\]{}|:;"'<>,.?/])[A-Za-z\d@$!%*?&#^()_\-+=~`[\]{}|:;"'<>,.?/]{8,}$/
+    if (!passwordRegex.test(password)) {
+      return res.status(400).json({
+        error: 'Password must be at least 8 characters long and include an uppercase letter, a lowercase letter, a number, and a special character.'
+      })
+    }
+
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex')
+
+    const user = await User.findOne({
+      resetPasswordToken: hashedToken,
+      resetPasswordExpires: { $gt: Date.now() }
+    })
+
+    if (!user) {
+      return res.status(400).json({ error: 'Invalid or expired password reset token' })
+    }
+
+    user.password = await bcrypt.hash(password, 10)
+    user.resetPasswordToken = undefined
+    user.resetPasswordExpires = undefined
+    await user.save()
+
+    res.json({ message: 'Password updated successfully.' })
   } catch (error) {
     next(error)
   }

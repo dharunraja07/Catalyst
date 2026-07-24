@@ -220,150 +220,163 @@ export default function DashboardPage() {
   })
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
-      <div className="overflow-hidden rounded-[2rem] border border-[var(--border-main)] bg-[var(--bg-surface)] p-8 shadow-glow">
-        <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+    <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 space-y-8">
+      <div className="saas-card shadow-glow">
+        <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-[var(--divider-main)] pb-6">
           <div>
-            <p className="text-sm uppercase tracking-[0.24em] text-[var(--accent-color)]">Dashboard</p>
-            <h1 className="text-3xl font-semibold text-[var(--text-primary)]">Student overview</h1>
+            <p className="caption-text uppercase tracking-[0.24em] text-[var(--accent-color)] font-semibold mb-1">Dashboard</p>
+            <h1 className="page-title">Student overview</h1>
           </div>
-          <p className="rounded-full border border-[var(--border-main)] bg-[var(--bg-secondary)] px-4 py-2 text-sm text-[var(--text-secondary)]">Welcome back</p>
+          <span className="inline-flex items-center min-h-[44px] rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-secondary)] px-4 py-2 text-sm font-medium text-[var(--text-secondary)]">Welcome back</span>
         </div>
 
-        {error && <p className="mb-6 rounded-2xl bg-[var(--error-bg)] border border-[var(--error-color)]/30 px-4 py-3 text-sm text-[var(--error-color)]">{error}</p>}
+        {error && <p className="mb-6 rounded-[14px] bg-[var(--error-bg)] border border-[var(--error-color)]/30 px-4 py-3 text-sm text-[var(--error-color)]">{error}</p>}
 
         {profile ? (
-          <div className="space-y-6">
-            <div className="grid gap-6 xl:grid-cols-[1.5fr_1fr]">
-              <div className="space-y-6">
-                <div className="rounded-[1.75rem] border border-[var(--border-main)] bg-[var(--bg-elevated)] p-8">
-                  <h2 className="text-xl font-semibold text-[var(--text-primary)]">Hello, {profile.name}</h2>
-                  <p className="mt-3 text-[var(--text-secondary)]">Track your learning progress, see your strengths, and stay ahead with personalized recommendations.</p>
-                  <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-3xl border border-[var(--border-main)] bg-[var(--bg-secondary)] p-5">
-                      <p className="text-sm uppercase tracking-[0.2em] text-[var(--text-muted)]">Role</p>
-                      <p className="mt-2 text-lg font-semibold text-[var(--text-primary)]">{profile.role}</p>
-                    </div>
-                    <div className="rounded-3xl border border-[var(--border-main)] bg-[var(--bg-secondary)] p-5">
-                      <p className="text-sm uppercase tracking-[0.2em] text-[var(--text-muted)]">Learning style</p>
-                      <p className="mt-2 text-lg font-semibold text-[var(--text-primary)]">{profile.learningStyle}</p>
-                    </div>
-                  </div>
+          <div className="space-y-8">
+            {/* Hero Welcome Banner */}
+            <div className="saas-elevated-card">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+                <div>
+                  <h2 className="section-title">Hello, {profile.name} 👋</h2>
+                  <p className="body-text mt-2 max-w-2xl">Track your learning progress, see your strengths, and stay ahead with personalized recommendations.</p>
                 </div>
-
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="rounded-3xl border border-[var(--border-main)] bg-[var(--bg-elevated)] p-6">
-                    <h3 className="text-base font-semibold text-[var(--text-primary)]">Education</h3>
-                    <p className="mt-3 text-[var(--text-secondary)]">{profile.educationLevel || 'Not specified'}</p>
+                <div className="flex flex-wrap gap-3">
+                  <div className="rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-secondary)] px-4 py-3 min-w-[130px]">
+                    <p className="caption-text uppercase tracking-[0.2em]">Role</p>
+                    <p className="card-title mt-1 font-semibold">{profile.role}</p>
                   </div>
-                  <div className="rounded-3xl border border-[var(--border-main)] bg-[var(--bg-elevated)] p-6">
-                    <h3 className="text-base font-semibold text-[var(--text-primary)]">Preferred subjects</h3>
-                    <p className="mt-3 text-[var(--text-secondary)]">{profile.interestedSubjects?.join(', ') || 'None'}</p>
+                  <div className="rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-secondary)] px-4 py-3 min-w-[130px]">
+                    <p className="caption-text uppercase tracking-[0.2em]">Learning style</p>
+                    <p className="card-title mt-1 font-semibold">{profile.learningStyle}</p>
                   </div>
-                </div>
-              </div>
-              <div className="rounded-[1.75rem] border border-[var(--border-main)] bg-[var(--bg-elevated)] p-8">
-                <h2 className="text-xl font-semibold text-[var(--text-primary)]">Career interests</h2>
-                <p className="mt-3 text-[var(--text-secondary)]">Your next steps are tailored around these career goals.</p>
-                <div className="mt-6 space-y-3">
-                  {profile.careerInterests?.length ? profile.careerInterests.map((interest) => (
-                    <div key={interest} className="rounded-3xl border border-[var(--border-main)] bg-[var(--bg-secondary)] px-4 py-3 text-[var(--text-primary)]">{interest}</div>
-                  )) : <div className="rounded-3xl border border-[var(--border-main)] bg-[var(--bg-secondary)] px-4 py-3 text-[var(--text-muted)]">None specified yet.</div>}
                 </div>
               </div>
             </div>
 
-            <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-              <div className="rounded-[1.75rem] border border-[var(--border-main)] bg-[var(--bg-elevated)] p-8">
-                <div className="flex items-center justify-between">
+            {/* 12-Column Main Dashboard Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              {/* Left Column: Pomodoro Timer (lg:col-span-5) */}
+              <div className="lg:col-span-5 flex flex-col gap-6">
+                <div className="saas-elevated-card flex-1 flex flex-col justify-between">
                   <div>
-                    <p className="text-sm uppercase tracking-[0.2em] text-[var(--text-muted)]">Pomodoro timer</p>
-                    <h3 className="mt-2 text-2xl font-semibold text-[var(--text-primary)]">
-                      {mode === 'focus' ? 'Focus' : 'Break'}
-                    </h3>
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <p className="caption-text uppercase tracking-[0.2em]">Pomodoro timer</p>
+                        <h3 className="section-title mt-1">
+                          {mode === 'focus' ? 'Focus Session' : 'Rest Break'}
+                        </h3>
+                      </div>
+                      <span className="rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-secondary)] px-3 py-1.5 text-xs font-semibold text-[var(--text-secondary)]">
+                        {mode === 'focus' ? '25 min' : '5 min'}
+                      </span>
+                    </div>
+
+                    <div className="my-6 rounded-[20px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-8 text-center">
+                      <p className="text-6xl font-bold tracking-tight text-[var(--text-primary)] font-mono">{String(Math.floor(secondsLeft / 60)).padStart(2, '0')}:{String(secondsLeft % 60).padStart(2, '0')}</p>
+                    </div>
                   </div>
-                  <div className="rounded-full border border-[var(--border-main)] bg-[var(--bg-secondary)] px-3 py-1 text-sm text-[var(--text-secondary)]">
-                    {mode === 'focus' ? '25 min' : '5 min'}
+
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setIsRunning((prev) => !prev)}
+                      className="flex-1 saas-button-primary"
+                    >
+                      {isRunning ? 'Pause' : 'Start Focus'}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIsRunning(false)
+                        setSecondsLeft(mode === 'focus' ? FOCUS_DURATION : BREAK_DURATION)
+                      }}
+                      className="saas-button-secondary"
+                    >
+                      Reset
+                    </button>
                   </div>
-                </div>
-                <div className="mt-6 rounded-3xl border border-[var(--border-main)] bg-[var(--bg-secondary)] p-6 text-center">
-                  <p className="text-6xl font-semibold text-[var(--text-primary)]">{String(Math.floor(secondsLeft / 60)).padStart(2, '0')}:{String(secondsLeft % 60).padStart(2, '0')}</p>
-                </div>
-                <div className="mt-6 flex gap-3">
-                  <button
-                    onClick={() => setIsRunning((prev) => !prev)}
-                    className="rounded-2xl bg-[var(--accent-color)] px-5 py-3 font-medium text-[var(--accent-contrast-text)] transition hover:bg-[var(--accent-hover)]"
-                  >
-                    {isRunning ? 'Pause' : 'Start'}
-                  </button>
-                  <button
-                    onClick={() => {
-                      setIsRunning(false)
-                      setSecondsLeft(mode === 'focus' ? FOCUS_DURATION : BREAK_DURATION)
-                    }}
-                    className="rounded-2xl border border-[var(--border-main)] bg-[var(--bg-secondary)] px-5 py-3 font-medium text-[var(--text-primary)] transition hover:border-[var(--accent-color)]"
-                  >
-                    Reset
-                  </button>
                 </div>
               </div>
 
-              <div className="rounded-[1.75rem] border border-[var(--border-main)] bg-[var(--bg-elevated)] p-8">
-                <p className="text-sm uppercase tracking-[0.2em] text-[var(--text-muted)]">Study statistics</p>
-                <div className="mt-6 space-y-4">
+              {/* Right Column: Profile Overview & Daily Goal (lg:col-span-7) */}
+              <div className="lg:col-span-7 flex flex-col gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <div className="saas-elevated-card">
+                    <h3 className="card-title">Education</h3>
+                    <p className="body-text mt-2">{profile.educationLevel || 'Not specified'}</p>
+                  </div>
+                  <div className="saas-elevated-card">
+                    <h3 className="card-title">Preferred subjects</h3>
+                    <p className="body-text mt-2">{profile.interestedSubjects?.join(', ') || 'None'}</p>
+                  </div>
+                </div>
+
+                <div className="saas-elevated-card">
+                  <h3 className="card-title">Career goals</h3>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {profile.careerInterests?.length ? profile.careerInterests.map((interest) => (
+                      <span key={interest} className="rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-secondary)] px-4 py-2 text-sm font-medium text-[var(--text-primary)]">{interest}</span>
+                    )) : <span className="text-sm text-[var(--text-muted)]">None specified yet.</span>}
+                  </div>
+                </div>
+
+                <div className="saas-elevated-card space-y-4">
+                  <p className="caption-text uppercase tracking-[0.2em]">Study statistics</p>
+
                   <div>
-                    <div className="flex justify-between text-sm text-[var(--text-secondary)]">
-                      <span>Today's Study</span>
+                    <div className="flex justify-between text-sm font-medium text-[var(--text-secondary)]">
+                      <span>Today's Progress</span>
                       <span>{todayMinutes} / {dailyGoal} min</span>
                     </div>
-                    <div className="mt-2 h-2 rounded-full bg-[var(--bg-secondary)]">
-                      <div className="h-2 rounded-full bg-[var(--accent-color)]" style={{ width: `${progressWidth}%` }} />
+                    <div className="mt-2 h-3 rounded-full bg-[var(--bg-secondary)] overflow-hidden border border-[var(--border-main)]">
+                      <div className="h-full rounded-full bg-[var(--accent-color)] transition-all duration-300" style={{ width: `${progressWidth}%` }} />
                     </div>
                   </div>
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    <div className="rounded-3xl border border-[var(--border-main)] bg-[var(--bg-secondary)] p-4">
-                      <p className="text-xs uppercase tracking-[0.2em] text-[var(--text-muted)]">Current streak</p>
-                      <p className="mt-2 text-2xl font-semibold text-[var(--text-primary)]">{currentStreak}</p>
+
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-3 text-center">
+                      <p className="caption-text uppercase">Current streak</p>
+                      <p className="text-xl font-bold mt-1 text-[var(--text-primary)]">{currentStreak}</p>
                     </div>
-                    <div className="rounded-3xl border border-[var(--border-main)] bg-[var(--bg-secondary)] p-4">
-                      <p className="text-xs uppercase tracking-[0.2em] text-[var(--text-muted)]">Longest streak</p>
-                      <p className="mt-2 text-2xl font-semibold text-[var(--text-primary)]">{longestStreak}</p>
+                    <div className="rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-3 text-center">
+                      <p className="caption-text uppercase">Best streak</p>
+                      <p className="text-xl font-bold mt-1 text-[var(--text-primary)]">{longestStreak}</p>
                     </div>
-                    <div className="rounded-3xl border border-[var(--border-main)] bg-[var(--bg-secondary)] p-4">
-                      <p className="text-xs uppercase tracking-[0.2em] text-[var(--text-muted)]">Study days</p>
-                      <p className="mt-2 text-2xl font-semibold text-[var(--text-primary)]">{totalCompletedDays}</p>
+                    <div className="rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-3 text-center">
+                      <p className="caption-text uppercase">Study days</p>
+                      <p className="text-xl font-bold mt-1 text-[var(--text-primary)]">{totalCompletedDays}</p>
                     </div>
                   </div>
-                  <div className="rounded-3xl border border-[var(--border-main)] bg-[var(--bg-secondary)] p-4">
-                    <label className="text-xs uppercase tracking-[0.2em] text-[var(--text-muted)]">Daily goal</label>
-                    <div className="mt-3 grid gap-2 sm:grid-cols-3">
+
+                  <div className="rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-4">
+                    <label className="caption-text uppercase">Daily goal</label>
+                    <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
                       <div>
-                        <label className="text-[10px] uppercase tracking-[0.2em] text-[var(--text-muted)]">Hours</label>
+                        <label className="text-[10px] uppercase text-[var(--text-muted)]">Hours</label>
                         <input
                           type="number"
                           min="0"
                           value={hoursInput}
                           onChange={(e) => setHoursInput(e.target.value)}
-                          className="mt-1 w-full rounded-2xl border border-[var(--border-main)] bg-[var(--bg-input)] px-4 py-3 text-[var(--text-primary)] outline-none focus:border-[var(--accent-color)]"
+                          className="saas-input w-full mt-1 min-h-[44px]"
                         />
                       </div>
                       <div>
-                        <label className="text-[10px] uppercase tracking-[0.2em] text-[var(--text-muted)]">Minutes</label>
+                        <label className="text-[10px] uppercase text-[var(--text-muted)]">Minutes</label>
                         <input
                           type="number"
                           min="0"
                           max="59"
                           value={minutesInput}
                           onChange={(e) => setMinutesInput(e.target.value)}
-                          className="mt-1 w-full rounded-2xl border border-[var(--border-main)] bg-[var(--bg-input)] px-4 py-3 text-[var(--text-primary)] outline-none focus:border-[var(--accent-color)]"
+                          className="saas-input w-full mt-1 min-h-[44px]"
                         />
                       </div>
                       <button
                         onClick={saveDailyGoal}
                         disabled={savingGoal}
-                        className="mt-6 rounded-2xl bg-[var(--accent-color)] px-4 py-3 font-medium text-[var(--accent-contrast-text)] transition hover:bg-[var(--accent-hover)] disabled:opacity-60"
+                        className="saas-button-primary min-h-[44px] w-full"
                       >
-                        {savingGoal ? 'Saving' : 'Save'}
+                        {savingGoal ? 'Saving' : 'Save Goal'}
                       </button>
                     </div>
                   </div>
@@ -371,15 +384,16 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <div className="rounded-[1.75rem] border border-[var(--border-main)] bg-[var(--bg-elevated)] p-8">
-              <div className="flex items-center justify-between">
+            {/* Bottom Row: 12-Month Calendar Grid */}
+            <div className="saas-elevated-card">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-6">
                 <div>
-                  <p className="text-sm uppercase tracking-[0.2em] text-[var(--text-muted)]">Yearly streak</p>
-                  <h3 className="mt-2 text-2xl font-semibold text-[var(--text-primary)]">{thisYear} study calendar</h3>
+                  <p className="caption-text uppercase tracking-[0.2em]">Yearly streak</p>
+                  <h3 className="section-title mt-1">{thisYear} study calendar</h3>
                 </div>
-                <span className="rounded-full border border-[var(--border-main)] bg-[var(--bg-secondary)] px-3 py-1 text-sm text-[var(--text-secondary)]">{totalCompletedDays} completed days</span>
+                <span className="inline-flex items-center rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-secondary)] px-4 py-2 text-xs font-semibold text-[var(--text-secondary)]">{totalCompletedDays} completed days</span>
               </div>
-              <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {yearMonthData.map((month) => {
                   const completedDays = new Set(
                     normalizedSessions
@@ -388,8 +402,8 @@ export default function DashboardPage() {
                   )
 
                   return (
-                    <div key={month.name} className="rounded-2xl border border-[var(--border-main)] bg-[var(--bg-secondary)] p-3">
-                      <p className="mb-2 text-[11px] font-medium text-[var(--text-primary)]">{month.name}</p>
+                    <div key={month.name} className="rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-3">
+                      <p className="mb-2 text-xs font-semibold text-[var(--text-primary)]">{month.name}</p>
                       <div className="grid grid-cols-7 gap-1">
                         {month.dayCells.map((day, index) => {
                           const cellDate = day
@@ -401,11 +415,11 @@ export default function DashboardPage() {
                           return (
                             <div
                               key={`${month.name}-${index}`}
-                              className={`flex aspect-square items-center justify-center rounded-[0.2rem] text-[8px] ${day
+                              className={`flex aspect-square items-center justify-center rounded-[4px] text-[9px] ${day
                                 ? isCompleted
                                   ? 'bg-[var(--accent-color)] text-[var(--accent-contrast-text)] font-bold'
                                   : isToday
-                                    ? 'bg-[var(--bg-elevated)] border border-[var(--border-main)] text-[var(--text-primary)] font-medium'
+                                    ? 'bg-[var(--bg-elevated)] border border-[var(--border-main)] text-[var(--text-primary)] font-semibold'
                                     : 'bg-[var(--bg-surface)] text-[var(--text-muted)]'
                                 : 'bg-transparent'
                                 }`}
@@ -422,7 +436,7 @@ export default function DashboardPage() {
             </div>
           </div>
         ) : (
-          <p className="text-[var(--text-muted)]">Loading profile...</p>
+          <p className="body-text">Loading profile...</p>
         )}
       </div>
     </main>

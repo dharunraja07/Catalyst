@@ -16,7 +16,9 @@ const userSchema = new mongoose.Schema({
   learningStyle: { type: String, enum: ['Visual', 'Reading', 'Practice', 'Mixed'], default: 'Mixed' },
   history: { type: [String], default: [] },
   dailyGoalMinutes: { type: Number, default: 60 },
-  studySessions: { type: [studySessionSchema], default: [] }
+  studySessions: { type: [studySessionSchema], default: [] },
+  resetPasswordToken: { type: String },
+  resetPasswordExpires: { type: Date }
 }, { timestamps: true })
 
 export default mongoose.model('User', userSchema)

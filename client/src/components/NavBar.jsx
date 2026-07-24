@@ -1,67 +1,37 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 
-const navLinks = [
-  { href: '/', label: 'Home' },
-  { href: '/dashboard', label: 'Dashboard', auth: true },
-  { href: '/assessment', label: 'Assessment', auth: true },
-  { href: '/roadmap', label: 'Roadmap', auth: true },
-  { href: '/questions', label: 'Practice', auth: true },
-  { href: '/progress', label: 'Progress', auth: true },
-  { href: '/career', label: 'Career', auth: true },
-  { href: '/study-group', label: 'Study Group', auth: true }
+const authNavLinks = [
+  { href: '/', label: 'Home', icon: '🏠' },
+  { href: '/dashboard', label: 'Dashboard', icon: '📌' },
+  { href: '/assessment', label: 'Assessment', icon: '📝' },
+  { href: '/roadmap', label: 'Roadmap', icon: '🗺' },
+  { href: '/questions', label: 'Practice', icon: '🎯' },
+  { href: '/progress', label: 'Progress', icon: '📈' },
+  { href: '/career', label: 'Career', icon: '💼' },
+  { href: '/study-group', label: 'Study Group', icon: '👥' }
 ]
 
-function NavButton({ to, active, children, onClick, className = '' }) {
-  return (
-    <Link
-      to={to}
-      onClick={onClick}
-      className={`rounded-full px-3 py-2 text-sm font-medium transition ${
-        active
-          ? 'bg-[var(--accent-color)] text-[var(--accent-contrast-text)] shadow-sm'
-          : 'text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)]'
-      } ${className}`}
-    >
-      {children}
-    </Link>
-  )
-}
-
-function MenuIcon({ open }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6" aria-hidden="true">
-      {open ? (
-        <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-      ) : (
-        <>
-          <path d="M4 7h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-          <path d="M4 12h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-          <path d="M4 17h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-        </>
-      )}
-    </svg>
-  )
-}
-
-function ThemeToggle({ isDark, onToggle }) {
+function AnimatedThemeToggle({ isDark, onToggle }) {
   return (
     <button
       type="button"
       onClick={onToggle}
       aria-label={isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-      className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border-main)] bg-[var(--bg-secondary)] text-[var(--text-primary)] transition hover:bg-[var(--bg-elevated)]"
+      className="relative flex h-9 w-16 items-center rounded-full border border-[var(--border-main)] bg-[var(--bg-secondary)] px-1 transition-colors duration-300 focus:outline-none"
     >
-      {isDark ? (
-        <svg className="h-5 w-5 text-[var(--accent-color)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-        </svg>
-      ) : (
-        <svg className="h-5 w-5 text-[var(--text-primary)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-        </svg>
-      )}
+      <span className="flex w-full items-center justify-between text-xs font-bold px-1 select-none">
+        <span className={isDark ? 'text-[var(--text-muted)]' : 'text-amber-500'}>☀</span>
+        <span className={isDark ? 'text-amber-300' : 'text-[var(--text-muted)]'}>🌙</span>
+      </span>
+      <span
+        className={`absolute h-7 w-7 rounded-full bg-[var(--accent-color)] shadow-md transition-transform duration-300 ease-in-out flex items-center justify-center text-xs font-bold text-black ${
+          isDark ? 'translate-x-7' : 'translate-x-0'
+        }`}
+      >
+        {isDark ? '🌙' : '☀'}
+      </span>
     </button>
   )
 }
@@ -70,7 +40,10 @@ export default function NavBar() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const [menuOpen, setMenuOpen] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false)
+  const profileRef = useRef(null)
+
   const [isDark, setIsDark] = useState(() => {
     return document.documentElement.classList.contains('dark')
   })
@@ -81,6 +54,16 @@ export default function NavBar() {
     })
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
     return () => observer.disconnect()
+  }, [])
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (profileRef.current && !profileRef.current.contains(event.target)) {
+        setProfileDropdownOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
   const toggleTheme = () => {
@@ -95,105 +78,197 @@ export default function NavBar() {
     }
   }
 
-  const closeMenu = () => setMenuOpen(false)
+  const closeMobileMenu = () => setMobileMenuOpen(false)
 
   const handleLogout = () => {
-    closeMenu()
+    closeMobileMenu()
+    setProfileDropdownOpen(false)
     logout()
     navigate('/login')
   }
 
+  const getInitials = (name) => {
+    if (!name) return 'U'
+    const parts = name.trim().split(' ')
+    if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase()
+    return name.slice(0, 2).toUpperCase()
+  }
+
   return (
-    <header className="sticky top-0 z-30 border-b border-[var(--border-main)] bg-[var(--bg-nav)] shadow-sm backdrop-blur-md transition-colors duration-200">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 text-[var(--text-primary)] sm:px-6">
-        <Link to="/" onClick={closeMenu} className="flex items-center gap-3 text-lg font-semibold tracking-tight text-[var(--text-primary)]">
-          <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--accent-color)] text-lg font-bold text-[var(--accent-contrast-text)]">AI</span>
-          <span>AI Learning</span>
-        </Link>
-
-        {/* Desktop nav: visible from md breakpoint up */}
-        <nav className="hidden flex-wrap items-center gap-2 md:flex">
-          {navLinks.map((link) => {
-            if (link.auth && !user) return null
-            return <NavButton key={link.href} to={link.href} active={location.pathname === link.href}>{link.label}</NavButton>
-          })}
-        </nav>
-
-        <div className="hidden items-center gap-3 md:flex">
-          <ThemeToggle isDark={isDark} onToggle={toggleTheme} />
-          {user ? (
-            <>
-              <span className="hidden rounded-full border border-[var(--border-main)] bg-[var(--bg-secondary)] px-3 py-2 text-sm text-[var(--text-secondary)] lg:inline-flex">{user.name}</span>
+    <>
+      <header className="sticky top-0 z-30 border-b border-[var(--border-main)] bg-[var(--bg-nav)]/95 backdrop-blur-md transition-colors duration-200">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 text-[var(--text-primary)] sm:px-6">
+          
+          {/* Logo Section */}
+          <div className="flex items-center gap-3">
+            {user && (
               <button
-                onClick={handleLogout}
-                className="rounded-full bg-[var(--accent-color)] px-4 py-2 text-sm font-semibold text-[var(--accent-contrast-text)] transition hover:opacity-90"
+                type="button"
+                onClick={() => setMobileMenuOpen((prev) => !prev)}
+                className="lg:hidden inline-flex items-center justify-center p-2 rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-secondary)] text-[var(--text-primary)] hover:border-[var(--accent-color)] transition"
+                aria-label="Open Navigation Menu"
               >
-                Logout
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
               </button>
-            </>
-          ) : (
-            <div className="flex flex-wrap items-center gap-2">
-              <NavButton to="/login" active={location.pathname === '/login'}>Login</NavButton>
-              <NavButton to="/register" active={location.pathname === '/register'}>Register</NavButton>
-            </div>
+            )}
+
+            <Link to="/" onClick={closeMobileMenu} className="flex items-center gap-3 font-bold tracking-tight text-lg">
+              <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px] bg-[var(--accent-color)] text-base font-extrabold text-black shadow-sm">
+                AI
+              </span>
+              <div className="flex flex-col leading-tight">
+                <span className="font-extrabold text-xl tracking-tight text-[var(--text-primary)]">Catalyst</span>
+                <span className="text-[10px] uppercase tracking-widest text-[var(--text-secondary)] font-bold whitespace-nowrap">
+                  AI POWERED LEARNING
+                </span>
+              </div>
+            </Link>
+          </div>
+
+          {/* Desktop Navigation Links — Shown ONLY AFTER Login */}
+          {user && (
+            <nav className="hidden lg:flex items-center gap-1">
+              {authNavLinks.map((link) => {
+                const active = location.pathname === link.href
+                return (
+                  <Link
+                    key={link.href}
+                    to={link.href}
+                    className={`inline-flex items-center px-3.5 py-2 rounded-[14px] text-sm font-medium transition-all duration-200 ${
+                      active
+                        ? 'bg-[var(--accent-color)] text-black font-semibold shadow-sm'
+                        : 'text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)]'
+                    }`}
+                  >
+                    {link.label}
+                  </Link>
+                )
+              })}
+            </nav>
           )}
-        </div>
 
-        {/* Mobile controls: Theme toggle + hamburger menu */}
-        <div className="flex items-center gap-2 md:hidden">
-          <ThemeToggle isDark={isDark} onToggle={toggleTheme} />
-          <button
-            type="button"
-            onClick={() => setMenuOpen((prev) => !prev)}
-            aria-label={menuOpen ? 'Close menu' : 'Open menu'}
-            aria-expanded={menuOpen}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--border-main)] bg-[var(--bg-secondary)] text-[var(--text-primary)] transition hover:border-[var(--accent-color)]"
-          >
-            <MenuIcon open={menuOpen} />
-          </button>
-        </div>
-      </div>
+          {/* Right Section: Theme Toggle & Profile Component (or Login button when logged out) */}
+          <div className="flex items-center gap-3">
+            {/* Animated Theme Toggle */}
+            <AnimatedThemeToggle isDark={isDark} onToggle={toggleTheme} />
 
-      {/* Mobile dropdown menu */}
-      {menuOpen && (
-        <div className="border-t border-[var(--border-main)] bg-[var(--bg-nav)] px-4 pb-4 pt-2 md:hidden">
-          <nav className="flex flex-col gap-1">
-            {navLinks.map((link) => {
-              if (link.auth && !user) return null
-              return (
-                <NavButton
-                  key={link.href}
-                  to={link.href}
-                  active={location.pathname === link.href}
-                  onClick={closeMenu}
-                  className="w-full text-left"
-                >
-                  {link.label}
-                </NavButton>
-              )
-            })}
-          </nav>
-
-          <div className="mt-3 border-t border-[var(--divider-main)] pt-3">
+            {/* Profile Dropdown Component when Logged In */}
             {user ? (
-              <div className="flex items-center justify-between gap-3">
-                <span className="rounded-full border border-[var(--border-main)] bg-[var(--bg-secondary)] px-3 py-2 text-sm text-[var(--text-secondary)]">{user.name}</span>
+              <div className="relative" ref={profileRef}>
                 <button
-                  onClick={handleLogout}
-                  className="rounded-full bg-[var(--accent-color)] px-4 py-2 text-sm font-semibold text-[var(--accent-contrast-text)] transition hover:opacity-90"
+                  type="button"
+                  onClick={() => setProfileDropdownOpen((prev) => !prev)}
+                  className="flex items-center gap-2 rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-1.5 sm:px-3 sm:py-1.5 hover:border-[var(--accent-color)] transition"
                 >
-                  Logout
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-tr from-[var(--accent-color)] to-[var(--accent-sage)] text-xs font-bold text-black shadow-sm">
+                    {getInitials(user.name)}
+                  </span>
+                  <span className="hidden md:inline-block text-sm font-semibold text-[var(--text-primary)] truncate max-w-[120px]">
+                    {user.name}
+                  </span>
+                  <svg className={`h-4 w-4 text-[var(--text-secondary)] transition-transform duration-200 ${profileDropdownOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
                 </button>
+
+                {/* Profile Popup Dropdown */}
+                {profileDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-56 rounded-[18px] border border-[var(--border-main)] bg-[var(--bg-surface)] p-2 shadow-2xl z-50 divide-y divide-[var(--divider-main)]">
+                    <div className="px-3 py-2.5">
+                      <p className="text-xs text-[var(--text-muted)] font-medium">Signed in as</p>
+                      <p className="text-sm font-bold text-[var(--text-primary)] truncate">{user.name}</p>
+                      <p className="text-xs text-[var(--text-secondary)] truncate">{user.email}</p>
+                    </div>
+
+                    <div className="py-1 space-y-0.5">
+                      <Link
+                        to="/dashboard"
+                        onClick={() => setProfileDropdownOpen(false)}
+                        className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium rounded-[12px] text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] transition"
+                      >
+                        <svg className="h-4 w-4 shrink-0 text-[var(--accent-color)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                        <span>Profile</span>
+                      </Link>
+                    </div>
+
+                    <div className="pt-1">
+                      <button
+                        type="button"
+                        onClick={handleLogout}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-sm font-medium rounded-[12px] text-[var(--error-color)] hover:bg-[var(--error-bg)] transition"
+                      >
+                        <svg className="h-4 w-4 shrink-0 text-[var(--error-color)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        </svg>
+                        <span>Logout</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
-              <div className="flex flex-col gap-2">
-                <NavButton to="/login" active={location.pathname === '/login'} onClick={closeMenu} className="w-full text-left">Login</NavButton>
-                <NavButton to="/register" active={location.pathname === '/register'} onClick={closeMenu} className="w-full text-left">Register</NavButton>
-              </div>
+              <Link to="/login" className="inline-flex items-center justify-center min-h-[40px] rounded-[14px] px-5 py-2 text-sm font-semibold text-black bg-[var(--accent-color)] hover:bg-[var(--accent-hover)] transition">
+                Login
+              </Link>
             )}
+
+          </div>
+        </div>
+      </header>
+
+      {/* Mobile Drawer (Shown on mobile when menu toggle clicked) */}
+      {user && mobileMenuOpen && (
+        <div className="fixed inset-0 z-50 flex lg:hidden">
+          <div onClick={closeMobileMenu} className="fixed inset-0 bg-black/60 backdrop-blur-sm" />
+          <div className="relative z-50 w-[300px] max-w-[85vw] h-full bg-[var(--bg-surface)] border-r border-[var(--border-main)] rounded-r-[24px] p-6 shadow-2xl flex flex-col justify-between overflow-y-auto animate-in slide-in-from-left">
+            <div className="space-y-6">
+              <div className="flex items-center justify-between border-b border-[var(--divider-main)] pb-4">
+                <div className="flex items-center gap-3">
+                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-[12px] bg-[var(--accent-color)] text-sm font-extrabold text-black">AI</span>
+                  <div>
+                    <h3 className="font-extrabold text-base text-[var(--text-primary)]">Catalyst</h3>
+                    <p className="text-[10px] uppercase tracking-widest text-[var(--text-secondary)] font-semibold">AI Learning</p>
+                  </div>
+                </div>
+                <button type="button" onClick={closeMobileMenu} className="p-2 rounded-[12px] border border-[var(--border-main)] bg-[var(--bg-secondary)] text-[var(--text-secondary)]">✕</button>
+              </div>
+
+              <nav className="space-y-1.5">
+                {authNavLinks.map((link) => {
+                  const active = location.pathname === link.href
+                  return (
+                    <Link
+                      key={link.href}
+                      to={link.href}
+                      onClick={closeMobileMenu}
+                      className={`flex items-center gap-3.5 px-4 py-3 rounded-[14px] text-sm font-semibold transition-colors ${
+                        active ? 'bg-[var(--accent-color)] text-black font-bold shadow-md' : 'text-[var(--text-primary)] hover:bg-[var(--bg-secondary)]'
+                      }`}
+                    >
+                      <span className="text-base">{link.icon}</span>
+                      <span>{link.label}</span>
+                    </Link>
+                  )
+                })}
+              </nav>
+            </div>
+
+            <div className="space-y-3 pt-6 border-t border-[var(--divider-main)] mt-6">
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-[14px] text-sm font-bold text-[var(--error-color)] bg-[var(--error-bg)]"
+              >
+                <span>🚪</span> Logout
+              </button>
+            </div>
           </div>
         </div>
       )}
-    </header>
+    </>
   )
 }

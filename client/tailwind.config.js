@@ -21,10 +21,18 @@ export default {
         themeSuccess: 'var(--success-color)',
         themeWarning: 'var(--warning-color)',
         themeError: 'var(--error-color)',
+        catalystGold: '#E6B325',
+        catalystGoldHover: '#D4A017',
+        sageGreen: '#6FA87B',
       },
       boxShadow: {
         glow: 'var(--shadow-glow)',
         card: 'var(--shadow-card)',
+      },
+      borderRadius: {
+        card: '20px',
+        button: '14px',
+        input: '14px',
       }
     }
   },

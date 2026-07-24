@@ -84,30 +84,30 @@ export default function AssessmentPage() {
     : `0 / ${totalQuestions}`
 
   return (
-    <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
-      <div className="overflow-hidden rounded-[2rem] border border-[var(--border-main)] bg-[var(--bg-surface)] p-8 shadow-glow">
-        <div className="mb-8 space-y-3">
-          <p className="text-sm uppercase tracking-[0.24em] text-[var(--accent-color)]">Assessment</p>
-          <h1 className="text-3xl font-semibold text-[var(--text-primary)]">Diagnostic assessment</h1>
-          <p className="max-w-2xl text-[var(--text-secondary)]">Answer the questions to generate a better roadmap and get instant recommendations.</p>
+    <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 space-y-8">
+      <div className="saas-card shadow-glow">
+        <div className="mb-8 border-b border-[var(--divider-main)] pb-6 space-y-2">
+          <p className="caption-text uppercase tracking-[0.24em] text-[var(--accent-color)] font-semibold">Assessment</p>
+          <h1 className="page-title">Diagnostic assessment</h1>
+          <p className="body-text max-w-2xl">Answer the questions to generate a better roadmap and get instant recommendations.</p>
         </div>
 
-        {error && <p className="mb-6 rounded-2xl bg-[var(--error-bg)] border border-[var(--error-color)]/30 px-4 py-3 text-sm text-[var(--error-color)]">{error}</p>}
-        {aiError && <p className="mb-6 rounded-2xl bg-[var(--error-bg)] border border-[var(--error-color)]/30 px-4 py-3 text-sm text-[var(--error-color)]">{aiError}</p>}
+        {error && <p className="mb-6 rounded-[14px] bg-[var(--error-bg)] border border-[var(--error-color)]/30 px-4 py-3 text-sm text-[var(--error-color)]">{error}</p>}
+        {aiError && <p className="mb-6 rounded-[14px] bg-[var(--error-bg)] border border-[var(--error-color)]/30 px-4 py-3 text-sm text-[var(--error-color)]">{aiError}</p>}
 
-        <div className="mb-6 space-y-3">
+        <div className="mb-8 space-y-4">
           <textarea
             value={syllabus}
             onChange={(event) => setSyllabus(event.target.value)}
             placeholder="Paste your syllabus or topics here..."
             rows="4"
-            className="w-full rounded-2xl border border-[var(--border-main)] bg-[var(--bg-input)] px-4 py-3 text-[var(--text-primary)] focus:border-[var(--accent-color)] focus:outline-none"
+            className="saas-input w-full min-h-[120px]"
           />
           <button
             type="button"
             onClick={handleGenerateAssessment}
             disabled={generating}
-            className="rounded-2xl bg-[var(--accent-color)] px-6 py-3 text-sm font-semibold text-[var(--accent-contrast-text)] transition hover:bg-[var(--accent-hover)] disabled:cursor-not-allowed disabled:opacity-70"
+            className="saas-button-primary"
           >
             {generating ? 'Generating...' : 'Generate Assessment'}
           </button>
@@ -116,53 +116,53 @@ export default function AssessmentPage() {
         {questions.length ? (
           <form onSubmit={handleSubmit} className="space-y-6">
             {questions.map((question, idx) => (
-              <section key={question._id} className="rounded-[1.75rem] border border-[var(--border-main)] bg-[var(--bg-elevated)] p-6">
+              <section key={question._id} className="saas-elevated-card">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-sm text-[var(--text-muted)]">
                   <span>{question.subject} • {question.topic}</span>
-                  <span className="rounded-full border border-[var(--border-main)] bg-[var(--bg-secondary)] px-3 py-1 text-[var(--text-secondary)]">{question.difficulty}</span>
+                  <span className="rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-secondary)] px-3 py-1.5 text-xs font-semibold text-[var(--text-secondary)]">{question.difficulty}</span>
                 </div>
-                <p className="mt-4 text-lg font-semibold text-[var(--text-primary)]">{idx + 1}. {question.text}</p>
+                <p className="card-title mt-4 text-lg font-semibold">{idx + 1}. {question.text}</p>
                 <div className="mt-5 grid gap-3">
                   {question.options.map((option) => (
-                    <label key={option} className="flex cursor-pointer items-center gap-4 rounded-2xl border border-[var(--border-main)] bg-[var(--bg-secondary)] px-4 py-3 transition hover:border-[var(--accent-color)]">
+                    <label key={option} className="flex cursor-pointer items-center gap-4 rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-secondary)] px-4 py-3.5 transition hover:border-[var(--accent-color)] min-h-[48px]">
                       <input type="radio" name={question._id} value={option} onChange={() => handleOption(question._id, option, question)} checked={answers[question._id]?.selected === option} className="h-4 w-4 text-[var(--accent-color)]" />
-                      <span className="text-[var(--text-primary)]">{option}</span>
+                      <span className="body-text text-sm text-[var(--text-primary)]">{option}</span>
                     </label>
                   ))}
                 </div>
               </section>
             ))}
 
-            <button type="submit" className="rounded-2xl bg-[var(--accent-color)] px-6 py-3 text-sm font-semibold text-[var(--accent-contrast-text)] transition hover:bg-[var(--accent-hover)]">Submit Assessment</button>
+            <button type="submit" className="saas-button-primary w-full sm:w-auto">Submit Assessment</button>
           </form>
         ) : (
-          <p className="text-[var(--text-muted)]">Generate an assessment to begin.</p>
+          <p className="body-text text-sm text-[var(--text-muted)]">Generate an assessment to begin.</p>
         )}
       </div>
 
       {result && (
-        <div className="mt-8 rounded-[2rem] border border-[var(--border-main)] bg-[var(--bg-surface)] p-8 shadow-glow">
-          <h2 className="text-2xl font-semibold text-[var(--text-primary)]">Recent assessment</h2>
-          <div className="mt-4 grid gap-4 sm:grid-cols-3">
-            <div className="rounded-3xl border border-[var(--border-main)] bg-[var(--bg-elevated)] p-5">
-              <p className="text-sm uppercase tracking-[0.2em] text-[var(--text-muted)]">Score</p>
-              <p className="mt-2 text-3xl font-semibold text-[var(--text-primary)]">{scoreLabel}</p>
-              <p className="mt-1 text-sm text-[var(--text-secondary)]">{derivedCorrectAnswers} correct answers</p>
+        <div className="saas-card shadow-glow">
+          <h2 className="section-title mb-6">Recent assessment</h2>
+          <div className="grid gap-6 sm:grid-cols-3">
+            <div className="saas-elevated-card">
+              <p className="caption-text uppercase tracking-[0.2em]">Score</p>
+              <p className="page-title mt-2">{scoreLabel}</p>
+              <p className="small-text mt-1">{derivedCorrectAnswers} correct answers</p>
             </div>
-            <div className="rounded-3xl border border-[var(--border-main)] bg-[var(--bg-elevated)] p-5">
-              <p className="text-sm uppercase tracking-[0.2em] text-[var(--text-muted)]">Percentage</p>
-              <p className="mt-2 text-3xl font-semibold text-[var(--text-primary)]">{derivedPercentage}%</p>
+            <div className="saas-elevated-card">
+              <p className="caption-text uppercase tracking-[0.2em]">Percentage</p>
+              <p className="page-title mt-2">{derivedPercentage}%</p>
             </div>
-            <div className="rounded-3xl border border-[var(--border-main)] bg-[var(--bg-elevated)] p-5">
-              <p className="text-sm uppercase tracking-[0.2em] text-[var(--text-muted)]">Classification</p>
-              <p className="mt-2 text-3xl font-semibold text-[var(--text-primary)]">{result.classification}</p>
+            <div className="saas-elevated-card">
+              <p className="caption-text uppercase tracking-[0.2em]">Classification</p>
+              <p className="page-title mt-2">{result.classification}</p>
             </div>
           </div>
 
           {questions.length > 0 && (
             <section className="mt-8">
-              <h3 className="text-xl font-semibold text-[var(--text-primary)]">Answer review</h3>
-              <div className="mt-4 space-y-4">
+              <h3 className="section-title mb-4">Answer review</h3>
+              <div className="space-y-4">
                 {questions.map((question, idx) => {
                   const answer = result.answers?.find((item) => item.questionId === question._id)
                   const selected = answer?.selected || null
@@ -170,14 +170,14 @@ export default function AssessmentPage() {
                   const correctAnswer = question.answer
 
                   return (
-                    <div key={question._id} className="rounded-3xl border border-[var(--border-main)] bg-[var(--bg-elevated)] p-5">
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="text-base font-semibold text-[var(--text-primary)]">{idx + 1}. {question.text}</p>
+                    <div key={question._id} className="saas-elevated-card">
+                      <div className="flex items-center justify-between gap-3 mb-3">
+                        <p className="card-title">{idx + 1}. {question.text}</p>
                         <span className={`rounded-full px-3 py-1 text-xs font-semibold ${isCorrect ? 'bg-[var(--success-bg)] text-[var(--success-color)]' : 'bg-[var(--error-bg)] text-[var(--error-color)]'}`}>
                           {isCorrect ? 'Correct' : 'Incorrect'}
                         </span>
                       </div>
-                      <div className="mt-3 grid gap-2">
+                      <div className="grid gap-2">
                         {question.options.map((option) => {
                           const isSelected = option === selected
                           const isAnswer = option === correctAnswer
@@ -188,13 +188,13 @@ export default function AssessmentPage() {
                               : 'border-[var(--border-main)] bg-[var(--bg-secondary)] text-[var(--text-secondary)]'
 
                           return (
-                            <div key={option} className={`rounded-2xl border px-4 py-3 text-sm ${optionStyles}`}>
+                            <div key={option} className={`rounded-[14px] border px-4 py-3 text-sm ${optionStyles}`}>
                               {option}
                             </div>
                           )
                         })}
                       </div>
-                      <p className="mt-3 text-sm text-[var(--text-secondary)]">
+                      <p className="small-text mt-3">
                         <span className="font-semibold text-[var(--accent-color)]">Correct answer:</span> {correctAnswer}
                       </p>
                     </div>
