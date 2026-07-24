@@ -1,22 +1,30 @@
 export default {
+  darkMode: 'class',
   content: ['./index.html', './src/**/*.{js,jsx}'],
   theme: {
     extend: {
       colors: {
-        brand: {
-          950: '#0f172a',
-          900: '#111827',
-          800: '#1e293b',
-          700: '#334155',
-          600: '#475569'
-        },
-        accent: {
-          500: '#22d3ee',
-          400: '#38bdf8'
-        }
+        themePrimary: 'var(--bg-primary)',
+        themeSecondary: 'var(--bg-secondary)',
+        themeSurface: 'var(--bg-surface)',
+        themeElevated: 'var(--bg-elevated)',
+        themeInput: 'var(--bg-input)',
+        themeNav: 'var(--bg-nav)',
+        themeBorder: 'var(--border-main)',
+        themeDivider: 'var(--divider-main)',
+        themeTextPrimary: 'var(--text-primary)',
+        themeTextSecondary: 'var(--text-secondary)',
+        themeTextMuted: 'var(--text-muted)',
+        themeAccent: 'var(--accent-color)',
+        themeAccentHover: 'var(--accent-hover)',
+        themeAccentText: 'var(--accent-contrast-text)',
+        themeSuccess: 'var(--success-color)',
+        themeWarning: 'var(--warning-color)',
+        themeError: 'var(--error-color)',
       },
       boxShadow: {
-        glow: '0 20px 60px rgba(14, 165, 233, 0.18)'
+        glow: 'var(--shadow-glow)',
+        card: 'var(--shadow-card)',
       }
     }
   },

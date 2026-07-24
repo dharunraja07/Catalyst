@@ -3,7 +3,67 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: dark;
+  /* ☀ Light Mode Palette */
+  --bg-primary: #F4F4F5;
+  --bg-secondary: #ECECEC;
+  --bg-surface: #FAFAFA;
+  --bg-elevated: #FFFFFF;
+  --bg-input: #F8F8F8;
+  --bg-nav: #FFFFFF;
+
+  --border-main: #D4D4D8;
+  --divider-main: #E4E4E7;
+
+  --text-primary: #18181B;
+  --text-secondary: #52525B;
+  --text-muted: #71717A;
+
+  --accent-color: #0891B2;
+  --accent-hover: #0e7490;
+  --accent-light: rgba(8, 145, 178, 0.12);
+  --accent-contrast-text: #FFFFFF;
+
+  --success-color: #16A34A;
+  --success-bg: rgba(22, 163, 74, 0.12);
+  --warning-color: #D97706;
+  --warning-bg: rgba(217, 119, 6, 0.12);
+  --error-color: #DC2626;
+  --error-bg: rgba(220, 38, 38, 0.12);
+
+  --shadow-glow: 0 10px 30px -10px rgba(0, 0, 0, 0.06);
+  --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.04);
+}
+
+.dark {
+  /* 🌙 Dark Mode Palette */
+  --bg-primary: #000000;
+  --bg-secondary: #0A0A0A;
+  --bg-surface: #111111;
+  --bg-elevated: #171717;
+  --bg-input: #151515;
+  --bg-nav: #0D0D0D;
+
+  --border-main: #2A2A2A;
+  --divider-main: #262626;
+
+  --text-primary: #FFFFFF;
+  --text-secondary: #B3B3B3;
+  --text-muted: #808080;
+
+  --accent-color: #22D3EE;
+  --accent-hover: #67e8f9;
+  --accent-light: rgba(34, 211, 238, 0.15);
+  --accent-contrast-text: #000000;
+
+  --success-color: #22C55E;
+  --success-bg: rgba(34, 197, 94, 0.15);
+  --warning-color: #F59E0B;
+  --warning-bg: rgba(245, 158, 11, 0.15);
+  --error-color: #EF4444;
+  --error-bg: rgba(239, 68, 68, 0.15);
+
+  --shadow-glow: 0 10px 30px -10px rgba(255, 255, 255, 0.03);
+  --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.5);
 }
 
 html {
@@ -13,11 +73,10 @@ html {
 body {
   margin: 0;
   min-height: 100vh;
-  background: radial-gradient(circle at top, rgba(56, 189, 248, 0.12), transparent 28%),
-    radial-gradient(circle at 80% 0%, rgba(139, 92, 246, 0.14), transparent 30%),
-    #020617;
-  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  color: #e2e8f0;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 * {
@@ -32,5 +91,6 @@ textarea {
 }
 
 ::selection {
-  background: rgba(34, 211, 238, 0.35);
+  background: var(--accent-light);
+  color: var(--text-primary);
 }

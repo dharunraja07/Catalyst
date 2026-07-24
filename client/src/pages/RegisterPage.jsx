@@ -33,38 +33,38 @@ export default function RegisterPage() {
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-12 sm:px-6">
-      <div className="overflow-hidden rounded-[2rem] border border-slate-800/70 bg-slate-950/80 p-8 shadow-glow sm:p-10">
+      <div className="overflow-hidden rounded-[2rem] border border-[var(--border-main)] bg-[var(--bg-surface)] p-8 shadow-glow sm:p-10">
         <div className="mb-8 space-y-3">
-          <p className="text-sm uppercase tracking-[0.25em] text-cyan-300/80">Create your account</p>
-          <h1 className="text-3xl font-semibold text-white sm:text-4xl">Join AI Learning</h1>
-          <p className="max-w-2xl text-slate-400">Register to unlock diagnostics, personalized roadmaps, and career suggestions designed for your learning goals.</p>
+          <p className="text-sm uppercase tracking-[0.25em] text-[var(--accent-color)]">Create your account</p>
+          <h1 className="text-3xl font-semibold text-[var(--text-primary)] sm:text-4xl">Join AI Learning</h1>
+          <p className="max-w-2xl text-[var(--text-secondary)]">Register to unlock diagnostics, personalized roadmaps, and career suggestions designed for your learning goals.</p>
         </div>
 
         <form onSubmit={handleSubmit} className="grid gap-5">
           <div className="grid gap-5 sm:grid-cols-2">
-            <label className="space-y-2 text-sm text-slate-300">
+            <label className="space-y-2 text-sm text-[var(--text-secondary)]">
               <span>Name</span>
-              <input name="name" value={form.name} onChange={handleChange} className="w-full rounded-2xl border border-slate-700 bg-slate-900/80 px-4 py-3 text-slate-100 focus:border-cyan-400 focus:outline-none" />
+              <input name="name" value={form.name} onChange={handleChange} className="w-full rounded-2xl border border-[var(--border-main)] bg-[var(--bg-input)] px-4 py-3 text-[var(--text-primary)] focus:border-[var(--accent-color)] focus:outline-none" />
             </label>
-            <label className="space-y-2 text-sm text-slate-300">
+            <label className="space-y-2 text-sm text-[var(--text-secondary)]">
               <span>Email</span>
-              <input name="email" type="email" value={form.email} onChange={handleChange} className="w-full rounded-2xl border border-slate-700 bg-slate-900/80 px-4 py-3 text-slate-100 focus:border-cyan-400 focus:outline-none" />
+              <input name="email" type="email" value={form.email} onChange={handleChange} className="w-full rounded-2xl border border-[var(--border-main)] bg-[var(--bg-input)] px-4 py-3 text-[var(--text-primary)] focus:border-[var(--accent-color)] focus:outline-none" />
             </label>
           </div>
 
-          <label className="space-y-2 text-sm text-slate-300">
+          <label className="space-y-2 text-sm text-[var(--text-secondary)]">
             <span>Password</span>
-            <input name="password" type="password" value={form.password} onChange={handleChange} className="w-full rounded-2xl border border-slate-700 bg-slate-900/80 px-4 py-3 text-slate-100 focus:border-cyan-400 focus:outline-none" />
+            <input name="password" type="password" value={form.password} onChange={handleChange} className="w-full rounded-2xl border border-[var(--border-main)] bg-[var(--bg-input)] px-4 py-3 text-[var(--text-primary)] focus:border-[var(--accent-color)] focus:outline-none" />
           </label>
 
           <div className="grid gap-5 sm:grid-cols-2">
-            <label className="space-y-2 text-sm text-slate-300">
+            <label className="space-y-2 text-sm text-[var(--text-secondary)]">
               <span>Education Level</span>
-              <input name="educationLevel" value={form.educationLevel} onChange={handleChange} className="w-full rounded-2xl border border-slate-700 bg-slate-900/80 px-4 py-3 text-slate-100 focus:border-cyan-400 focus:outline-none" placeholder="High School, College..." />
+              <input name="educationLevel" value={form.educationLevel} onChange={handleChange} className="w-full rounded-2xl border border-[var(--border-main)] bg-[var(--bg-input)] px-4 py-3 text-[var(--text-primary)] focus:border-[var(--accent-color)] focus:outline-none" placeholder="High School, College..." />
             </label>
-            <label className="space-y-2 text-sm text-slate-300">
+            <label className="space-y-2 text-sm text-[var(--text-secondary)]">
               <span>Learning Style</span>
-              <select name="learningStyle" value={form.learningStyle} onChange={handleChange} className="w-full rounded-2xl border border-slate-700 bg-slate-900/80 px-4 py-3 text-slate-100 focus:border-cyan-400 focus:outline-none">
+              <select name="learningStyle" value={form.learningStyle} onChange={handleChange} className="w-full rounded-2xl border border-[var(--border-main)] bg-[var(--bg-input)] px-4 py-3 text-[var(--text-primary)] focus:border-[var(--accent-color)] focus:outline-none">
                 <option>Visual</option>
                 <option>Reading</option>
                 <option>Practice</option>
@@ -73,18 +73,18 @@ export default function RegisterPage() {
             </label>
           </div>
 
-          <label className="space-y-2 text-sm text-slate-300">
+          <label className="space-y-2 text-sm text-[var(--text-secondary)]">
             <span>Interested Subjects</span>
-            <input name="interestedSubjects" value={form.interestedSubjects} onChange={handleChange} className="w-full rounded-2xl border border-slate-700 bg-slate-900/80 px-4 py-3 text-slate-100 focus:border-cyan-400 focus:outline-none" placeholder="Mathematics, Programming" />
+            <input name="interestedSubjects" value={form.interestedSubjects} onChange={handleChange} className="w-full rounded-2xl border border-[var(--border-main)] bg-[var(--bg-input)] px-4 py-3 text-[var(--text-primary)] focus:border-[var(--accent-color)] focus:outline-none" placeholder="Mathematics, Programming" />
           </label>
-          <label className="space-y-2 text-sm text-slate-300">
+          <label className="space-y-2 text-sm text-[var(--text-secondary)]">
             <span>Career Interests</span>
-            <input name="careerInterests" value={form.careerInterests} onChange={handleChange} className="w-full rounded-2xl border border-slate-700 bg-slate-900/80 px-4 py-3 text-slate-100 focus:border-cyan-400 focus:outline-none" placeholder="Technology, Analytics" />
+            <input name="careerInterests" value={form.careerInterests} onChange={handleChange} className="w-full rounded-2xl border border-[var(--border-main)] bg-[var(--bg-input)] px-4 py-3 text-[var(--text-primary)] focus:border-[var(--accent-color)] focus:outline-none" placeholder="Technology, Analytics" />
           </label>
 
-          {message && <p className="rounded-2xl bg-red-500/10 px-4 py-3 text-sm text-red-200">{message}</p>}
+          {message && <p className="rounded-2xl bg-[var(--error-bg)] border border-[var(--error-color)]/30 px-4 py-3 text-sm text-[var(--error-color)]">{message}</p>}
 
-          <button type="submit" className="rounded-2xl bg-cyan-500 px-6 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400">Create account</button>
+          <button type="submit" className="rounded-2xl bg-[var(--accent-color)] px-6 py-3 text-sm font-semibold text-[var(--accent-contrast-text)] transition hover:bg-[var(--accent-hover)]">Create account</button>
         </form>
       </div>
     </main>

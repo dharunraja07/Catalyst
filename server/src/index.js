@@ -95,9 +95,10 @@ function startServer(port, attemptsLeft = 5) {
 }
 
 async function connectDatabase() {
+  const localMongoUri = 'mongodb://127.0.0.1:27017/catalyst'
   try {
     await mongoose.connect(env.MONGO_URI, {
-      serverSelectionTimeoutMS: 8000,
+      serverSelectionTimeoutMS: 5000,
       autoIndex: env.NODE_ENV !== 'production'
     })
 
@@ -107,8 +108,20 @@ async function connectDatabase() {
       startServer(env.PORT)
     }
   } catch (error) {
-    console.error('MongoDB connection error:', error)
-    process.exit(1)
+    console.warn(`Primary MongoDB connection failed (${error.message}). Trying local MongoDB fallback at ${localMongoUri}...`)
+    try {
+      await mongoose.connect(localMongoUri, {
+        serverSelectionTimeoutMS: 5000,
+        autoIndex: env.NODE_ENV !== 'production'
+      })
+      console.log('Connected successfully to local MongoDB fallback!')
+      if (!process.env.VERCEL) {
+        startServer(env.PORT)
+      }
+    } catch (localError) {
+      console.error('MongoDB connection error (both primary and local failed):', localError)
+      process.exit(1)
+    }
   }
 }
 

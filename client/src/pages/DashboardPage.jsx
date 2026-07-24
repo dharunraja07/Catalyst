@@ -221,78 +221,78 @@ export default function DashboardPage() {
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
-      <div className="overflow-hidden rounded-[2rem] border border-slate-800/70 bg-slate-950/85 p-8 shadow-glow">
+      <div className="overflow-hidden rounded-[2rem] border border-[var(--border-main)] bg-[var(--bg-surface)] p-8 shadow-glow">
         <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-sm uppercase tracking-[0.24em] text-cyan-300/80">Dashboard</p>
-            <h1 className="text-3xl font-semibold text-white">Student overview</h1>
+            <p className="text-sm uppercase tracking-[0.24em] text-[var(--accent-color)]">Dashboard</p>
+            <h1 className="text-3xl font-semibold text-[var(--text-primary)]">Student overview</h1>
           </div>
-          <p className="rounded-full bg-slate-900/80 px-4 py-2 text-sm text-slate-300">Welcome back</p>
+          <p className="rounded-full border border-[var(--border-main)] bg-[var(--bg-secondary)] px-4 py-2 text-sm text-[var(--text-secondary)]">Welcome back</p>
         </div>
 
-        {error && <p className="mb-6 rounded-2xl bg-red-500/10 px-4 py-3 text-sm text-red-200">{error}</p>}
+        {error && <p className="mb-6 rounded-2xl bg-[var(--error-bg)] border border-[var(--error-color)]/30 px-4 py-3 text-sm text-[var(--error-color)]">{error}</p>}
 
         {profile ? (
           <div className="space-y-6">
             <div className="grid gap-6 xl:grid-cols-[1.5fr_1fr]">
               <div className="space-y-6">
-                <div className="rounded-[1.75rem] border border-slate-800/80 bg-slate-900/80 p-8">
-                  <h2 className="text-xl font-semibold text-white">Hello, {profile.name}</h2>
-                  <p className="mt-3 text-slate-400">Track your learning progress, see your strengths, and stay ahead with personalized recommendations.</p>
+                <div className="rounded-[1.75rem] border border-[var(--border-main)] bg-[var(--bg-elevated)] p-8">
+                  <h2 className="text-xl font-semibold text-[var(--text-primary)]">Hello, {profile.name}</h2>
+                  <p className="mt-3 text-[var(--text-secondary)]">Track your learning progress, see your strengths, and stay ahead with personalized recommendations.</p>
                   <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-3xl bg-slate-950/80 p-5">
-                      <p className="text-sm uppercase tracking-[0.2em] text-slate-500">Role</p>
-                      <p className="mt-2 text-lg font-semibold text-white">{profile.role}</p>
+                    <div className="rounded-3xl border border-[var(--border-main)] bg-[var(--bg-secondary)] p-5">
+                      <p className="text-sm uppercase tracking-[0.2em] text-[var(--text-muted)]">Role</p>
+                      <p className="mt-2 text-lg font-semibold text-[var(--text-primary)]">{profile.role}</p>
                     </div>
-                    <div className="rounded-3xl bg-slate-950/80 p-5">
-                      <p className="text-sm uppercase tracking-[0.2em] text-slate-500">Learning style</p>
-                      <p className="mt-2 text-lg font-semibold text-white">{profile.learningStyle}</p>
+                    <div className="rounded-3xl border border-[var(--border-main)] bg-[var(--bg-secondary)] p-5">
+                      <p className="text-sm uppercase tracking-[0.2em] text-[var(--text-muted)]">Learning style</p>
+                      <p className="mt-2 text-lg font-semibold text-[var(--text-primary)]">{profile.learningStyle}</p>
                     </div>
                   </div>
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="rounded-3xl border border-slate-800/70 bg-slate-900/80 p-6">
-                    <h3 className="text-base font-semibold text-white">Education</h3>
-                    <p className="mt-3 text-slate-400">{profile.educationLevel || 'Not specified'}</p>
+                  <div className="rounded-3xl border border-[var(--border-main)] bg-[var(--bg-elevated)] p-6">
+                    <h3 className="text-base font-semibold text-[var(--text-primary)]">Education</h3>
+                    <p className="mt-3 text-[var(--text-secondary)]">{profile.educationLevel || 'Not specified'}</p>
                   </div>
-                  <div className="rounded-3xl border border-slate-800/70 bg-slate-900/80 p-6">
-                    <h3 className="text-base font-semibold text-white">Preferred subjects</h3>
-                    <p className="mt-3 text-slate-400">{profile.interestedSubjects?.join(', ') || 'None'}</p>
+                  <div className="rounded-3xl border border-[var(--border-main)] bg-[var(--bg-elevated)] p-6">
+                    <h3 className="text-base font-semibold text-[var(--text-primary)]">Preferred subjects</h3>
+                    <p className="mt-3 text-[var(--text-secondary)]">{profile.interestedSubjects?.join(', ') || 'None'}</p>
                   </div>
                 </div>
               </div>
-              <div className="rounded-[1.75rem] border border-slate-800/80 bg-slate-900/80 p-8">
-                <h2 className="text-xl font-semibold text-white">Career interests</h2>
-                <p className="mt-3 text-slate-400">Your next steps are tailored around these career goals.</p>
+              <div className="rounded-[1.75rem] border border-[var(--border-main)] bg-[var(--bg-elevated)] p-8">
+                <h2 className="text-xl font-semibold text-[var(--text-primary)]">Career interests</h2>
+                <p className="mt-3 text-[var(--text-secondary)]">Your next steps are tailored around these career goals.</p>
                 <div className="mt-6 space-y-3">
                   {profile.careerInterests?.length ? profile.careerInterests.map((interest) => (
-                    <div key={interest} className="rounded-3xl bg-slate-950/80 px-4 py-3 text-slate-200">{interest}</div>
-                  )) : <div className="rounded-3xl bg-slate-950/80 px-4 py-3 text-slate-400">None specified yet.</div>}
+                    <div key={interest} className="rounded-3xl border border-[var(--border-main)] bg-[var(--bg-secondary)] px-4 py-3 text-[var(--text-primary)]">{interest}</div>
+                  )) : <div className="rounded-3xl border border-[var(--border-main)] bg-[var(--bg-secondary)] px-4 py-3 text-[var(--text-muted)]">None specified yet.</div>}
                 </div>
               </div>
             </div>
 
             <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-              <div className="rounded-[1.75rem] border border-slate-800/80 bg-slate-900/80 p-8">
+              <div className="rounded-[1.75rem] border border-[var(--border-main)] bg-[var(--bg-elevated)] p-8">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm uppercase tracking-[0.2em] text-slate-400">Pomodoro timer</p>
-                    <h3 className="mt-2 text-2xl font-semibold text-white">
+                    <p className="text-sm uppercase tracking-[0.2em] text-[var(--text-muted)]">Pomodoro timer</p>
+                    <h3 className="mt-2 text-2xl font-semibold text-[var(--text-primary)]">
                       {mode === 'focus' ? 'Focus' : 'Break'}
                     </h3>
                   </div>
-                  <div className="rounded-full bg-slate-950/80 px-3 py-1 text-sm text-slate-300">
+                  <div className="rounded-full border border-[var(--border-main)] bg-[var(--bg-secondary)] px-3 py-1 text-sm text-[var(--text-secondary)]">
                     {mode === 'focus' ? '25 min' : '5 min'}
                   </div>
                 </div>
-                <div className="mt-6 rounded-3xl bg-slate-950/80 p-6 text-center">
-                  <p className="text-6xl font-semibold text-white">{String(Math.floor(secondsLeft / 60)).padStart(2, '0')}:{String(secondsLeft % 60).padStart(2, '0')}</p>
+                <div className="mt-6 rounded-3xl border border-[var(--border-main)] bg-[var(--bg-secondary)] p-6 text-center">
+                  <p className="text-6xl font-semibold text-[var(--text-primary)]">{String(Math.floor(secondsLeft / 60)).padStart(2, '0')}:{String(secondsLeft % 60).padStart(2, '0')}</p>
                 </div>
                 <div className="mt-6 flex gap-3">
                   <button
                     onClick={() => setIsRunning((prev) => !prev)}
-                    className="rounded-2xl bg-cyan-500 px-5 py-3 font-medium text-slate-950 transition hover:bg-cyan-400"
+                    className="rounded-2xl bg-[var(--accent-color)] px-5 py-3 font-medium text-[var(--accent-contrast-text)] transition hover:bg-[var(--accent-hover)]"
                   >
                     {isRunning ? 'Pause' : 'Start'}
                   </button>
@@ -301,67 +301,67 @@ export default function DashboardPage() {
                       setIsRunning(false)
                       setSecondsLeft(mode === 'focus' ? FOCUS_DURATION : BREAK_DURATION)
                     }}
-                    className="rounded-2xl border border-slate-700 bg-slate-950/80 px-5 py-3 font-medium text-slate-200 transition hover:bg-slate-900"
+                    className="rounded-2xl border border-[var(--border-main)] bg-[var(--bg-secondary)] px-5 py-3 font-medium text-[var(--text-primary)] transition hover:border-[var(--accent-color)]"
                   >
                     Reset
                   </button>
                 </div>
               </div>
 
-              <div className="rounded-[1.75rem] border border-slate-800/80 bg-slate-900/80 p-8">
-                <p className="text-sm uppercase tracking-[0.2em] text-slate-400">Study statistics</p>
+              <div className="rounded-[1.75rem] border border-[var(--border-main)] bg-[var(--bg-elevated)] p-8">
+                <p className="text-sm uppercase tracking-[0.2em] text-[var(--text-muted)]">Study statistics</p>
                 <div className="mt-6 space-y-4">
                   <div>
-                    <div className="flex justify-between text-sm text-slate-300">
+                    <div className="flex justify-between text-sm text-[var(--text-secondary)]">
                       <span>Today's Study</span>
                       <span>{todayMinutes} / {dailyGoal} min</span>
                     </div>
-                    <div className="mt-2 h-2 rounded-full bg-slate-950">
-                      <div className="h-2 rounded-full bg-cyan-500" style={{ width: `${progressWidth}%` }} />
+                    <div className="mt-2 h-2 rounded-full bg-[var(--bg-secondary)]">
+                      <div className="h-2 rounded-full bg-[var(--accent-color)]" style={{ width: `${progressWidth}%` }} />
                     </div>
                   </div>
                   <div className="grid gap-3 sm:grid-cols-3">
-                    <div className="rounded-3xl bg-slate-950/80 p-4">
-                      <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Current streak</p>
-                      <p className="mt-2 text-2xl font-semibold text-white">{currentStreak}</p>
+                    <div className="rounded-3xl border border-[var(--border-main)] bg-[var(--bg-secondary)] p-4">
+                      <p className="text-xs uppercase tracking-[0.2em] text-[var(--text-muted)]">Current streak</p>
+                      <p className="mt-2 text-2xl font-semibold text-[var(--text-primary)]">{currentStreak}</p>
                     </div>
-                    <div className="rounded-3xl bg-slate-950/80 p-4">
-                      <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Longest streak</p>
-                      <p className="mt-2 text-2xl font-semibold text-white">{longestStreak}</p>
+                    <div className="rounded-3xl border border-[var(--border-main)] bg-[var(--bg-secondary)] p-4">
+                      <p className="text-xs uppercase tracking-[0.2em] text-[var(--text-muted)]">Longest streak</p>
+                      <p className="mt-2 text-2xl font-semibold text-[var(--text-primary)]">{longestStreak}</p>
                     </div>
-                    <div className="rounded-3xl bg-slate-950/80 p-4">
-                      <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Study days</p>
-                      <p className="mt-2 text-2xl font-semibold text-white">{totalCompletedDays}</p>
+                    <div className="rounded-3xl border border-[var(--border-main)] bg-[var(--bg-secondary)] p-4">
+                      <p className="text-xs uppercase tracking-[0.2em] text-[var(--text-muted)]">Study days</p>
+                      <p className="mt-2 text-2xl font-semibold text-[var(--text-primary)]">{totalCompletedDays}</p>
                     </div>
                   </div>
-                  <div className="rounded-3xl bg-slate-950/80 p-4">
-                    <label className="text-xs uppercase tracking-[0.2em] text-slate-500">Daily goal</label>
+                  <div className="rounded-3xl border border-[var(--border-main)] bg-[var(--bg-secondary)] p-4">
+                    <label className="text-xs uppercase tracking-[0.2em] text-[var(--text-muted)]">Daily goal</label>
                     <div className="mt-3 grid gap-2 sm:grid-cols-3">
                       <div>
-                        <label className="text-[10px] uppercase tracking-[0.2em] text-slate-500">Hours</label>
+                        <label className="text-[10px] uppercase tracking-[0.2em] text-[var(--text-muted)]">Hours</label>
                         <input
                           type="number"
                           min="0"
                           value={hoursInput}
                           onChange={(e) => setHoursInput(e.target.value)}
-                          className="mt-1 w-full rounded-2xl border border-slate-700 bg-slate-900 px-4 py-3 text-slate-100 outline-none"
+                          className="mt-1 w-full rounded-2xl border border-[var(--border-main)] bg-[var(--bg-input)] px-4 py-3 text-[var(--text-primary)] outline-none focus:border-[var(--accent-color)]"
                         />
                       </div>
                       <div>
-                        <label className="text-[10px] uppercase tracking-[0.2em] text-slate-500">Minutes</label>
+                        <label className="text-[10px] uppercase tracking-[0.2em] text-[var(--text-muted)]">Minutes</label>
                         <input
                           type="number"
                           min="0"
                           max="59"
                           value={minutesInput}
                           onChange={(e) => setMinutesInput(e.target.value)}
-                          className="mt-1 w-full rounded-2xl border border-slate-700 bg-slate-900 px-4 py-3 text-slate-100 outline-none"
+                          className="mt-1 w-full rounded-2xl border border-[var(--border-main)] bg-[var(--bg-input)] px-4 py-3 text-[var(--text-primary)] outline-none focus:border-[var(--accent-color)]"
                         />
                       </div>
                       <button
                         onClick={saveDailyGoal}
                         disabled={savingGoal}
-                        className="mt-6 rounded-2xl bg-cyan-500 px-4 py-3 font-medium text-slate-950 transition hover:bg-cyan-400 disabled:opacity-60"
+                        className="mt-6 rounded-2xl bg-[var(--accent-color)] px-4 py-3 font-medium text-[var(--accent-contrast-text)] transition hover:bg-[var(--accent-hover)] disabled:opacity-60"
                       >
                         {savingGoal ? 'Saving' : 'Save'}
                       </button>
@@ -371,13 +371,13 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <div className="rounded-[1.75rem] border border-slate-800/80 bg-slate-900/80 p-8">
+            <div className="rounded-[1.75rem] border border-[var(--border-main)] bg-[var(--bg-elevated)] p-8">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm uppercase tracking-[0.2em] text-slate-400">Yearly streak</p>
-                  <h3 className="mt-2 text-2xl font-semibold text-white">{thisYear} study calendar</h3>
+                  <p className="text-sm uppercase tracking-[0.2em] text-[var(--text-muted)]">Yearly streak</p>
+                  <h3 className="mt-2 text-2xl font-semibold text-[var(--text-primary)]">{thisYear} study calendar</h3>
                 </div>
-                <span className="rounded-full bg-slate-950/80 px-3 py-1 text-sm text-slate-300">{totalCompletedDays} completed days</span>
+                <span className="rounded-full border border-[var(--border-main)] bg-[var(--bg-secondary)] px-3 py-1 text-sm text-[var(--text-secondary)]">{totalCompletedDays} completed days</span>
               </div>
               <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                 {yearMonthData.map((month) => {
@@ -388,8 +388,8 @@ export default function DashboardPage() {
                   )
 
                   return (
-                    <div key={month.name} className="rounded-2xl bg-slate-950/80 p-3">
-                      <p className="mb-2 text-[11px] font-medium text-slate-200">{month.name}</p>
+                    <div key={month.name} className="rounded-2xl border border-[var(--border-main)] bg-[var(--bg-secondary)] p-3">
+                      <p className="mb-2 text-[11px] font-medium text-[var(--text-primary)]">{month.name}</p>
                       <div className="grid grid-cols-7 gap-1">
                         {month.dayCells.map((day, index) => {
                           const cellDate = day
@@ -403,10 +403,10 @@ export default function DashboardPage() {
                               key={`${month.name}-${index}`}
                               className={`flex aspect-square items-center justify-center rounded-[0.2rem] text-[8px] ${day
                                 ? isCompleted
-                                  ? 'bg-cyan-500 text-slate-950'
+                                  ? 'bg-[var(--accent-color)] text-[var(--accent-contrast-text)] font-bold'
                                   : isToday
-                                    ? 'bg-slate-800 text-slate-100'
-                                    : 'bg-slate-900 text-slate-500'
+                                    ? 'bg-[var(--bg-elevated)] border border-[var(--border-main)] text-[var(--text-primary)] font-medium'
+                                    : 'bg-[var(--bg-surface)] text-[var(--text-muted)]'
                                 : 'bg-transparent'
                                 }`}
                             >
@@ -422,7 +422,7 @@ export default function DashboardPage() {
             </div>
           </div>
         ) : (
-          <p className="text-slate-400">Loading profile...</p>
+          <p className="text-[var(--text-muted)]">Loading profile...</p>
         )}
       </div>
     </main>

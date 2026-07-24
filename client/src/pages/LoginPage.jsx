@@ -25,24 +25,24 @@ export default function LoginPage() {
 
   return (
     <main className="mx-auto max-w-md px-4 py-12 sm:px-6">
-      <div className="overflow-hidden rounded-[2rem] border border-slate-800/70 bg-slate-950/80 p-8 shadow-glow sm:p-10">
+      <div className="overflow-hidden rounded-[2rem] border border-[var(--border-main)] bg-[var(--bg-surface)] p-8 shadow-glow sm:p-10">
         <div className="mb-8 space-y-3">
-          <p className="text-sm uppercase tracking-[0.25em] text-cyan-300/80">Login</p>
-          <h1 className="text-3xl font-semibold text-white">Welcome back</h1>
-          <p className="max-w-xl text-slate-400">Enter your credentials to continue your personalized learning journey.</p>
+          <p className="text-sm uppercase tracking-[0.25em] text-[var(--accent-color)]">Login</p>
+          <h1 className="text-3xl font-semibold text-[var(--text-primary)]">Welcome back</h1>
+          <p className="max-w-xl text-[var(--text-secondary)]">Enter your credentials to continue your personalized learning journey.</p>
         </div>
 
         <form onSubmit={handleSubmit} className="grid gap-5">
-          <label className="space-y-2 text-sm text-slate-300">
+          <label className="space-y-2 text-sm text-[var(--text-secondary)]">
             <span>Email</span>
-            <input name="email" type="email" value={form.email} onChange={handleChange} className="w-full rounded-2xl border border-slate-700 bg-slate-900/80 px-4 py-3 text-slate-100 focus:border-cyan-400 focus:outline-none" />
+            <input name="email" type="email" value={form.email} onChange={handleChange} className="w-full rounded-2xl border border-[var(--border-main)] bg-[var(--bg-input)] px-4 py-3 text-[var(--text-primary)] focus:border-[var(--accent-color)] focus:outline-none" />
           </label>
-          <label className="space-y-2 text-sm text-slate-300">
+          <label className="space-y-2 text-sm text-[var(--text-secondary)]">
             <span>Password</span>
-            <input name="password" type="password" value={form.password} onChange={handleChange} className="w-full rounded-2xl border border-slate-700 bg-slate-900/80 px-4 py-3 text-slate-100 focus:border-cyan-400 focus:outline-none" />
+            <input name="password" type="password" value={form.password} onChange={handleChange} className="w-full rounded-2xl border border-[var(--border-main)] bg-[var(--bg-input)] px-4 py-3 text-[var(--text-primary)] focus:border-[var(--accent-color)] focus:outline-none" />
           </label>
-          {message && <p className="rounded-2xl bg-red-500/10 px-4 py-3 text-sm text-red-200">{message}</p>}
-          <button type="submit" className="rounded-2xl bg-cyan-500 px-6 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400">Sign in</button>
+          {message && <p className="rounded-2xl bg-[var(--error-bg)] border border-[var(--error-color)]/30 px-4 py-3 text-sm text-[var(--error-color)]">{message}</p>}
+          <button type="submit" className="rounded-2xl bg-[var(--accent-color)] px-6 py-3 text-sm font-semibold text-[var(--accent-contrast-text)] transition hover:bg-[var(--accent-hover)]">Sign in</button>
         </form>
       </div>
     </main>
