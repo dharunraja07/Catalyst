@@ -231,3 +231,23 @@ textarea {
   border-color: var(--accent-color);
   box-shadow: 0 0 0 2px var(--accent-light);
 }
+
+/* Sleek custom scrollbar utility */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--border-main);
+  border-radius: 9999px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+

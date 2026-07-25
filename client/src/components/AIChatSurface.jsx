@@ -21,7 +21,8 @@ export default function AIChatSurface({
   placeholder = 'Ask for help with your studies...',
   className = '',
   showHeader = true,
-  emptyStateText = 'Start a conversation and I will help you study smarter.'
+  emptyStateText = 'Start a conversation and I will help you study smarter.',
+  onShareToGroup = null
 }) {
   const [input, setInput] = useState('')
   const [isTyping, setIsTyping] = useState(false)
@@ -88,12 +89,33 @@ export default function AIChatSurface({
     }
   }
 
+  const handleClearHistory = () => {
+    setMessages(getDefaultMessages(welcomeMessage))
+    if (storageKey && typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem(storageKey)
+      } catch {
+        // ignore
+      }
+    }
+  }
+
   return (
     <div className={`flex h-full min-h-0 flex-col ${className}`}>
       {showHeader && (
-        <div className="mb-3 border-b border-[var(--divider-main)] pb-3">
-          <p className="caption-text uppercase tracking-[0.24em] text-[var(--accent-color)] font-semibold">{title}</p>
-          <h3 className="text-lg font-semibold text-[var(--text-primary)]">{subtitle}</h3>
+        <div className="mb-3 border-b border-[var(--divider-main)] pb-3 flex items-center justify-between">
+          <div>
+            <p className="caption-text uppercase tracking-[0.24em] text-[var(--accent-color)] font-semibold">{title}</p>
+            <h3 className="text-lg font-semibold text-[var(--text-primary)]">{subtitle}</h3>
+          </div>
+          <button
+            type="button"
+            onClick={handleClearHistory}
+            className="saas-button-secondary min-h-[34px] px-2.5 text-xs text-[var(--text-secondary)] hover:text-[var(--error-color)] hover:border-[var(--error-color)] flex items-center gap-1"
+            title="Clear chat history"
+          >
+            <span>🗑️ Clear</span>
+          </button>
         </div>
       )}
 
@@ -107,7 +129,7 @@ export default function AIChatSurface({
         {messages.length > 0 ? (
           <div className="space-y-3">
             {messages.map((message, index) => (
-              <div key={`${message.role}-${index}`} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div key={`${message.role}-${index}`} className={`flex flex-col ${message.role === 'user' ? 'items-end' : 'items-start'}`}>
                 <div
                   className={`max-w-[92%] rounded-[14px] px-3 py-2 text-sm leading-6 ${message.role === 'user'
                     ? 'bg-[var(--accent-color)] text-[var(--accent-contrast-text)] font-medium'
@@ -118,6 +140,15 @@ export default function AIChatSurface({
                     <ReactMarkdown>{message.content}</ReactMarkdown>
                   </div>
                 </div>
+                {message.role === 'assistant' && onShareToGroup && (
+                  <button
+                    type="button"
+                    onClick={() => onShareToGroup(message.content)}
+                    className="mt-1 text-[11px] font-semibold text-[var(--accent-color)] hover:underline flex items-center gap-1"
+                  >
+                    <span>📤 Share to Group Chat</span>
+                  </button>
+                )}
               </div>
             ))}
             {isTyping && (

@@ -1,7 +1,9 @@
 import express from 'express'
+import http from 'http'
 import cors from 'cors'
 import mongoose from 'mongoose'
 import serverless from 'serverless-http'
+import { Server } from 'socket.io'
 import authRoutes from './routes/authRoutes.js'
 import assessmentRoutes from './routes/assessmentRoutes.js'
 import questionRoutes from './routes/questionRoutes.js'
@@ -12,6 +14,7 @@ import studyGroupRoutes from './routes/studyGroupRoutes.js'
 import teacherRoutes from './routes/teacherRoutes.js'
 import aiRoutes from './routes/aiRoutes.js'
 import todoRoutes from './routes/todoRoutes.js'
+import { setupChatSocket } from './sockets/chatSocket.js'
 import { errorHandler } from './middleware/errorMiddleware.js'
 import { env, ensureRequiredEnv } from './config/env.js'
 
@@ -69,6 +72,22 @@ app.get('/health', (_req, res) => {
 
 app.use(errorHandler)
 
+const httpServer = http.createServer(app)
+const io = new Server(httpServer, {
+  cors: {
+    origin: (origin, callback) => {
+      if (isAllowedOrigin(origin)) {
+        callback(null, true)
+      } else {
+        callback(new Error('Not allowed by CORS'))
+      }
+    },
+    credentials: true
+  }
+})
+
+setupChatSocket(io)
+
 function startServer(port, attemptsLeft = 5) {
   // Bind explicitly to 0.0.0.0 so the server is reachable inside Render's
   // container (and any other host that proxies traffic to the container).
@@ -76,7 +95,7 @@ function startServer(port, attemptsLeft = 5) {
   // Render the platform assigns PORT and expects a single fixed bind, so we
   // skip the retry/increment behavior there.
   const host = '0.0.0.0'
-  const server = app.listen(port, host, () => {
+  const server = httpServer.listen(port, host, () => {
     console.log(`Server running on http://${host}:${port}`)
   })
 
