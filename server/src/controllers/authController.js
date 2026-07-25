@@ -27,8 +27,8 @@ function serializeUser(user) {
 
 export async function register(req, res, next) {
   try {
-    const { name, email, password, educationLevel, interestedSubjects, careerInterests, learningStyle } = req.body
-    if (!name || !email || !password) {
+    const { name, email, password, educationLevel, interestedSubjects, careerInterests, learningStyle } = req.body || {}
+    if (!name || !email || !password || typeof email !== 'string' || typeof name !== 'string' || typeof password !== 'string') {
       return res.status(400).json({ error: 'Name, email, and password are required' })
     }
     const normalizedEmail = email.trim().toLowerCase()
@@ -55,7 +55,10 @@ export async function register(req, res, next) {
 
 export async function login(req, res, next) {
   try {
-    const { email, password } = req.body
+    const { email, password } = req.body || {}
+    if (!email || !password || typeof email !== 'string' || typeof password !== 'string') {
+      return res.status(400).json({ error: 'Email and password are required' })
+    }
     const normalizedEmail = email.trim().toLowerCase()
     const user = await User.findOne({ email: normalizedEmail })
     if (!user) return res.status(400).json({ error: 'Invalid credentials' })
