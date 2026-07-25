@@ -243,21 +243,21 @@ export default function DashboardPage() {
                 </div>
                 <div className="flex flex-wrap gap-3">
                   <div className="rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-secondary)] px-4 py-3 min-w-[130px]">
-                    <p className="caption-text uppercase tracking-[0.2em]">Role</p>
-                    <p className="card-title mt-1 font-semibold">{profile.role}</p>
+                    <p className="caption-text uppercase tracking-[0.2em]">Focus goal</p>
+                    <p className="card-title mt-1 font-semibold">{dailyGoal} min</p>
                   </div>
                   <div className="rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-secondary)] px-4 py-3 min-w-[130px]">
-                    <p className="caption-text uppercase tracking-[0.2em]">Learning style</p>
-                    <p className="card-title mt-1 font-semibold">{profile.learningStyle}</p>
+                    <p className="caption-text uppercase tracking-[0.2em]">Today</p>
+                    <p className="card-title mt-1 font-semibold">{todayMinutes} min</p>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* 12-Column Main Dashboard Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              {/* Left Column: Pomodoro Timer (lg:col-span-5) */}
-              <div className="lg:col-span-5 flex flex-col gap-6">
+            {/* Main Dashboard Grid */}
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+              {/* Pomodoro Timer */}
+              <div className="xl:col-span-5 flex flex-col gap-6">
                 <div className="saas-elevated-card flex-1 flex flex-col justify-between">
                   <div>
                     <div className="flex items-center justify-between mb-4">
@@ -297,28 +297,8 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {/* Right Column: Profile Overview & Daily Goal (lg:col-span-7) */}
-              <div className="lg:col-span-7 flex flex-col gap-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <div className="saas-elevated-card">
-                    <h3 className="card-title">Education</h3>
-                    <p className="body-text mt-2">{profile.educationLevel || 'Not specified'}</p>
-                  </div>
-                  <div className="saas-elevated-card">
-                    <h3 className="card-title">Preferred subjects</h3>
-                    <p className="body-text mt-2">{profile.interestedSubjects?.join(', ') || 'None'}</p>
-                  </div>
-                </div>
-
-                <div className="saas-elevated-card">
-                  <h3 className="card-title">Career goals</h3>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {profile.careerInterests?.length ? profile.careerInterests.map((interest) => (
-                      <span key={interest} className="rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-secondary)] px-4 py-2 text-sm font-medium text-[var(--text-primary)]">{interest}</span>
-                    )) : <span className="text-sm text-[var(--text-muted)]">None specified yet.</span>}
-                  </div>
-                </div>
-
+              {/* Study Overview & Goal */}
+              <div className="xl:col-span-7 flex flex-col gap-6">
                 <div className="saas-elevated-card space-y-4">
                   <p className="caption-text uppercase tracking-[0.2em]">Study statistics</p>
 

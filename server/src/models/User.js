@@ -14,6 +14,7 @@ const userSchema = new mongoose.Schema({
   interestedSubjects: { type: [String], default: [] },
   careerInterests: { type: [String], default: [] },
   learningStyle: { type: String, enum: ['Visual', 'Reading', 'Practice', 'Mixed'], default: 'Mixed' },
+  avatar: { type: String, default: '' },
   history: { type: [String], default: [] },
   dailyGoalMinutes: { type: Number, default: 60 },
   studySessions: { type: [studySessionSchema], default: [] },

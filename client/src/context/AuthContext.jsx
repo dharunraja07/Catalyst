@@ -85,6 +85,10 @@ export function AuthProvider({ children }) {
     }
   }
 
+  const updateUser = (nextUser) => {
+    setUser((prevUser) => (prevUser ? { ...prevUser, ...nextUser } : nextUser))
+  }
+
   const logout = () => {
     delete api.defaults.headers.common.Authorization
     setUser(null)
@@ -94,7 +98,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, error, login, register, logout, api }}>
+    <AuthContext.Provider value={{ user, token, loading, error, login, register, logout, updateUser, api }}>
       {children}
     </AuthContext.Provider>
   )

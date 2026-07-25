@@ -77,7 +77,7 @@ const drawerNavItems = [
   }
 ]
 
-export default function MobileDrawer({ isOpen, onClose }) {
+export default function MobileDrawer({ isOpen, onClose, onOpenProfile }) {
   const { user, logout } = useAuth()
   const location = useLocation()
   const navigate = useNavigate()
@@ -159,16 +159,31 @@ export default function MobileDrawer({ isOpen, onClose }) {
         {/* Footer Actions */}
         <div className="space-y-3 pt-6 border-t border-[var(--divider-main)] mt-6">
           {user ? (
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-[14px] text-sm font-bold text-[var(--error-color)] bg-[var(--error-bg)] hover:opacity-90 transition"
-            >
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  onClose()
+                  onOpenProfile?.()
+                }}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-[14px] text-sm font-semibold text-[var(--text-primary)] bg-[var(--bg-secondary)] hover:opacity-90 transition"
+              >
+                <svg className="h-5 w-5 shrink-0 text-[var(--accent-color)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                Profile
+              </button>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-[14px] text-sm font-bold text-[var(--error-color)] bg-[var(--error-bg)] hover:opacity-90 transition"
+              >
               <svg className="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
               </svg>
-              Logout
-            </button>
+                Logout
+              </button>
+            </>
           ) : (
             <div className="flex flex-col gap-2 pt-2">
               <Link

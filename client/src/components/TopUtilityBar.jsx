@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
+import { AvatarVisual } from './ProfileModal.jsx'
 
 function AnimatedThemeToggle({ isDark, onToggle }) {
   return (
@@ -25,7 +26,7 @@ function AnimatedThemeToggle({ isDark, onToggle }) {
   )
 }
 
-export default function TopUtilityBar({ onOpenMobileDrawer, toggleCollapse, isCollapsed }) {
+export default function TopUtilityBar({ onOpenMobileDrawer, toggleCollapse, isCollapsed, onOpenProfile }) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false)
@@ -151,8 +152,8 @@ export default function TopUtilityBar({ onOpenMobileDrawer, toggleCollapse, isCo
                 onClick={() => setProfileDropdownOpen((prev) => !prev)}
                 className="flex items-center gap-2 rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-1.5 sm:px-3 sm:py-1.5 hover:border-[var(--accent-color)] transition"
               >
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-tr from-[var(--accent-color)] to-[var(--accent-sage)] text-xs font-bold text-black shadow-sm">
-                  {getInitials(user.name)}
+                <span className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-[var(--bg-secondary)] text-xs font-bold shadow-sm">
+                  <AvatarVisual avatar={user.avatar} name={user.name} className="text-xs" />
                 </span>
                 <span className="hidden md:inline-block text-sm font-semibold text-[var(--text-primary)] truncate max-w-[120px]">
                   {user.name}
@@ -172,16 +173,19 @@ export default function TopUtilityBar({ onOpenMobileDrawer, toggleCollapse, isCo
                   </div>
 
                   <div className="py-1 space-y-0.5">
-                    <Link
-                      to="/dashboard"
-                      onClick={() => setProfileDropdownOpen(false)}
-                      className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium rounded-[12px] text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] transition"
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setProfileDropdownOpen(false)
+                        onOpenProfile?.()
+                      }}
+                      className="flex w-full items-center gap-2.5 px-3 py-2 text-sm font-medium rounded-[12px] text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] transition"
                     >
                       <svg className="h-4 w-4 shrink-0 text-[var(--accent-color)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                       </svg>
                       <span>Profile</span>
-                    </Link>
+                    </button>
                   </div>
 
                   <div className="pt-1">

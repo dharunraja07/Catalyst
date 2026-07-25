@@ -6,6 +6,9 @@ import {
   acceptRequest,
   rejectRequest,
   getMyGroups,
+  inviteToGroup,
+  renameGroup,
+  joinByCode,
   addMemberToGroup
 } from '../controllers/studyRequestController.js'
 import {
@@ -24,6 +27,9 @@ router.get('/requests/incoming', getIncomingRequests)
 router.post('/requests/:id/accept', acceptRequest)
 router.post('/requests/:id/reject', rejectRequest)
 router.get('/groups', getMyGroups)
+router.post('/groups/:groupId/invite', inviteToGroup)
+router.patch('/groups/:groupId', renameGroup)
+router.post('/groups/join', joinByCode)
 router.post('/groups/:groupId/add-member', addMemberToGroup)
 router.get('/groups/:groupId/messages', getGroupMessages)
 router.post('/groups/:groupId/messages', postGroupMessage)

@@ -2,6 +2,15 @@ import User from '../models/User.js'
 import StudyRequest from '../models/StudyRequest.js'
 import StudyGroup from '../models/StudyGroup.js'
 
+async function populateGroup(group) {
+  if (!group) return group
+  await group.populate([
+    { path: 'members', select: 'name email educationLevel' },
+    { path: 'createdBy', select: 'name email' }
+  ])
+  return group
+}
+
 export async function searchUsers(req, res, next) {
   try {
     const term = req.query.q?.trim() || ''
@@ -33,8 +42,9 @@ export async function createStudyRequest(req, res, next) {
     if (existing) return res.status(400).json({ error: 'A pending request already exists between these users' })
 
     const request = await StudyRequest.create({ sender: req.user._id, receiver: receiverId })
-    const populated = await request.populate('sender', 'name email').populate('receiver', 'name email')
-    res.json(populated)
+    await request.populate('sender', 'name email')
+    await request.populate('receiver', 'name email')
+    res.json(request)
   } catch (error) {
     next(error)
   }
@@ -44,6 +54,7 @@ export async function getIncomingRequests(req, res, next) {
   try {
     const requests = await StudyRequest.find({ receiver: req.user._id, status: 'pending' })
       .populate('sender', 'name email educationLevel interestedSubjects careerInterests')
+      .populate('group', 'groupName createdBy')
       .sort({ createdAt: -1 })
     res.json(requests)
   } catch (error) {
@@ -59,6 +70,22 @@ export async function acceptRequest(req, res, next) {
     request.status = 'accepted'
     await request.save()
 
+    if (request.group) {
+      const group = await StudyGroup.findById(request.group)
+      if (!group) return res.status(404).json({ error: 'Group not found' })
+      if (group.members.some((memberId) => memberId.toString() === request.sender.toString())) {
+        return res.status(400).json({ error: 'User is already a member of this group' })
+      }
+      if (group.members.length >= group.maxMembers) {
+        return res.status(400).json({ error: 'This group is full' })
+      }
+
+      group.members.push(request.sender)
+      await group.save()
+      const populated = await populateGroup(group)
+      return res.json(populated)
+    }
+
     const existingGroup = await StudyGroup.findOne({ members: { $all: [request.sender, request.receiver] } })
     let group = existingGroup
     if (!existingGroup) {
@@ -71,7 +98,7 @@ export async function acceptRequest(req, res, next) {
       })
     }
 
-    const populated = await group.populate('members', 'name email educationLevel')
+    const populated = await populateGroup(group)
     res.json(populated)
   } catch (error) {
     next(error)
@@ -92,8 +119,100 @@ export async function rejectRequest(req, res, next) {
 
 export async function getMyGroups(req, res, next) {
   try {
-    const groups = await StudyGroup.find({ members: req.user._id }).populate('members', 'name email educationLevel')
+    const groups = await StudyGroup.find({ members: req.user._id })
+      .populate('members', 'name email educationLevel')
+      .populate('createdBy', 'name email')
     res.json(groups)
+  } catch (error) {
+    next(error)
+  }
+}
+
+export async function inviteToGroup(req, res, next) {
+  try {
+    const { userId } = req.body
+    const groupId = req.params.groupId
+
+    if (!groupId || !userId) {
+      return res.status(400).json({ error: 'Group ID and User ID are required' })
+    }
+
+    const group = await StudyGroup.findById(groupId)
+    if (!group) return res.status(404).json({ error: 'Group not found' })
+
+    const isMember = group.members.some((memberId) => memberId.toString() === req.user._id.toString())
+    if (!isMember) return res.status(403).json({ error: 'You are not a member of this group' })
+
+    if (group.members.some((memberId) => memberId.toString() === userId.toString())) {
+      return res.status(400).json({ error: 'User is already a member of this group' })
+    }
+
+    if (group.members.length >= group.maxMembers) {
+      return res.status(400).json({ error: 'This group is full' })
+    }
+
+    const pendingInvite = await StudyRequest.findOne({
+      sender: req.user._id,
+      receiver: userId,
+      status: 'pending',
+      group: group._id
+    })
+
+    if (pendingInvite) {
+      return res.status(400).json({ error: 'A pending invite already exists for this user' })
+    }
+
+    const request = await StudyRequest.create({ sender: req.user._id, receiver: userId, group: group._id })
+    await request.populate('sender', 'name email')
+    await request.populate('receiver', 'name email')
+    await request.populate('group', 'groupName createdBy')
+    res.json(request)
+  } catch (error) {
+    next(error)
+  }
+}
+
+export async function renameGroup(req, res, next) {
+  try {
+    const { groupName } = req.body
+    if (!groupName?.trim()) return res.status(400).json({ error: 'Group name is required' })
+
+    const group = await StudyGroup.findById(req.params.groupId)
+    if (!group) return res.status(404).json({ error: 'Group not found' })
+
+    if (group.createdBy.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ error: 'Only the group admin can rename this group' })
+    }
+
+    group.groupName = groupName.trim()
+    await group.save()
+    const populated = await populateGroup(group)
+    res.json(populated)
+  } catch (error) {
+    next(error)
+  }
+}
+
+export async function joinByCode(req, res, next) {
+  try {
+    const { code } = req.body
+    if (!code?.trim()) return res.status(400).json({ error: 'Join code is required' })
+
+    const group = await StudyGroup.findOne({ joinCode: code.trim().toUpperCase() })
+    if (!group) return res.status(404).json({ error: 'Group not found' })
+
+    if (group.members.some((memberId) => memberId.toString() === req.user._id.toString())) {
+      return res.status(400).json({ error: 'You are already a member of this group' })
+    }
+
+    if (group.members.length >= group.maxMembers) {
+      return res.status(400).json({ error: 'This group is full' })
+    }
+
+    group.members.push(req.user._id)
+    await group.save()
+    const populated = await populateGroup(group)
+    res.json(populated)
   } catch (error) {
     next(error)
   }
@@ -116,22 +235,23 @@ export async function addMemberToGroup(req, res, next) {
       return res.status(403).json({ error: 'You are not a member of this group' })
     }
 
-    // Check if user is already a member
     if (group.members.includes(userId)) {
       return res.status(400).json({ error: 'User is already a member of this group' })
     }
 
-    // Check if user exists
+    if (group.members.length >= group.maxMembers) {
+      return res.status(400).json({ error: 'This group is full' })
+    }
+
     const user = await User.findById(userId)
     if (!user) {
       return res.status(404).json({ error: 'User not found' })
     }
 
-    // Add member to group
     group.members.push(userId)
     await group.save()
 
-    const populated = await group.populate('members', 'name email educationLevel')
+    const populated = await populateGroup(group)
     res.json(populated)
   } catch (error) {
     next(error)

@@ -4,10 +4,13 @@ import SidebarNav from './SidebarNav.jsx'
 import TopUtilityBar from './TopUtilityBar.jsx'
 import MobileDrawer from './MobileDrawer.jsx'
 import NavBar from './NavBar.jsx'
+import ProfileModal from './ProfileModal.jsx'
+import FloatingAIAssistant from './FloatingAIAssistant.jsx'
 
 export default function AppLayout({ children }) {
   const { user } = useAuth()
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false)
+  const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [isCollapsed, setIsCollapsed] = useState(() => {
     const saved = localStorage.getItem('sidebarCollapsed')
     if (saved !== null) {
@@ -28,10 +31,12 @@ export default function AppLayout({ children }) {
   if (!user) {
     return (
       <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)] transition-colors duration-200">
-        <NavBar />
+        <NavBar onOpenProfile={() => setIsProfileOpen(true)} />
         <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 pb-16">
           {children}
         </main>
+        <ProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
+        <FloatingAIAssistant />
       </div>
     )
   }
@@ -49,6 +54,7 @@ export default function AppLayout({ children }) {
         {/* Top Utility Bar */}
         <TopUtilityBar
           onOpenMobileDrawer={() => setIsMobileDrawerOpen(true)}
+          onOpenProfile={() => setIsProfileOpen(true)}
           isCollapsed={isCollapsed}
           toggleCollapse={toggleCollapse}
         />
@@ -63,7 +69,10 @@ export default function AppLayout({ children }) {
       <MobileDrawer
         isOpen={isMobileDrawerOpen}
         onClose={() => setIsMobileDrawerOpen(false)}
+        onOpenProfile={() => setIsProfileOpen(true)}
       />
+      <ProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
+      <FloatingAIAssistant />
     </div>
   )
 }

@@ -19,6 +19,7 @@ function serializeUser(user) {
     interestedSubjects: user.interestedSubjects,
     careerInterests: user.careerInterests,
     learningStyle: user.learningStyle,
+    avatar: user.avatar || '',
     dailyGoalMinutes: user.dailyGoalMinutes || 60,
     studySessions: user.studySessions || []
   }
@@ -89,6 +90,45 @@ export async function updateProfile(req, res, next) {
         updates.studySessions = req.body.studySessions.filter((entry) => entry && entry.date && Number.isFinite(Number(entry.minutes)))
       } else {
         updates.studySessions = []
+      }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(req.body, 'educationLevel')) {
+      if (typeof req.body.educationLevel === 'string') {
+        updates.educationLevel = req.body.educationLevel.trim()
+      }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(req.body, 'interestedSubjects')) {
+      if (Array.isArray(req.body.interestedSubjects)) {
+        updates.interestedSubjects = req.body.interestedSubjects
+          .filter((entry) => typeof entry === 'string')
+          .map((entry) => entry.trim())
+          .filter(Boolean)
+      }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(req.body, 'careerInterests')) {
+      if (Array.isArray(req.body.careerInterests)) {
+        updates.careerInterests = req.body.careerInterests
+          .filter((entry) => typeof entry === 'string')
+          .map((entry) => entry.trim())
+          .filter(Boolean)
+      }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(req.body, 'learningStyle')) {
+      if (typeof req.body.learningStyle === 'string') {
+        const trimmedStyle = req.body.learningStyle.trim()
+        if (['Visual', 'Reading', 'Practice', 'Mixed'].includes(trimmedStyle)) {
+          updates.learningStyle = trimmedStyle
+        }
+      }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(req.body, 'avatar')) {
+      if (typeof req.body.avatar === 'string') {
+        updates.avatar = req.body.avatar.trim()
       }
     }
 

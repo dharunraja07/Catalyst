@@ -1,137 +1,67 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
-import ReactMarkdown from 'react-markdown'
+import AIChatSurface from '../components/AIChatSurface.jsx'
+
+const MAX_MEMBERS = 15
 
 function GroupChatAI({ groupId, api }) {
-  const [messages, setMessages] = useState([
-    {
-      role: 'assistant',
-      content: 'Hi! I can help explain concepts from your group discussion, generate notes, or suggest study materials.'
+  const [messages, setMessages] = useState(() => {
+    if (typeof window === 'undefined') return [
+      {
+        role: 'assistant',
+        content: 'Hi! I can help explain concepts from your group discussion, generate notes, or suggest study materials.'
+      }
+    ]
+
+    const saved = window.localStorage.getItem(`catalyst_group_ai_history:${groupId}`)
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed
+        }
+      } catch {
+        // ignore invalid stored history
+      }
     }
-  ])
-  const [input, setInput] = useState('')
-  const [isTyping, setIsTyping] = useState(false)
-  const [error, setError] = useState('')
-  const endRef = useRef(null)
+
+    return [
+      {
+        role: 'assistant',
+        content: 'Hi! I can help explain concepts from your group discussion, generate notes, or suggest study materials.'
+      }
+    ]
+  })
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, isTyping])
-
-  const handleSend = async () => {
-    const trimmed = input.trim()
-    if (!trimmed || isTyping) return
-
-    const userMessage = { role: 'user', content: trimmed }
-    const nextMessages = [...messages, userMessage]
-    setMessages(nextMessages)
-    setInput('')
-    setError('')
-    setIsTyping(true)
-
+    if (typeof window === 'undefined') return
     try {
-      const response = await api.post('/ai/chat', {
-        message: trimmed,
-        history: nextMessages.slice(-20)
-      })
-
-      if (response.status === 200 && response.data) {
-        const reply = response.data.response || response.data.reply
-        if (reply && typeof reply === 'string' && reply.trim().length > 0) {
-          setMessages([
-            ...nextMessages,
-            {
-              role: 'assistant',
-              content: reply.trim()
-            }
-          ])
-          return
-        }
-      }
-
-      throw new Error('Invalid response format')
-    } catch (err) {
-      const errorMsg = err.response?.data?.error || 'Unable to reach AI service'
-      setError(errorMsg)
-      setMessages([
-        ...nextMessages,
-        {
-          role: 'assistant',
-          content: `Error: ${errorMsg}`
-        }
-      ])
-    } finally {
-      setIsTyping(false)
+      window.localStorage.setItem(`catalyst_group_ai_history:${groupId}`, JSON.stringify(messages))
+    } catch {
+      // ignore storage errors
     }
-  }
+  }, [groupId, messages])
 
   return (
-    <div className="flex h-full flex-col rounded-[2rem] border border-[var(--border-main)] bg-[var(--bg-surface)] p-6 shadow-glow">
-      <div className="mb-4">
-        <p className="text-sm uppercase tracking-[0.24em] text-[var(--accent-color)]">AI Study Assistant</p>
-        <h3 className="text-lg font-semibold text-[var(--text-primary)]">Group companion</h3>
-      </div>
-
-      {error && <p className="mb-3 rounded-2xl bg-[var(--error-bg)] border border-[var(--error-color)]/30 px-3 py-2 text-xs text-[var(--error-color)]">{error}</p>}
-
-      <div className="max-h-[35vh] flex-1 space-y-3 overflow-y-auto rounded-[1.5rem] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-3 mb-4">
-        {messages.map((message, index) => (
-          <div key={`${message.role}-${index}`} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div
-              className={`max-w-[90%] rounded-xl px-3 py-2 text-xs ${message.role === 'user'
-                ? 'bg-[var(--accent-color)] text-[var(--accent-contrast-text)] font-medium'
-                : 'bg-[var(--bg-elevated)] border border-[var(--border-main)] text-[var(--text-primary)]'
-                }`}
-            >
-              <div className="prose prose-invert max-w-none leading-5">
-                <ReactMarkdown>{message.content}</ReactMarkdown>
-              </div>
-            </div>
-          </div>
-        ))}
-        {isTyping && (
-          <div className="flex justify-start">
-            <div className="rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-main)] px-3 py-2">
-              <span className="inline-flex gap-0.5">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--accent-color)]" />
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--accent-color)]" style={{ animationDelay: '0.15s' }} />
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--accent-color)]" style={{ animationDelay: '0.3s' }} />
-              </span>
-            </div>
-          </div>
-        )}
-        <div ref={endRef} />
-      </div>
-
-      <div className="flex gap-2">
-        <textarea
-          value={input}
-          onChange={(event) => setInput(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter' && !event.shiftKey) {
-              event.preventDefault()
-              handleSend()
-            }
-          }}
-          rows="2"
-          placeholder="Ask the AI..."
-          className="min-h-[2.5rem] w-full rounded-xl border border-[var(--border-main)] bg-[var(--bg-input)] px-3 py-2 text-xs text-[var(--text-primary)] focus:border-[var(--accent-color)] focus:outline-none resize-none"
-        />
-        <button
-          type="button"
-          onClick={handleSend}
-          disabled={isTyping}
-          className="self-end rounded-xl bg-[var(--accent-color)] px-3 py-2 text-xs font-semibold text-[var(--accent-contrast-text)] transition hover:bg-[var(--accent-hover)] disabled:cursor-not-allowed disabled:opacity-70"
-        >
-          Send
-        </button>
-      </div>
+    <div className="flex h-full min-h-0 flex-col rounded-[2rem] border border-[var(--border-main)] bg-[var(--bg-surface)] p-4 shadow-glow sm:p-6">
+      <AIChatSurface
+        api={api}
+        messages={messages}
+        setMessages={setMessages}
+        storageKey={null}
+        welcomeMessage="Hi! I can help explain concepts from your group discussion, generate notes, or suggest study materials."
+        title="AI Study Assistant"
+        subtitle="Group companion"
+        placeholder="Ask the AI..."
+        className="h-full"
+        showHeader
+      />
     </div>
   )
 }
 
 export default function StudyGroupPage() {
-  const { api } = useAuth()
+  const { api, user } = useAuth()
   const [query, setQuery] = useState('')
   const [searchResults, setSearchResults] = useState([])
   const [incomingRequests, setIncomingRequests] = useState([])
@@ -141,10 +71,16 @@ export default function StudyGroupPage() {
   const [messageText, setMessageText] = useState('')
   const [status, setStatus] = useState('')
   const [error, setError] = useState('')
-  const [showAddMemberModal, setShowAddMemberModal] = useState(false)
-  const [addMemberQuery, setAddMemberQuery] = useState('')
-  const [addMemberResults, setAddMemberResults] = useState([])
-  const [addingMember, setAddingMember] = useState(false)
+  const [showMembersModal, setShowMembersModal] = useState(false)
+  const [showInviteModal, setShowInviteModal] = useState(false)
+  const [inviteQuery, setInviteQuery] = useState('')
+  const [inviteResults, setInviteResults] = useState([])
+  const [inviting, setInviting] = useState(false)
+  const [joinCodeInput, setJoinCodeInput] = useState('')
+  const [renameDraft, setRenameDraft] = useState('')
+  const [isRenaming, setIsRenaming] = useState(false)
+  const [isEditingGroupName, setIsEditingGroupName] = useState(false)
+  const [showSettingsPopover, setShowSettingsPopover] = useState(false)
   const messagesEndRef = useRef(null)
 
   const selectedGroup = useMemo(
@@ -180,7 +116,7 @@ export default function StudyGroupPage() {
       }
 
       try {
-        const response = await api.get(`/study-groups/${selectedGroupId}/messages`)
+        const response = await api.get(`/study-groups/groups/${selectedGroupId}/messages`)
         setMessages(response.data)
       } catch (err) {
         setError('Unable to load group messages')
@@ -192,38 +128,62 @@ export default function StudyGroupPage() {
     return () => window.clearInterval(interval)
   }, [api, selectedGroupId])
 
+  const refreshDashboard = async () => {
+    try {
+      const [groupsResp, requestsResp] = await Promise.all([
+        api.get('/study-groups/groups'),
+        api.get('/study-groups/requests/incoming')
+      ])
+      setGroups(groupsResp.data)
+      setIncomingRequests(requestsResp.data)
+    } catch (err) {
+      setError('Unable to refresh dashboard')
+    }
+  }
+
+  const clearTransientMessage = () => {
+    window.setTimeout(() => {
+      setStatus('')
+      setError('')
+    }, 3000)
+  }
+
   const handleSearch = async (event) => {
     event.preventDefault()
+    setStatus('')
+    setError('')
     if (!query.trim()) return
 
     try {
-      const response = await api.get(`/study-groups/students/search?query=${encodeURIComponent(query.trim())}`)
+      const response = await api.get('/study-groups/users', { params: { q: query.trim() } })
       setSearchResults(response.data)
     } catch (err) {
       setError('Search failed')
     }
   }
 
-  const sendRequest = async (recipientId) => {
+  const sendRequest = async (receiverId) => {
+    setStatus('')
+    setError('')
     try {
-      await api.post('/study-groups/requests', { recipientId })
-      setStatus('Study group request sent!')
-      setTimeout(() => setStatus(''), 3000)
+      await api.post('/study-groups/requests', { receiverId })
+      setStatus('Study request sent!')
+      clearTransientMessage()
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to send request')
     }
   }
 
   const respondToRequest = async (requestId, accept) => {
+    setStatus('')
+    setError('')
     try {
-      await api.post(`/study-groups/requests/${requestId}/respond`, { accept })
-      setIncomingRequests((prev) => prev.filter((item) => item._id !== requestId))
-      if (accept) {
-        const groupsResp = await api.get('/study-groups/groups')
-        setGroups(groupsResp.data)
-      }
+      await api.post(`/study-groups/requests/${requestId}/${accept ? 'accept' : 'reject'}`)
+      await refreshDashboard()
+      setStatus(accept ? 'Request accepted.' : 'Request rejected.')
+      clearTransientMessage()
     } catch (err) {
-      setError('Unable to respond to request')
+      setError(err.response?.data?.error || 'Unable to respond to request')
     }
   }
 
@@ -231,66 +191,158 @@ export default function StudyGroupPage() {
     if (!messageText.trim() || !selectedGroupId) return
 
     try {
-      const response = await api.post(`/study-groups/${selectedGroupId}/messages`, {
+      await api.post(`/study-groups/groups/${selectedGroupId}/messages`, {
         message: messageText.trim()
       })
-      setMessages((prev) => [...prev, response.data])
       setMessageText('')
+      const response = await api.get(`/study-groups/groups/${selectedGroupId}/messages`)
+      setMessages(response.data)
     } catch (err) {
-      setError('Failed to send message')
+      setError(err.response?.data?.error || 'Failed to send message')
     }
   }
 
-  const searchMembersToAdd = async (event) => {
+  const searchInviteUsers = async (event) => {
     event.preventDefault()
-    if (!addMemberQuery.trim()) return
+    if (!inviteQuery.trim()) return
 
     try {
-      const response = await api.get(`/study-groups/students/search?query=${encodeURIComponent(addMemberQuery.trim())}`)
-      setAddMemberResults(response.data)
+      const response = await api.get('/study-groups/users', { params: { q: inviteQuery.trim() } })
+      setInviteResults(response.data)
     } catch (err) {
-      setError('Member search failed')
+      setError('Invite search failed')
     }
   }
 
-  const addMemberToGroup = async (userId) => {
+  const inviteToGroup = async (userId) => {
     if (!selectedGroupId) return
+    setInviting(true)
+    setStatus('')
+    setError('')
 
-    setAddingMember(true)
     try {
-      await api.post(`/study-groups/${selectedGroupId}/members`, { userId })
-      setStatus('Member added to group!')
-      setTimeout(() => setStatus(''), 3000)
-      const groupsResp = await api.get('/study-groups/groups')
-      setGroups(groupsResp.data)
-      setAddMemberResults((prev) => prev.filter((user) => user._id !== userId))
+      await api.post(`/study-groups/groups/${selectedGroupId}/invite`, { userId })
+      setStatus('Invite sent. The user can accept or reject it from their requests list.')
+      clearTransientMessage()
+      setInviteResults((prev) => prev.filter((user) => user._id !== userId))
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to add member')
+      setError(err.response?.data?.error || 'Failed to send invite')
     } finally {
-      setAddingMember(false)
+      setInviting(false)
+    }
+  }
+
+  const renameGroup = async () => {
+    if (!selectedGroupId || !renameDraft.trim()) return
+    setIsRenaming(true)
+    setStatus('')
+    setError('')
+
+    try {
+      const response = await api.patch(`/study-groups/groups/${selectedGroupId}`, { groupName: renameDraft.trim() })
+      setGroups((prev) => prev.map((group) => (group._id === selectedGroupId ? response.data : group)))
+      setStatus('Group renamed successfully.')
+      setRenameDraft('')
+      setIsEditingGroupName(false)
+      clearTransientMessage()
+    } catch (err) {
+      setError(err.response?.data?.error || 'Unable to rename group')
+    } finally {
+      setIsRenaming(false)
+    }
+  }
+
+  const joinGroupByCode = async (event) => {
+    event.preventDefault()
+    if (!joinCodeInput.trim()) return
+    setStatus('')
+    setError('')
+
+    try {
+      const response = await api.post('/study-groups/groups/join', { code: joinCodeInput.trim() })
+      const nextGroup = response.data
+      setGroups((prev) => (prev.some((group) => group._id === nextGroup._id) ? prev.map((group) => (group._id === nextGroup._id ? nextGroup : group)) : [...prev, nextGroup]))
+      setJoinCodeInput('')
+      setStatus('Joined the group successfully.')
+      clearTransientMessage()
+      setSelectedGroupId(nextGroup._id)
+    } catch (err) {
+      setError(err.response?.data?.error || 'Unable to join the group')
     }
   }
 
   return (
     <main className="min-h-[calc(100vh-80px)] bg-[var(--bg-primary)] text-[var(--text-primary)] lg:h-[calc(100vh-80px)] lg:overflow-hidden">
       {selectedGroupId && selectedGroup ? (
-        <div className="flex h-full flex-col gap-6 p-4 sm:p-6 lg:flex-row max-w-7xl mx-auto">
-          <div className="flex w-full flex-col gap-6 lg:w-3/4">
+        <div className="mx-auto flex h-full max-w-7xl flex-col gap-4 p-4 sm:gap-6 sm:p-6 lg:flex-row">
+          <div className="flex min-h-0 w-full flex-col gap-4 lg:w-3/4">
             <div className="saas-card shadow-glow">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--divider-main)] pb-4">
-                <div>
-                  <h1 className="section-title">{selectedGroup.groupName || 'Study Group'}</h1>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {isEditingGroupName && selectedGroup.createdBy?._id === user?.id ? (
+                      <input
+                        value={renameDraft}
+                        onChange={(event) => setRenameDraft(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter') {
+                            event.preventDefault()
+                            renameGroup()
+                          }
+                          if (event.key === 'Escape') {
+                            setIsEditingGroupName(false)
+                            setRenameDraft(selectedGroup.groupName || '')
+                          }
+                        }}
+                        className="saas-input max-w-[220px] min-h-[40px]"
+                        autoFocus
+                      />
+                    ) : (
+                      <h1 className="section-title break-words">{selectedGroup.groupName || 'Study Group'}</h1>
+                    )}
+                    {selectedGroup.createdBy?._id === user?.id && !isEditingGroupName && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRenameDraft(selectedGroup.groupName || '')
+                          setIsEditingGroupName(true)
+                        }}
+                        className="rounded-full border border-[var(--border-main)] bg-[var(--bg-secondary)] p-2 text-sm text-[var(--text-secondary)]"
+                        aria-label="Rename group"
+                      >
+                        ✎
+                      </button>
+                    )}
+                    {isEditingGroupName && selectedGroup.createdBy?._id === user?.id && (
+                      <div className="flex gap-2">
+                        <button type="button" onClick={renameGroup} disabled={isRenaming} className="saas-button-primary min-h-[40px] px-3 text-xs">
+                          {isRenaming ? 'Saving...' : 'Save'}
+                        </button>
+                        <button type="button" onClick={() => { setIsEditingGroupName(false); setRenameDraft(selectedGroup.groupName || '') }} className="saas-button-secondary min-h-[40px] px-3 text-xs">
+                          Cancel
+                        </button>
+                      </div>
+                    )}
+                  </div>
                   <p className="small-text mt-1">
-                    Members: {selectedGroup.members?.length || 0}
+                    {selectedGroup.members?.length || 0}/{selectedGroup.maxMembers || MAX_MEMBERS} members
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
-                    onClick={() => setShowAddMemberModal(true)}
+                    onClick={() => setShowInviteModal(true)}
                     className="saas-button-primary min-h-[40px] px-4 text-xs"
+                    disabled={(selectedGroup.members?.length || 0) >= (selectedGroup.maxMembers || MAX_MEMBERS)}
                   >
-                    + Add Member
+                    Invite
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowMembersModal(true)}
+                    className="saas-button-secondary min-h-[40px] px-4 text-xs"
+                  >
+                    Members
                   </button>
                   <button
                     type="button"
@@ -302,33 +354,28 @@ export default function StudyGroupPage() {
                 </div>
               </div>
 
-              {showAddMemberModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+              {showInviteModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
                   <div className="saas-card max-w-md w-full shadow-2xl">
                     <div className="mb-6">
-                      <h2 className="section-title">Add Member to Group</h2>
-                      <p className="small-text mt-1">Search and add new members to your study group.</p>
+                      <h2 className="section-title">Invite a member</h2>
+                      <p className="small-text mt-1">Search for a student and send them a group invite. They can accept or reject it.</p>
                     </div>
 
-                    <form onSubmit={searchMembersToAdd} className="mb-6 flex flex-col gap-3">
+                    <form onSubmit={searchInviteUsers} className="mb-6 flex flex-col gap-3">
                       <input
                         type="text"
-                        value={addMemberQuery}
-                        onChange={(e) => setAddMemberQuery(e.target.value)}
+                        value={inviteQuery}
+                        onChange={(event) => setInviteQuery(event.target.value)}
                         placeholder="Search by name or email"
                         className="saas-input w-full"
                       />
-                      <button
-                        type="submit"
-                        className="saas-button-primary"
-                      >
-                        Search
-                      </button>
+                      <button type="submit" className="saas-button-primary">Search</button>
                     </form>
 
-                    {addMemberResults.length > 0 && (
+                    {inviteResults.length > 0 && (
                       <div className="mb-6 max-h-64 space-y-3 overflow-y-auto">
-                        {addMemberResults.map((user) => (
+                        {inviteResults.map((user) => (
                           <div key={user._id} className="flex items-center justify-between rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-4">
                             <div className="flex-1">
                               <p className="card-title text-base">{user.name}</p>
@@ -336,11 +383,11 @@ export default function StudyGroupPage() {
                             </div>
                             <button
                               type="button"
-                              onClick={() => addMemberToGroup(user._id)}
-                              disabled={addingMember}
+                              onClick={() => inviteToGroup(user._id)}
+                              disabled={inviting}
                               className="saas-button-primary min-h-[36px] px-3 text-xs disabled:opacity-50"
                             >
-                              Add
+                              Invite
                             </button>
                           </div>
                         ))}
@@ -351,9 +398,9 @@ export default function StudyGroupPage() {
                       <button
                         type="button"
                         onClick={() => {
-                          setShowAddMemberModal(false)
-                          setAddMemberQuery('')
-                          setAddMemberResults([])
+                          setShowInviteModal(false)
+                          setInviteQuery('')
+                          setInviteResults([])
                         }}
                         className="saas-button-secondary w-full"
                       >
@@ -363,24 +410,85 @@ export default function StudyGroupPage() {
                   </div>
                 </div>
               )}
+
+              {showMembersModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                  <div className="saas-card max-w-md w-full shadow-2xl">
+                    <div className="mb-6">
+                      <h2 className="section-title">Group members</h2>
+                      <p className="small-text mt-1">Everyone currently in this study group.</p>
+                    </div>
+                    <div className="space-y-3">
+                      {selectedGroup.members?.map((member) => (
+                        <div key={member._id} className="flex items-center justify-between rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-4">
+                          <div>
+                            <p className="card-title text-base">{member.name}</p>
+                            <p className="caption-text">{member.email}</p>
+                          </div>
+                          {selectedGroup.createdBy?._id === member._id && (
+                            <span className="rounded-full bg-[var(--accent-color)] px-3 py-1 text-xs font-semibold text-black">Admin</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-6 flex gap-3">
+                      <button type="button" onClick={() => setShowMembersModal(false)} className="saas-button-secondary w-full">Close</button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
-            <div className="h-[45vh] saas-card shadow-glow overflow-y-auto lg:h-auto lg:flex-1">
-              <div className="space-y-4">
-                {messages.length > 0 ? (
-                  messages.map((msg) => (
-                    <div key={msg._id} className="saas-elevated-card p-4">
-                      <p className="small-text font-bold text-[var(--accent-color)]">{msg.sender?.name}</p>
-                      <p className="body-text mt-1 text-sm">{msg.message}</p>
-                      <p className="caption-text mt-2">
-                        {new Date(msg.createdAt).toLocaleString()}
-                      </p>
+            <div className="flex min-h-0 flex-1 flex-col saas-card shadow-glow">
+              <div className="mb-3 flex items-center justify-between border-b border-[var(--divider-main)] pb-3">
+                <div>
+                  <p className="caption-text uppercase tracking-[0.24em] text-[var(--accent-color)] font-semibold">Conversation</p>
+                  <h2 className="section-title">Group chat</h2>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowSettingsPopover((prev) => !prev)}
+                  className="rounded-full border border-[var(--border-main)] bg-[var(--bg-secondary)] px-3 py-2 text-xs font-semibold text-[var(--text-secondary)]"
+                >
+                  Settings
+                </button>
+              </div>
+
+              {showSettingsPopover && (
+                <div className="mb-3 rounded-[16px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-[var(--text-primary)]">Join code</p>
+                      <p className="caption-text">{selectedGroup.joinCode || '—'}</p>
                     </div>
-                  ))
-                ) : (
-                  <p className="text-center body-text text-sm text-[var(--text-muted)] py-8">No messages yet. Start the conversation!</p>
-                )}
-                <div ref={messagesEndRef} />
+                    <button
+                      type="button"
+                      onClick={() => navigator.clipboard?.writeText(selectedGroup.joinCode || '')}
+                      className="saas-button-secondary min-h-[36px] px-3 text-xs"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex-1 min-h-0 overflow-y-auto rounded-[18px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-3 sm:p-4">
+                <div className="space-y-4">
+                  {messages.length > 0 ? (
+                    messages.map((msg) => (
+                      <div key={msg._id} className="saas-elevated-card p-4">
+                        <p className="small-text font-bold text-[var(--accent-color)]">{msg.sender?.name}</p>
+                        <p className="body-text mt-1 text-sm">{msg.message}</p>
+                        <p className="caption-text mt-2">
+                          {new Date(msg.createdAt).toLocaleString()}
+                        </p>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-center body-text text-sm text-[var(--text-muted)] py-8">No messages yet. Start the conversation!</p>
+                  )}
+                  <div ref={messagesEndRef} />
+                </div>
               </div>
             </div>
 
@@ -406,7 +514,7 @@ export default function StudyGroupPage() {
             </div>
           </div>
 
-          <div className="h-[55vh] w-full lg:h-full lg:w-1/4">
+          <div className="h-[50vh] w-full min-h-0 lg:h-full lg:w-1/4">
             <GroupChatAI groupId={selectedGroupId} api={api} />
           </div>
         </div>
@@ -422,6 +530,16 @@ export default function StudyGroupPage() {
 
               {error && <p className="mb-6 rounded-[14px] bg-[var(--error-bg)] border border-[var(--error-color)]/30 px-4 py-3 text-sm text-[var(--error-color)]">{error}</p>}
               {status && <p className="mb-6 rounded-[14px] bg-[var(--success-bg)] border border-[var(--success-color)]/30 px-4 py-3 text-sm text-[var(--success-color)]">{status}</p>}
+
+              <form onSubmit={joinGroupByCode} className="mb-8 flex flex-col gap-3 rounded-[18px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-4 sm:flex-row">
+                <input
+                  value={joinCodeInput}
+                  onChange={(event) => setJoinCodeInput(event.target.value)}
+                  placeholder="Join a group by code"
+                  className="saas-input w-full"
+                />
+                <button className="saas-button-primary">Join</button>
+              </form>
 
               <form onSubmit={handleSearch} className="mb-8 flex flex-col gap-3 sm:flex-row">
                 <input
@@ -468,10 +586,15 @@ export default function StudyGroupPage() {
                   <div className="space-y-4">
                     {incomingRequests.map((req) => (
                       <div key={req._id} className="saas-elevated-card">
-                        <div className="flex items-center justify-between gap-4">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                           <div>
                             <p className="card-title font-semibold">{req.sender?.name}</p>
                             <p className="caption-text">{req.sender?.email}</p>
+                            {req.group ? (
+                              <p className="mt-1 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent-color)]">Group invite</p>
+                            ) : (
+                              <p className="mt-1 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">Peer request</p>
+                            )}
                           </div>
                           <div className="flex gap-2">
                             <button
@@ -479,14 +602,14 @@ export default function StudyGroupPage() {
                               onClick={() => respondToRequest(req._id, true)}
                               className="saas-button-primary min-h-[40px] px-4 text-xs bg-[var(--success-color)] text-white"
                             >
-                              Accept
+                              ✓ Accept
                             </button>
                             <button
                               type="button"
                               onClick={() => respondToRequest(req._id, false)}
                               className="saas-button-secondary min-h-[40px] px-4 text-xs hover:border-[var(--error-color)] hover:text-[var(--error-color)]"
                             >
-                              Reject
+                              ✗ Reject
                             </button>
                           </div>
                         </div>
@@ -507,9 +630,14 @@ export default function StudyGroupPage() {
                         onClick={() => setSelectedGroupId(group._id)}
                         className="saas-elevated-card w-full text-left transition hover:border-[var(--accent-color)]"
                       >
-                        <p className="card-title font-semibold">{group.groupName || 'Study Group'}</p>
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="card-title font-semibold">{group.groupName || 'Study Group'}</p>
+                          <span className="rounded-full border border-[var(--border-main)] bg-[var(--bg-secondary)] px-3 py-1 text-xs font-semibold text-[var(--text-secondary)]">
+                            {group.members?.length || 0}/{group.maxMembers || MAX_MEMBERS}
+                          </span>
+                        </div>
                         <p className="body-text mt-2 text-sm">
-                          Members: {group.members?.map((m) => m.name).join(', ')}
+                          Members: {group.members?.map((m) => m.name).join(', ') || 'None'}
                         </p>
                       </button>
                     ))}
