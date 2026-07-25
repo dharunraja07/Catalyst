@@ -2,7 +2,15 @@ import express from 'express'
 import http from 'http'
 import cors from 'cors'
 import mongoose from 'mongoose'
+import dns from 'dns'
 import serverless from 'serverless-http'
+
+// Fix Node.js DNS SRV resolution issue on Windows (e.g. WSL/Hyper-V network adapters refusing SRV queries)
+try {
+  dns.setServers(['8.8.8.8', '1.1.1.1'])
+} catch (e) {
+  console.warn('Failed to set custom DNS servers:', e.message)
+}
 import { Server } from 'socket.io'
 import authRoutes from './routes/authRoutes.js'
 import assessmentRoutes from './routes/assessmentRoutes.js'

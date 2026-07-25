@@ -84,84 +84,113 @@ export default function AssessmentPage() {
     : `0 / ${totalQuestions}`
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 space-y-8">
-      <div className="saas-card shadow-glow">
-        <div className="mb-8 border-b border-[var(--divider-main)] pb-6 space-y-2">
-          <p className="caption-text uppercase tracking-[0.24em] text-[var(--accent-color)] font-semibold">Assessment</p>
-          <h1 className="page-title">Diagnostic assessment</h1>
-          <p className="body-text max-w-2xl">Answer the questions to generate a better roadmap and get instant recommendations.</p>
-        </div>
+    <main className="mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      {/* Page Header */}
+      <div>
+        <p className="page-label">Assessment</p>
+        <h1 className="page-title mb-2">Diagnostic Assessment</h1>
+        <p className="page-description">Answer the questions to generate a personalized roadmap and instant recommendations.</p>
+      </div>
 
-        {error && <p className="mb-6 rounded-[14px] bg-[var(--error-bg)] border border-[var(--error-color)]/30 px-4 py-3 text-sm text-[var(--error-color)]">{error}</p>}
-        {aiError && <p className="mb-6 rounded-[14px] bg-[var(--error-bg)] border border-[var(--error-color)]/30 px-4 py-3 text-sm text-[var(--error-color)]">{aiError}</p>}
+      <hr className="canvas-divider" />
 
-        <div className="mb-8 space-y-4">
-          <textarea
-            value={syllabus}
-            onChange={(event) => setSyllabus(event.target.value)}
-            placeholder="Paste your syllabus or topics here..."
-            rows="4"
-            className="saas-input w-full min-h-[120px]"
-          />
+      {error && (
+        <p className="rounded-[14px] bg-[var(--error-bg)] border border-[var(--error-color)]/30 px-4 py-3 text-sm text-[var(--error-color)]">
+          {error}
+        </p>
+      )}
+      {aiError && (
+        <p className="rounded-[14px] bg-[var(--error-bg)] border border-[var(--error-color)]/30 px-4 py-3 text-sm text-[var(--error-color)]">
+          {aiError}
+        </p>
+      )}
+
+      {/* Syllabus Generation Form */}
+      <div className="space-y-4">
+        <label className="block text-sm font-semibold text-[var(--text-primary)]">Syllabus / Topics</label>
+        <textarea
+          value={syllabus}
+          onChange={(event) => setSyllabus(event.target.value)}
+          placeholder="Paste your syllabus or topics here..."
+          rows="4"
+          className="saas-input w-full min-h-[120px] p-4 text-base"
+        />
+        <div className="flex justify-end">
           <button
             type="button"
             onClick={handleGenerateAssessment}
             disabled={generating}
-            className="saas-button-primary"
+            className="saas-button-primary font-bold px-8 shadow-sm"
           >
             {generating ? 'Generating...' : 'Generate Assessment'}
           </button>
         </div>
+      </div>
 
-        {questions.length ? (
+      {/* Questions Stream */}
+      {questions.length ? (
+        <div className="space-y-8">
+          <hr className="canvas-divider" />
+          <h2 className="section-title">Assessment Questions</h2>
           <form onSubmit={handleSubmit} className="space-y-6">
             {questions.map((question, idx) => (
-              <section key={question._id} className="saas-elevated-card">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-sm text-[var(--text-muted)]">
+              <section key={question._id} className="rounded-[18px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-6 shadow-sm">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between text-xs font-semibold text-[var(--text-muted)]">
                   <span>{question.subject} • {question.topic}</span>
-                  <span className="rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-secondary)] px-3 py-1.5 text-xs font-semibold text-[var(--text-secondary)]">{question.difficulty}</span>
+                  <span className="rounded-[10px] border border-[var(--border-main)] bg-[var(--bg-primary)] px-3 py-1 text-xs text-[var(--text-secondary)] font-semibold w-fit">
+                    {question.difficulty}
+                  </span>
                 </div>
-                <p className="card-title mt-4 text-lg font-semibold">{idx + 1}. {question.text}</p>
+                <p className="card-title mt-4 text-lg font-bold">{idx + 1}. {question.text}</p>
                 <div className="mt-5 grid gap-3">
                   {question.options.map((option) => (
-                    <label key={option} className="flex cursor-pointer items-center gap-4 rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-secondary)] px-4 py-3.5 transition hover:border-[var(--accent-color)] min-h-[48px]">
+                    <label key={option} className="flex cursor-pointer items-center gap-4 rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-primary)] px-4 py-3.5 transition hover:border-[var(--accent-color)] min-h-[48px]">
                       <input type="radio" name={question._id} value={option} onChange={() => handleOption(question._id, option, question)} checked={answers[question._id]?.selected === option} className="h-4 w-4 text-[var(--accent-color)]" />
-                      <span className="body-text text-sm text-[var(--text-primary)]">{option}</span>
+                      <span className="body-text text-sm text-[var(--text-primary)] font-medium">{option}</span>
                     </label>
                   ))}
                 </div>
               </section>
             ))}
 
-            <button type="submit" className="saas-button-primary w-full sm:w-auto">Submit Assessment</button>
+            <div className="pt-4">
+              <button type="submit" className="saas-button-primary font-bold px-10 min-h-[48px] text-base w-full sm:w-auto shadow-md">
+                Submit Assessment
+              </button>
+            </div>
           </form>
-        ) : (
-          <p className="body-text text-sm text-[var(--text-muted)]">Generate an assessment to begin.</p>
-        )}
-      </div>
+        </div>
+      ) : (
+        <div>
+          <hr className="canvas-divider" />
+          <p className="body-text text-sm text-[var(--text-muted)] italic">Generate an assessment to begin.</p>
+        </div>
+      )}
 
+      {/* Results Section */}
       {result && (
-        <div className="saas-card shadow-glow">
-          <h2 className="section-title mb-6">Recent assessment</h2>
+        <div className="space-y-6 pt-4">
+          <hr className="canvas-divider" />
+          <h2 className="section-title">Recent Assessment Results</h2>
           <div className="grid gap-6 sm:grid-cols-3">
-            <div className="saas-elevated-card">
-              <p className="caption-text uppercase tracking-[0.2em]">Score</p>
-              <p className="page-title mt-2">{scoreLabel}</p>
+            <div className="rounded-[18px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-6 text-center shadow-sm">
+              <p className="caption-text uppercase tracking-widest font-semibold">Score</p>
+              <p className="page-title text-3xl mt-2">{scoreLabel}</p>
               <p className="small-text mt-1">{derivedCorrectAnswers} correct answers</p>
             </div>
-            <div className="saas-elevated-card">
-              <p className="caption-text uppercase tracking-[0.2em]">Percentage</p>
-              <p className="page-title mt-2">{derivedPercentage}%</p>
+            <div className="rounded-[18px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-6 text-center shadow-sm">
+              <p className="caption-text uppercase tracking-widest font-semibold">Percentage</p>
+              <p className="page-title text-3xl mt-2 text-[var(--accent-color)]">{derivedPercentage}%</p>
             </div>
-            <div className="saas-elevated-card">
-              <p className="caption-text uppercase tracking-[0.2em]">Classification</p>
-              <p className="page-title mt-2">{result.classification}</p>
+            <div className="rounded-[18px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-6 text-center shadow-sm">
+              <p className="caption-text uppercase tracking-widest font-semibold">Classification</p>
+              <p className="page-title text-3xl mt-2">{result.classification}</p>
             </div>
           </div>
 
           {questions.length > 0 && (
-            <section className="mt-8">
-              <h3 className="section-title mb-4">Answer review</h3>
+            <div className="space-y-4 pt-4">
+              <h3 className="section-title">Answer Review</h3>
               <div className="space-y-4">
                 {questions.map((question, idx) => {
                   const answer = result.answers?.find((item) => item.questionId === question._id)
@@ -170,11 +199,11 @@ export default function AssessmentPage() {
                   const correctAnswer = question.answer
 
                   return (
-                    <div key={question._id} className="saas-elevated-card">
+                    <div key={question._id} className="rounded-[18px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-6 shadow-sm">
                       <div className="flex items-center justify-between gap-3 mb-3">
-                        <p className="card-title">{idx + 1}. {question.text}</p>
-                        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${isCorrect ? 'bg-[var(--success-bg)] text-[var(--success-color)]' : 'bg-[var(--error-bg)] text-[var(--error-color)]'}`}>
-                          {isCorrect ? 'Correct' : 'Incorrect'}
+                        <p className="card-title text-base font-bold">{idx + 1}. {question.text}</p>
+                        <span className={`rounded-full px-3 py-1 text-xs font-bold ${isCorrect ? 'bg-[var(--success-bg)] text-[var(--success-color)]' : 'bg-[var(--error-bg)] text-[var(--error-color)]'}`}>
+                          {isCorrect ? '✓ Correct' : '✕ Incorrect'}
                         </span>
                       </div>
                       <div className="grid gap-2">
@@ -182,13 +211,13 @@ export default function AssessmentPage() {
                           const isSelected = option === selected
                           const isAnswer = option === correctAnswer
                           const optionStyles = isAnswer
-                            ? 'border-[var(--success-color)] bg-[var(--success-bg)] text-[var(--text-primary)] font-medium'
+                            ? 'border-[var(--success-color)] bg-[var(--success-bg)] text-[var(--text-primary)] font-semibold'
                             : isSelected
                               ? 'border-[var(--error-color)] bg-[var(--error-bg)] text-[var(--text-primary)]'
-                              : 'border-[var(--border-main)] bg-[var(--bg-secondary)] text-[var(--text-secondary)]'
+                              : 'border-[var(--border-main)] bg-[var(--bg-primary)] text-[var(--text-secondary)]'
 
                           return (
-                            <div key={option} className={`rounded-[14px] border px-4 py-3 text-sm ${optionStyles}`}>
+                            <div key={option} className={`rounded-[14px] border px-4 py-3 text-sm font-medium ${optionStyles}`}>
                               {option}
                             </div>
                           )
@@ -201,7 +230,7 @@ export default function AssessmentPage() {
                   )
                 })}
               </div>
-            </section>
+            </div>
           )}
         </div>
       )}

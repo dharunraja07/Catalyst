@@ -218,6 +218,8 @@ export async function joinByCode(req, res, next) {
   }
 }
 
+import Message from '../models/Message.js'
+
 export async function addMemberToGroup(req, res, next) {
   try {
     const { groupId, userId } = req.body
@@ -253,6 +255,47 @@ export async function addMemberToGroup(req, res, next) {
 
     const populated = await populateGroup(group)
     res.json(populated)
+  } catch (error) {
+    next(error)
+  }
+}
+
+export async function leaveGroup(req, res, next) {
+  try {
+    const groupId = req.params.groupId
+    const group = await StudyGroup.findById(groupId)
+    if (!group) return res.status(404).json({ error: 'Group not found' })
+
+    const isMember = group.members.some((m) => m.toString() === req.user._id.toString())
+    if (!isMember) return res.status(400).json({ error: 'You are not a member of this group' })
+
+    group.members = group.members.filter((m) => m.toString() !== req.user._id.toString())
+
+    if (group.members.length === 0) {
+      await StudyGroup.deleteOne({ _id: group._id })
+      await Message.deleteMany({ groupId: group._id })
+      return res.json({ message: 'Left and deleted empty study group', groupId })
+    }
+
+    await group.save()
+    res.json({ message: 'Left study group successfully', groupId })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export async function deleteGroup(req, res, next) {
+  try {
+    const groupId = req.params.groupId
+    const group = await StudyGroup.findById(groupId)
+    if (!group) return res.status(404).json({ error: 'Group not found' })
+
+    const isMember = group.members.some((m) => m.toString() === req.user._id.toString())
+    if (!isMember) return res.status(403).json({ error: 'Access denied' })
+
+    await StudyGroup.deleteOne({ _id: group._id })
+    await Message.deleteMany({ groupId: group._id })
+    res.json({ message: 'Study group deleted successfully', groupId })
   } catch (error) {
     next(error)
   }

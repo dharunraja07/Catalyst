@@ -141,8 +141,10 @@ export default function TopUtilityBar({ onOpenMobileDrawer, toggleCollapse, isCo
             <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-[var(--accent-color)]" />
           </button>
 
-          {/* Animated Theme Toggle */}
-          <AnimatedThemeToggle isDark={isDark} onToggle={toggleTheme} />
+          {/* Animated Theme Toggle (Desktop / Tablet >=768px) */}
+          <div className="hidden md:block">
+            <AnimatedThemeToggle isDark={isDark} onToggle={toggleTheme} />
+          </div>
 
           {/* Profile Dropdown Component */}
           {user ? (
@@ -150,9 +152,9 @@ export default function TopUtilityBar({ onOpenMobileDrawer, toggleCollapse, isCo
               <button
                 type="button"
                 onClick={() => setProfileDropdownOpen((prev) => !prev)}
-                className="flex items-center gap-2 rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-1.5 sm:px-3 sm:py-1.5 hover:border-[var(--accent-color)] transition"
+                className="flex items-center gap-2 rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-1.5 sm:px-3 sm:py-1.5 hover:border-[var(--accent-color)] transition min-h-[44px] min-w-[44px] justify-center"
               >
-                <span className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-[var(--bg-secondary)] text-xs font-bold shadow-sm">
+                <span className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-[var(--bg-secondary)] text-xs font-bold shadow-sm shrink-0">
                   <AvatarVisual avatar={user.avatar} name={user.name} className="text-xs" />
                 </span>
                 <span className="hidden md:inline-block text-sm font-semibold text-[var(--text-primary)] truncate max-w-[120px]">
@@ -165,27 +167,36 @@ export default function TopUtilityBar({ onOpenMobileDrawer, toggleCollapse, isCo
 
               {/* Profile Dropdown Menu */}
               {profileDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-56 rounded-[18px] border border-[var(--border-main)] bg-[var(--bg-surface)] p-2 shadow-2xl z-50 divide-y divide-[var(--divider-main)]">
+                <div className="absolute right-0 mt-2 w-60 rounded-[18px] border border-[var(--border-main)] bg-[var(--bg-surface)] p-2 shadow-2xl z-50 divide-y divide-[var(--divider-main)]">
                   <div className="px-3 py-2.5">
                     <p className="text-xs text-[var(--text-muted)] font-medium">Signed in as</p>
                     <p className="text-sm font-bold text-[var(--text-primary)] truncate">{user.name}</p>
                     <p className="text-xs text-[var(--text-secondary)] truncate">{user.email}</p>
                   </div>
 
-                  <div className="py-1 space-y-0.5">
+                  <div className="py-1 space-y-1">
                     <button
                       type="button"
                       onClick={() => {
                         setProfileDropdownOpen(false)
                         onOpenProfile?.()
                       }}
-                      className="flex w-full items-center gap-2.5 px-3 py-2 text-sm font-medium rounded-[12px] text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] transition"
+                      className="flex w-full items-center gap-2.5 px-3 py-2.5 text-sm font-medium rounded-[12px] text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] transition min-h-[44px]"
                     >
                       <svg className="h-4 w-4 shrink-0 text-[var(--accent-color)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                       </svg>
                       <span>Profile</span>
                     </button>
+
+                    {/* Mobile Theme Toggle option in dropdown */}
+                    <div className="flex md:hidden items-center justify-between px-3 py-2 text-sm font-medium text-[var(--text-primary)] min-h-[44px]">
+                      <span className="flex items-center gap-2.5">
+                        <span className="text-base">{isDark ? '🌙' : '☀'}</span>
+                        <span>Theme ({isDark ? 'Dark' : 'Light'})</span>
+                      </span>
+                      <AnimatedThemeToggle isDark={isDark} onToggle={toggleTheme} />
+                    </div>
                   </div>
 
                   <div className="pt-1">

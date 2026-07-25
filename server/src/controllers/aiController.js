@@ -120,6 +120,10 @@ export async function generatePractice(req, res, next) {
     }
 }
 
+import mongoose from 'mongoose'
+import AiConversation from '../models/AiConversation.js'
+import AiMessage from '../models/AiMessage.js'
+
 export async function chatWithAI(req, res, next) {
     try {
         const { message, history = [] } = req.body
@@ -156,7 +160,7 @@ export async function chatWithAI(req, res, next) {
         return res.json({
             success: true,
             response: response.trim(),
-            reply: response.trim() // Fallback for compatibility
+            reply: response.trim()
         })
     } catch (error) {
         console.error('Chat Error:', error.message)
@@ -164,5 +168,159 @@ export async function chatWithAI(req, res, next) {
             error: 'Internal server error processing your message.',
             message: error.message
         })
+    }
+}
+
+export async function getUserConversations(req, res, next) {
+    try {
+        let conversations = await AiConversation.find({ user: req.user._id }).sort({ updatedAt: -1 })
+        if (conversations.length === 0) {
+            const initial = await AiConversation.create({ user: req.user._id, title: 'New Chat' })
+            conversations = [initial]
+        }
+        res.json(conversations)
+    } catch (error) {
+        next(error)
+    }
+}
+
+export async function createConversation(req, res, next) {
+    try {
+        const title = req.body.title?.trim() || 'New Chat'
+        const conversation = await AiConversation.create({ user: req.user._id, title })
+        res.status(201).json(conversation)
+    } catch (error) {
+        next(error)
+    }
+}
+
+export async function renameConversation(req, res, next) {
+    try {
+        const { title } = req.body
+        if (!title?.trim()) return res.status(400).json({ error: 'Title is required' })
+
+        const conversation = await AiConversation.findOneAndUpdate(
+            { _id: req.params.id, user: req.user._id },
+            { title: title.trim() },
+            { new: true }
+        )
+        if (!conversation) return res.status(404).json({ error: 'Conversation not found' })
+        res.json(conversation)
+    } catch (error) {
+        next(error)
+    }
+}
+
+export async function deleteConversation(req, res, next) {
+    try {
+        const conversation = await AiConversation.findOneAndDelete({ _id: req.params.id, user: req.user._id })
+        if (!conversation) return res.status(404).json({ error: 'Conversation not found' })
+
+        await AiMessage.deleteMany({ conversationId: conversation._id })
+        res.json({ message: 'Conversation deleted successfully', id: req.params.id })
+    } catch (error) {
+        next(error)
+    }
+}
+
+export async function getConversationMessages(req, res, next) {
+    try {
+        const conversation = await AiConversation.findOne({ _id: req.params.id, user: req.user._id })
+        if (!conversation) return res.status(404).json({ error: 'Conversation not found' })
+
+        const { limit, before } = req.query
+        const limitNum = Math.min(parseInt(limit, 10) || 30, 100)
+        const queryFilter = { conversationId: conversation._id, user: req.user._id }
+
+        if (before) {
+            if (mongoose.Types.ObjectId.isValid(before)) {
+                const beforeMsg = await AiMessage.findById(before)
+                if (beforeMsg) {
+                    queryFilter.createdAt = { $lt: beforeMsg.createdAt }
+                } else {
+                    queryFilter._id = { $lt: before }
+                }
+            } else {
+                const dateBefore = new Date(before)
+                if (!isNaN(dateBefore.getTime())) {
+                    queryFilter.createdAt = { $lt: dateBefore }
+                }
+            }
+        }
+
+        const messages = await AiMessage.find(queryFilter)
+            .sort({ createdAt: -1, _id: -1 })
+            .limit(limitNum)
+
+        // Return chronological order for frontend display
+        res.json(messages.reverse())
+    } catch (error) {
+        next(error)
+    }
+}
+
+export async function sendConversationMessage(req, res, next) {
+    try {
+        const { message } = req.body
+        if (!message || !message.trim()) {
+            return res.status(400).json({ error: 'Message is required' })
+        }
+
+        const conversation = await AiConversation.findOne({ _id: req.params.id, user: req.user._id })
+        if (!conversation) return res.status(404).json({ error: 'Conversation not found' })
+
+        // Save user message to MongoDB Atlas
+        const userMsg = await AiMessage.create({
+            conversationId: conversation._id,
+            user: req.user._id,
+            role: 'user',
+            content: message.trim()
+        })
+
+        // Fetch last 20 messages for context
+        const recentHistoryMsgs = await AiMessage.find({ conversationId: conversation._id, user: req.user._id })
+            .sort({ createdAt: -1 })
+            .limit(20)
+
+        const historyContext = recentHistoryMsgs.reverse().map((m) => ({
+            role: m.role,
+            content: m.content
+        }))
+
+        // Generate AI response
+        let aiReplyText = ''
+        try {
+            aiReplyText = await chatCompletion(historyContext, message.trim())
+        } catch (error) {
+            if (error instanceof GeminiServiceError && error.message.includes('GEMINI_API_KEY is not configured')) {
+                aiReplyText = 'AI service is not configured. Please set GEMINI_API_KEY in server environment.'
+            } else {
+                aiReplyText = 'Failed to reach AI service. Please try again in a moment.'
+            }
+        }
+
+        // Save AI assistant message to MongoDB Atlas
+        const assistantMsg = await AiMessage.create({
+            conversationId: conversation._id,
+            user: req.user._id,
+            role: 'assistant',
+            content: aiReplyText.trim()
+        })
+
+        // Update conversation title if default "New Chat"
+        if (conversation.title === 'New Chat') {
+            const autoTitle = message.trim().slice(0, 30) + (message.trim().length > 30 ? '...' : '')
+            conversation.title = autoTitle
+        }
+        conversation.updatedAt = new Date()
+        await conversation.save()
+
+        res.json({
+            userMessage: userMsg,
+            assistantMessage: assistantMsg,
+            conversation
+        })
+    } catch (error) {
+        next(error)
     }
 }

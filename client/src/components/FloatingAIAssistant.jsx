@@ -32,44 +32,35 @@ export default function FloatingAIAssistant() {
   const [renameDraft, setRenameDraft] = useState('')
 
   useEffect(() => {
-    if (typeof window === 'undefined') return
-    try {
-      const saved = window.localStorage.getItem('catalyst_ai_conversations')
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setConversations(parsed)
-          setActiveConversationId(parsed[0].id)
-          return
+    async function loadConversations() {
+      try {
+        const response = await api.get('/ai/conversations')
+        const list = response.data || []
+        setConversations(list)
+        if (list.length > 0) {
+          setActiveConversationId(list[0]._id)
         }
+      } catch {
+        // Fallback for storage
       }
-    } catch {
-      // ignore invalid storage
     }
-
-    const firstConversation = createConversation('')
-    setConversations([firstConversation])
-    setActiveConversationId(firstConversation.id)
-  }, [])
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    try {
-      window.localStorage.setItem('catalyst_ai_conversations', JSON.stringify(conversations))
-    } catch {
-      // ignore storage errors
-    }
-  }, [conversations])
+    loadConversations()
+  }, [api])
 
   const activeConversation = useMemo(() => {
-    return conversations.find((conversation) => conversation.id === activeConversationId) || conversations[0] || null
+    return conversations.find((conversation) => conversation._id === activeConversationId) || conversations[0] || null
   }, [activeConversationId, conversations])
 
-  const startNewConversation = () => {
-    const nextConversation = createConversation('')
-    setConversations((prev) => [nextConversation, ...prev])
-    setActiveConversationId(nextConversation.id)
-    setShowHistoryMobile(false)
+  const startNewConversation = async () => {
+    try {
+      const response = await api.post('/ai/conversations', { title: 'New Chat' })
+      const newConv = response.data
+      setConversations((prev) => [newConv, ...prev])
+      setActiveConversationId(newConv._id)
+      setShowHistoryMobile(false)
+    } catch {
+      // ignore
+    }
   }
 
   const selectConversation = (id) => {
@@ -77,53 +68,51 @@ export default function FloatingAIAssistant() {
     setShowHistoryMobile(false)
   }
 
-  const deleteConversation = (id, event) => {
+  const deleteConversation = async (id, event) => {
     if (event) event.stopPropagation()
-    setConversations((prev) => {
-      const filtered = prev.filter((c) => c.id !== id)
-      if (filtered.length === 0) {
-        const brandNew = createConversation('')
-        setActiveConversationId(brandNew.id)
-        return [brandNew]
-      }
-      if (activeConversationId === id) {
-        setActiveConversationId(filtered[0].id)
-      }
-      return filtered
-    })
+    try {
+      await api.delete(`/ai/conversations/${id}`)
+      setConversations((prev) => {
+        const filtered = prev.filter((c) => c._id !== id)
+        if (activeConversationId === id && filtered.length > 0) {
+          setActiveConversationId(filtered[0]._id)
+        }
+        return filtered
+      })
+    } catch {
+      // ignore
+    }
   }
 
   const startRenaming = (conversation, event) => {
     if (event) event.stopPropagation()
-    setEditingId(conversation.id)
-    setRenameDraft(conversation.title || 'New chat')
+    setEditingId(conversation._id)
+    setRenameDraft(conversation.title || 'New Chat')
   }
 
-  const saveRename = (id) => {
+  const saveRename = async (id) => {
     if (!renameDraft.trim()) {
       setEditingId(null)
       return
     }
-    setConversations((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, title: renameDraft.trim(), updatedAt: Date.now() } : c))
-    )
-    setEditingId(null)
+    try {
+      const response = await api.patch(`/ai/conversations/${id}`, { title: renameDraft.trim() })
+      setConversations((prev) => prev.map((c) => (c._id === id ? response.data : c)))
+    } catch {
+      // ignore
+    } finally {
+      setEditingId(null)
+    }
   }
 
-  const handleMessagesChange = (messages) => {
-    if (!activeConversationId) return
-    setConversations((prev) => prev.map((conversation) => {
-      if (conversation.id !== activeConversationId) return conversation
-      const nextTitle = conversation.title === 'New chat' || conversation.title === 'Untitled conversation'
-        ? makeConversationTitle(messages.find((message) => message.role === 'user')?.content || '')
-        : conversation.title
-      return {
-        ...conversation,
-        messages,
-        title: nextTitle || 'New chat',
-        updatedAt: Date.now()
+  const handleConversationUpdate = (updatedConv) => {
+    setConversations((prev) => {
+      const exists = prev.some((c) => c._id === updatedConv._id)
+      if (exists) {
+        return prev.map((c) => (c._id === updatedConv._id ? updatedConv : c))
       }
-    }))
+      return [updatedConv, ...prev]
+    })
   }
 
   if (!isOpen) {
@@ -131,7 +120,11 @@ export default function FloatingAIAssistant() {
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-4 right-4 z-[60] flex h-14 w-14 items-center justify-center rounded-full border border-[var(--border-main)] bg-[var(--accent-color)] text-xl text-[var(--accent-contrast-text)] shadow-glow transition hover:scale-105 sm:bottom-6 sm:right-6"
+        style={{
+          bottom: 'max(20px, env(safe-area-inset-bottom))',
+          right: 'max(16px, env(safe-area-inset-right))'
+        }}
+        className="fixed z-[60] flex h-14 w-14 min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-[var(--border-main)] bg-[var(--accent-color)] text-xl text-[var(--accent-contrast-text)] shadow-glow transition hover:scale-105"
         aria-label="Open AI assistant"
       >
         ✦
@@ -141,7 +134,12 @@ export default function FloatingAIAssistant() {
 
   return (
     <div className="fixed inset-0 z-[60] flex items-end justify-end bg-black/20 p-3 sm:inset-auto sm:bottom-6 sm:right-6 sm:p-0">
-      <div className="flex h-[88vh] w-full max-w-6xl flex-col overflow-hidden rounded-[24px] border border-[var(--border-main)] bg-[var(--bg-surface)] shadow-2xl sm:h-[78vh] sm:w-[min(92vw,980px)]">
+      <div
+        style={{
+          paddingBottom: 'env(safe-area-inset-bottom)'
+        }}
+        className="flex h-[88vh] w-full max-w-6xl flex-col overflow-hidden rounded-[24px] border border-[var(--border-main)] bg-[var(--bg-surface)] shadow-2xl sm:h-[78vh] sm:w-[min(92vw,980px)]"
+      >
         <div className="flex items-center justify-between border-b border-[var(--divider-main)] bg-[var(--bg-secondary)] px-4 py-3 sm:px-5">
           <div>
             <p className="caption-text uppercase tracking-[0.24em] text-[var(--accent-color)] font-semibold">AI assistant</p>
@@ -168,20 +166,20 @@ export default function FloatingAIAssistant() {
                 </button>
               </div>
               <div className="mt-3 space-y-2">
-                {conversations.slice().sort((a, b) => b.updatedAt - a.updatedAt).map((conversation) => (
+                {conversations.slice().sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)).map((conversation) => (
                   <div
-                    key={conversation.id}
-                    onClick={() => selectConversation(conversation.id)}
-                    className={`group relative flex items-center justify-between rounded-[14px] border px-3 py-3 text-left text-sm cursor-pointer transition ${activeConversationId === conversation.id ? 'border-[var(--accent-color)] bg-[var(--bg-elevated)]' : 'border-[var(--border-main)] bg-[var(--bg-surface)] hover:border-[var(--accent-color)]/50'}`}
+                    key={conversation._id}
+                    onClick={() => selectConversation(conversation._id)}
+                    className={`group relative flex items-center justify-between rounded-[14px] border px-3 py-3 text-left text-sm cursor-pointer transition ${activeConversationId === conversation._id ? 'border-[var(--accent-color)] bg-[var(--bg-elevated)]' : 'border-[var(--border-main)] bg-[var(--bg-surface)] hover:border-[var(--accent-color)]/50'}`}
                   >
                     <div className="flex-1 min-w-0 pr-2">
-                      {editingId === conversation.id ? (
+                      {editingId === conversation._id ? (
                         <input
                           value={renameDraft}
                           onChange={(e) => setRenameDraft(e.target.value)}
                           onClick={(e) => e.stopPropagation()}
                           onKeyDown={(e) => {
-                            if (e.key === 'Enter') saveRename(conversation.id)
+                            if (e.key === 'Enter') saveRename(conversation._id)
                             if (e.key === 'Escape') setEditingId(null)
                           }}
                           className="saas-input min-h-[30px] px-2 py-0.5 text-xs w-full"
@@ -189,17 +187,17 @@ export default function FloatingAIAssistant() {
                         />
                       ) : (
                         <>
-                          <p className="font-semibold text-[var(--text-primary)] truncate">{conversation.title || 'New chat'}</p>
+                          <p className="font-semibold text-[var(--text-primary)] truncate">{conversation.title || 'New Chat'}</p>
                           <p className="caption-text mt-0.5 text-[11px]">{new Date(conversation.updatedAt).toLocaleDateString()}</p>
                         </>
                       )}
                     </div>
 
                     <div className="flex items-center gap-1 opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity">
-                      {editingId === conversation.id ? (
+                      {editingId === conversation._id ? (
                         <button
                           type="button"
-                          onClick={(e) => { e.stopPropagation(); saveRename(conversation.id) }}
+                          onClick={(e) => { e.stopPropagation(); saveRename(conversation._id) }}
                           className="text-xs text-[var(--success-color)] font-bold px-1"
                         >
                           ✓
@@ -216,7 +214,7 @@ export default function FloatingAIAssistant() {
                       )}
                       <button
                         type="button"
-                        onClick={(e) => deleteConversation(conversation.id, e)}
+                        onClick={(e) => deleteConversation(conversation._id, e)}
                         className="text-xs text-[var(--text-secondary)] hover:text-[var(--error-color)] p-1"
                         title="Delete chat"
                       >
@@ -232,19 +230,19 @@ export default function FloatingAIAssistant() {
           <div className="flex flex-1 flex-col min-w-0">
             <div className="flex items-center justify-between border-b border-[var(--divider-main)] px-4 py-3">
               <div className="min-w-0 flex-1 pr-3">
-                {editingId === activeConversation?.id ? (
+                {editingId === activeConversation?._id ? (
                   <div className="flex items-center gap-2">
                     <input
                       value={renameDraft}
                       onChange={(e) => setRenameDraft(e.target.value)}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter') saveRename(activeConversation.id)
+                        if (e.key === 'Enter') saveRename(activeConversation._id)
                         if (e.key === 'Escape') setEditingId(null)
                       }}
                       className="saas-input min-h-[34px] px-2.5 py-1 text-sm max-w-[220px]"
                       autoFocus
                     />
-                    <button type="button" onClick={() => saveRename(activeConversation.id)} className="saas-button-primary min-h-[34px] px-3 text-xs">
+                    <button type="button" onClick={() => saveRename(activeConversation._id)} className="saas-button-primary min-h-[34px] px-3 text-xs">
                       Save
                     </button>
                     <button type="button" onClick={() => setEditingId(null)} className="saas-button-secondary min-h-[34px] px-2 text-xs">
@@ -253,7 +251,7 @@ export default function FloatingAIAssistant() {
                   </div>
                 ) : (
                   <div className="flex items-center gap-2 min-w-0">
-                    <p className="text-sm font-semibold text-[var(--text-primary)] truncate">{activeConversation?.title || 'New chat'}</p>
+                    <p className="text-sm font-semibold text-[var(--text-primary)] truncate">{activeConversation?.title || 'New Chat'}</p>
                     {activeConversation && (
                       <button
                         type="button"
@@ -273,7 +271,7 @@ export default function FloatingAIAssistant() {
                 {activeConversation && (
                   <button
                     type="button"
-                    onClick={(e) => deleteConversation(activeConversation.id, e)}
+                    onClick={(e) => deleteConversation(activeConversation._id, e)}
                     className="saas-button-secondary min-h-[36px] px-3 text-xs hover:border-[var(--error-color)] hover:text-[var(--error-color)]"
                     title="Delete current chat"
                   >
@@ -292,8 +290,8 @@ export default function FloatingAIAssistant() {
               {activeConversation && (
                 <AIChatSurface
                   api={api}
-                  messages={activeConversation.messages}
-                  setMessages={(messages) => handleMessagesChange(messages)}
+                  conversationId={activeConversation._id}
+                  onConversationUpdate={handleConversationUpdate}
                   welcomeMessage="Hi! I can help you with notes, study plans, summaries, or questions across the app."
                   title="AI assistant"
                   subtitle="Study companion"

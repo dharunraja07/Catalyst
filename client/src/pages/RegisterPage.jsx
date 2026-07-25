@@ -32,60 +32,69 @@ export default function RegisterPage() {
   }
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-12 sm:px-6">
-      <div className="saas-card shadow-glow sm:p-10">
-        <div className="mb-8 space-y-2 border-b border-[var(--divider-main)] pb-6">
-          <p className="caption-text uppercase tracking-[0.25em] text-[var(--accent-color)] font-semibold">Create your account</p>
-          <h1 className="page-title">Join AI Learning</h1>
-          <p className="body-text text-sm">Register to unlock diagnostics, personalized roadmaps, and career suggestions designed for your learning goals.</p>
+    <main className="mx-auto max-w-[640px] px-4 py-8 sm:px-6 space-y-6">
+      <div className="space-y-2">
+        <p className="page-label">Create Account</p>
+        <h1 className="page-title text-3xl font-bold">Join Catalyst</h1>
+        <p className="page-description text-sm">Register to unlock diagnostics, personalized roadmaps, and AI career guidance.</p>
+      </div>
+
+      <hr className="canvas-divider my-4" />
+
+      <form onSubmit={handleSubmit} className="space-y-5">
+        <div className="grid gap-5 sm:grid-cols-2">
+          <label className="block space-y-1.5 small-text font-semibold text-xs text-[var(--text-primary)]">
+            <span>Full Name</span>
+            <input name="name" value={form.name} onChange={handleChange} className="saas-input w-full min-h-[46px]" />
+          </label>
+          <label className="block space-y-1.5 small-text font-semibold text-xs text-[var(--text-primary)]">
+            <span>Email Address</span>
+            <input name="email" type="email" value={form.email} onChange={handleChange} className="saas-input w-full min-h-[46px]" />
+          </label>
         </div>
 
-        <form onSubmit={handleSubmit} className="grid gap-5">
-          <div className="grid gap-5 sm:grid-cols-2">
-            <label className="space-y-2 small-text font-medium">
-              <span>Full Name</span>
-              <input name="name" value={form.name} onChange={handleChange} className="saas-input w-full" />
-            </label>
-            <label className="space-y-2 small-text font-medium">
-              <span>Email address</span>
-              <input name="email" type="email" value={form.email} onChange={handleChange} className="saas-input w-full" />
-            </label>
-          </div>
+        <label className="block space-y-1.5 small-text font-semibold text-xs text-[var(--text-primary)]">
+          <span>Password</span>
+          <input name="password" type="password" value={form.password} onChange={handleChange} className="saas-input w-full min-h-[46px]" />
+        </label>
 
-          <label className="space-y-2 small-text font-medium">
-            <span>Password</span>
-            <input name="password" type="password" value={form.password} onChange={handleChange} className="saas-input w-full" />
+        <div className="grid gap-5 sm:grid-cols-2">
+          <label className="block space-y-1.5 small-text font-semibold text-xs text-[var(--text-primary)]">
+            <span>Education Level</span>
+            <input name="educationLevel" value={form.educationLevel} onChange={handleChange} className="saas-input w-full min-h-[46px]" placeholder="High School, College..." />
           </label>
-
-          <div className="grid gap-5 sm:grid-cols-2">
-            <label className="space-y-2 small-text font-medium">
-              <span>Education Level</span>
-              <input name="educationLevel" value={form.educationLevel} onChange={handleChange} className="saas-input w-full" placeholder="High School, College..." />
-            </label>
-            <label className="space-y-2 small-text font-medium">
-              <span>Learning Style</span>
-              <select name="learningStyle" value={form.learningStyle} onChange={handleChange} className="saas-input w-full">
-                <option>Visual</option>
-                <option>Reading</option>
-                <option>Practice</option>
-                <option>Mixed</option>
-              </select>
-            </label>
-          </div>
-
-          <label className="space-y-2 small-text font-medium">
-            <span>Interested Subjects</span>
-            <input name="interestedSubjects" value={form.interestedSubjects} onChange={handleChange} className="saas-input w-full" placeholder="Mathematics, Programming" />
+          <label className="block space-y-1.5 small-text font-semibold text-xs text-[var(--text-primary)]">
+            <span>Learning Style</span>
+            <select name="learningStyle" value={form.learningStyle} onChange={handleChange} className="saas-input w-full min-h-[46px]">
+              <option>Visual</option>
+              <option>Reading</option>
+              <option>Practice</option>
+              <option>Mixed</option>
+            </select>
           </label>
-          <label className="space-y-2 small-text font-medium">
-            <span>Career Interests</span>
-            <input name="careerInterests" value={form.careerInterests} onChange={handleChange} className="saas-input w-full" placeholder="Technology, Analytics" />
-          </label>
+        </div>
 
-          {message && <p className="rounded-[14px] bg-[var(--error-bg)] border border-[var(--error-color)]/30 px-4 py-3 text-sm text-[var(--error-color)]">{message}</p>}
+        <label className="block space-y-1.5 small-text font-semibold text-xs text-[var(--text-primary)]">
+          <span>Interested Subjects</span>
+          <input name="interestedSubjects" value={form.interestedSubjects} onChange={handleChange} className="saas-input w-full min-h-[46px]" placeholder="Mathematics, Programming" />
+        </label>
+        <label className="block space-y-1.5 small-text font-semibold text-xs text-[var(--text-primary)]">
+          <span>Career Interests</span>
+          <input name="careerInterests" value={form.careerInterests} onChange={handleChange} className="saas-input w-full min-h-[46px]" placeholder="Technology, Analytics" />
+        </label>
 
-          <button type="submit" className="saas-button-primary mt-2">Create account</button>
-        </form>
+        {message && <p className="rounded-[14px] bg-[var(--error-bg)] border border-[var(--error-color)]/30 px-4 py-3 text-sm text-[var(--error-color)] font-medium">{message}</p>}
+
+        <button type="submit" className="saas-button-primary w-full min-h-[48px] font-bold text-base shadow-sm">
+          Create Account
+        </button>
+      </form>
+
+      <div className="pt-4 border-t border-[var(--border-main)] text-center text-sm text-[var(--text-secondary)]">
+        Already have an account?{' '}
+        <a href="/login" className="font-bold text-[var(--accent-color)] hover:underline">
+          Sign in
+        </a>
       </div>
     </main>
   )

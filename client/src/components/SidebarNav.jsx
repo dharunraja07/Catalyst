@@ -80,7 +80,7 @@ export default function SidebarNav({ isCollapsed, toggleCollapse }) {
 
   return (
     <aside
-      className={`sticky top-0 h-screen z-30 flex flex-col justify-between border-r border-[var(--border-main)] bg-[var(--bg-surface)] p-4 transition-all duration-300 ease-in-out ${
+      className={`h-full z-30 flex flex-col justify-between border-r border-[var(--border-main)] bg-[var(--bg-surface)] p-4 overflow-y-auto custom-scrollbar transition-all duration-300 ease-in-out ${
         isCollapsed ? 'w-[80px]' : 'w-[280px]'
       }`}
     >
