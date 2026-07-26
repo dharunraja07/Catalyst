@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
-import ReactMarkdown from 'react-markdown'
+import MarkdownRenderer from '../components/MarkdownRenderer.jsx'
 
 export default function QuestionsPage() {
   const { api } = useAuth()
@@ -94,11 +94,9 @@ export default function QuestionsPage() {
           {isVisible && (
             <div className="rounded-[14px] bg-[var(--bg-secondary)] p-5 border-l-4 border-[var(--accent-color)]">
               <p className="caption-text uppercase font-semibold mb-2">Expected Answer:</p>
-              <div className="prose prose-invert max-w-none text-sm leading-relaxed text-[var(--text-primary)] space-y-2">
-                <ReactMarkdown>
-                  {question.expectedAnswer}
-                </ReactMarkdown>
-              </div>
+              <MarkdownRenderer>
+                {question.expectedAnswer}
+              </MarkdownRenderer>
             </div>
           )}
         </div>

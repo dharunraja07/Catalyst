@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
-import ReactMarkdown from 'react-markdown'
+import MarkdownRenderer from '../components/MarkdownRenderer.jsx'
+import CopyButton from '../components/CopyButton.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useNotifications } from '../context/NotificationContext.jsx'
 import AIChatSurface from '../components/AIChatSurface.jsx'
@@ -241,6 +242,8 @@ export default function StudyGroupPage() {
     }
   }
 
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false)
+
   const handleScroll = () => {
     const container = scrollContainerRef.current
     if (!container) return
@@ -251,6 +254,9 @@ export default function StudyGroupPage() {
 
     if (isNearBottom()) {
       setHasUnreadNew(false)
+      setShowScrollToBottom(false)
+    } else {
+      setShowScrollToBottom(true)
     }
   }
 
@@ -659,7 +665,9 @@ export default function StudyGroupPage() {
                   onClick={() => setShowAiModal(true)}
                   className="saas-button-primary min-h-[38px] px-3.5 text-xs font-bold flex items-center gap-1.5 shadow-sm"
                 >
-                  <span className="text-sm">✨</span>
+                  <svg className="w-4 h-4 text-black shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                  </svg>
                   <span>AI Companion</span>
                 </button>
                 <button
@@ -682,24 +690,32 @@ export default function StudyGroupPage() {
                   onClick={() => setShowSettingsPopover((prev) => !prev)}
                   className="saas-button-secondary min-h-[38px] px-3.5 text-xs font-bold flex items-center gap-1.5"
                 >
-                  <span>🔑</span>
+                  <svg className="w-4 h-4 text-[var(--text-secondary)] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                  </svg>
                   <span>Join Code</span>
                 </button>
                 {hostUserId === currentUserId ? (
                   <button
                     type="button"
                     onClick={() => setConfirmModal({ open: true, type: 'delete', groupId: selectedGroup._id, groupName: selectedGroup.groupName })}
-                    className="saas-button-secondary min-h-[38px] px-3 text-xs font-semibold text-[var(--error-color)] border-[var(--error-color)]/30 hover:bg-[var(--error-bg)]"
+                    className="saas-button-secondary min-h-[38px] px-3 text-xs font-semibold text-[var(--error-color)] border-[var(--error-color)]/30 hover:bg-[var(--error-bg)] flex items-center gap-1.5"
                   >
-                    🗑 Delete Group
+                    <svg className="w-4 h-4 text-[var(--error-color)] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    <span>Delete Group</span>
                   </button>
                 ) : (
                   <button
                     type="button"
                     onClick={() => setConfirmModal({ open: true, type: 'leave', groupId: selectedGroup._id, groupName: selectedGroup.groupName })}
-                    className="saas-button-secondary min-h-[38px] px-3 text-xs font-semibold hover:text-[var(--error-color)] hover:border-[var(--error-color)]"
+                    className="saas-button-secondary min-h-[38px] px-3 text-xs font-semibold hover:text-[var(--error-color)] hover:border-[var(--error-color)] flex items-center gap-1.5"
                   >
-                    🚪 Leave Group
+                    <svg className="w-4 h-4 text-[var(--text-secondary)] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                    <span>Leave Group</span>
                   </button>
                 )}
                 <button
@@ -935,17 +951,26 @@ export default function StudyGroupPage() {
 
                   if (isAiMsg) {
                     return (
-                      <div key={msg._id} className="w-full flex justify-center my-2 animate-fadeIn">
-                        <div className="max-w-[90%] sm:max-w-[80%] rounded-2xl bg-gradient-to-r from-[var(--bg-surface)] to-[var(--bg-elevated)] border-2 border-[var(--accent-color)]/40 p-3.5 shadow-md text-[var(--text-primary)]">
-                          <div className="flex items-center justify-between gap-4 mb-1.5 border-b border-[var(--accent-color)]/20 pb-1">
-                            <span className="text-xs font-bold text-[var(--accent-color)] flex items-center gap-1.5">
-                              <span className="text-base">🤖</span> Catalyst AI Companion
+                      <div key={msg._id} className="w-full flex justify-center my-3 animate-fadeIn min-w-0">
+                        <div
+                          style={{
+                            boxShadow: 'var(--ai-bubble-shadow, 0 4px 16px rgba(15,23,42,0.06))'
+                          }}
+                          className="w-fit max-w-[92%] sm:max-w-[85%] md:max-w-[80%] lg:max-w-[75%] rounded-2xl bg-[var(--ai-bubble-bg)] border border-[var(--ai-bubble-border)] p-4 text-[var(--ai-text-primary)] min-w-0 overflow-hidden"
+                        >
+                          <div className="flex items-center justify-between gap-4 mb-2 border-b border-[var(--ai-bubble-border)] pb-1.5">
+                            <span className="text-xs font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                              <svg className="w-4 h-4 text-amber-500 dark:text-amber-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                              </svg>
+                              <span>Catalyst AI Companion</span>
                             </span>
-                            <span className="text-[10px] text-[var(--text-muted)]">{formattedTime}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] text-[var(--ai-text-secondary)]">{formattedTime}</span>
+                              <CopyButton text={msg.message} />
+                            </div>
                           </div>
-                          <div className="prose prose-invert max-w-none text-sm leading-relaxed break-words">
-                            <ReactMarkdown>{msg.message}</ReactMarkdown>
-                          </div>
+                          <MarkdownRenderer>{msg.message}</MarkdownRenderer>
                         </div>
                       </div>
                     )
@@ -953,30 +978,31 @@ export default function StudyGroupPage() {
 
                   if (isSelf) {
                     return (
-                      <div key={msg._id} className="w-full flex justify-end my-1">
-                        <div className="max-w-[85%] sm:max-w-[75%] md:max-w-[65%] rounded-2xl rounded-tr-none bg-[var(--accent-light)] border border-[var(--accent-color)]/30 p-3 shadow-sm text-[var(--text-primary)]">
-                          <div className="flex items-center justify-between gap-3 mb-1 border-b border-[var(--accent-color)]/20 pb-1">
-                            <span className="text-xs font-bold text-[var(--accent-color)]">You</span>
+                      <div key={msg._id} className="w-full flex justify-end my-1.5 min-w-0">
+                        <div
+                          style={{
+                            boxShadow: 'var(--ai-user-shadow, 0 4px 14px rgba(0,0,0,0.05))'
+                          }}
+                          className="w-fit max-w-[85%] sm:max-w-[75%] md:max-w-[68%] lg:max-w-[62%] min-w-0 rounded-2xl rounded-tr-none bg-[var(--ai-user-bubble-bg)] border border-[var(--ai-user-bubble-border)] p-3.5 text-[var(--ai-user-text)] overflow-hidden"
+                        >
+                          <div className="flex items-center justify-between gap-3 mb-1 border-b border-[var(--ai-user-bubble-border)] pb-1">
+                            <span className="text-xs font-bold text-amber-600 dark:text-amber-400">You</span>
                             <span className="text-[10px] text-[var(--text-muted)]">{formattedTime}</span>
                           </div>
-                          <div className="prose prose-invert max-w-none text-sm leading-relaxed break-words">
-                            <ReactMarkdown>{msg.message}</ReactMarkdown>
-                          </div>
+                          <MarkdownRenderer>{msg.message}</MarkdownRenderer>
                         </div>
                       </div>
                     )
                   }
 
                   return (
-                    <div key={msg._id} className="w-full flex justify-start my-1">
-                      <div className="max-w-[85%] sm:max-w-[75%] md:max-w-[65%] rounded-2xl rounded-tl-none bg-[var(--bg-secondary)] border border-[var(--border-main)] p-3 shadow-sm text-[var(--text-primary)]">
+                    <div key={msg._id} className="w-full flex justify-start my-1 min-w-0">
+                      <div className="w-fit max-w-[85%] sm:max-w-[75%] md:max-w-[68%] lg:max-w-[62%] min-w-0 rounded-2xl rounded-tl-none bg-[var(--bg-secondary)] border border-[var(--border-main)] p-3 shadow-sm text-[var(--text-primary)]">
                         <div className="flex items-center justify-between gap-3 mb-1 border-b border-[var(--border-main)] pb-1">
                           <span className="text-xs font-bold text-[var(--accent-color)]">{msg.sender?.name || 'Member'}</span>
                           <span className="text-[10px] text-[var(--text-muted)]">{formattedTime}</span>
                         </div>
-                        <div className="prose prose-invert max-w-none text-sm leading-relaxed break-words">
-                          <ReactMarkdown>{msg.message}</ReactMarkdown>
-                        </div>
+                        <MarkdownRenderer>{msg.message}</MarkdownRenderer>
                       </div>
                     </div>
                   )
@@ -989,6 +1015,22 @@ export default function StudyGroupPage() {
                 </div>
               )}
               <div ref={messagesEndRef} />
+
+              {/* Floating "↓ Scroll to Latest" Button */}
+              {showScrollToBottom && !hasUnreadNew && (
+                <div className="sticky bottom-3 right-3 flex justify-end z-30 pointer-events-none">
+                  <button
+                    type="button"
+                    onClick={() => scrollToBottom('smooth')}
+                    className="pointer-events-auto rounded-full border border-zinc-300 dark:border-zinc-700/80 bg-white text-zinc-900 hover:bg-zinc-100 dark:bg-[#1F2937] dark:text-[#F9FAFB] dark:hover:bg-[#374151] dark:hover:text-[#FFFFFF] px-3.5 py-1.5 text-xs font-bold shadow-xl backdrop-blur-md transition active:scale-95 flex items-center gap-1.5 animate-fadeIn cursor-pointer"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                    </svg>
+                    <span>Scroll to Latest</span>
+                  </button>
+                </div>
+              )}
 
               {/* Floating "↓ New Messages" Pill Button */}
               {hasUnreadNew && (
@@ -1196,17 +1238,23 @@ export default function StudyGroupPage() {
                               <button
                                 type="button"
                                 onClick={() => setConfirmModal({ open: true, type: 'delete', groupId: group._id, groupName: group.groupName })}
-                                className="saas-button-secondary min-h-[36px] px-3 text-xs font-semibold text-[var(--error-color)] border-[var(--error-color)]/30 hover:bg-[var(--error-bg)]"
+                                className="saas-button-secondary min-h-[36px] px-3 text-xs font-semibold text-[var(--error-color)] border-[var(--error-color)]/30 hover:bg-[var(--error-bg)] flex items-center gap-1.5"
                               >
-                                🗑 Delete
+                                <svg className="w-3.5 h-3.5 text-[var(--error-color)] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                                <span>Delete</span>
                               </button>
                             ) : (
                               <button
                                 type="button"
                                 onClick={() => setConfirmModal({ open: true, type: 'leave', groupId: group._id, groupName: group.groupName })}
-                                className="saas-button-secondary min-h-[36px] px-3 text-xs font-semibold hover:text-[var(--error-color)] hover:border-[var(--error-color)]"
+                                className="saas-button-secondary min-h-[36px] px-3 text-xs font-semibold hover:text-[var(--error-color)] hover:border-[var(--error-color)] flex items-center gap-1.5"
                               >
-                                🚪 Leave
+                                <svg className="w-3.5 h-3.5 text-[var(--text-secondary)] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                                </svg>
+                                <span>Leave</span>
                               </button>
                             )}
                           </div>

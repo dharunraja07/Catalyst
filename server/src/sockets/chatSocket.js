@@ -216,9 +216,11 @@ export function setupChatSocket(io) {
 
           io.to(`user:${request.receiver._id.toString()}`).emit('invite_accepted', payload)
           io.to(`user:${request.sender._id.toString()}`).emit('invite_accepted', payload)
-        }
+          io.emit('group_updated', group)
 
-        await emitNotificationCount(io, socket.user._id)
+          await emitNotificationCount(io, request.receiver._id)
+          await emitNotificationCount(io, request.sender._id)
+        }
       } catch (error) {
         console.error('Socket accept_invite error:', error)
       }
@@ -249,6 +251,7 @@ export function setupChatSocket(io) {
         io.to(`user:${request.sender.toString()}`).emit('invite_declined', payload)
 
         await emitNotificationCount(io, socket.user._id)
+        await emitNotificationCount(io, request.sender)
       } catch (error) {
         console.error('Socket decline_invite error:', error)
       }

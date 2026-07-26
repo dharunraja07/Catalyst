@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import ReactMarkdown from 'react-markdown'
+import AIChatMessage from './AIChatMessage.jsx'
 
 function getDefaultMessages(welcomeMessage) {
   return [
@@ -120,6 +120,8 @@ export default function AIChatSurface({
     }
   }
 
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false)
+
   const handleScroll = () => {
     const container = scrollContainerRef.current
     if (!container) return
@@ -127,6 +129,9 @@ export default function AIChatSurface({
     if (container.scrollTop <= 50 && hasMore && !loadingOlder && conversationId) {
       loadOlderMessages()
     }
+
+    const distanceFromBottom = container.scrollHeight - container.scrollTop - container.clientHeight
+    setShowScrollToBottom(distanceFromBottom > 140)
   }
 
   useEffect(() => {
@@ -268,62 +273,61 @@ export default function AIChatSurface({
         </p>
       )}
 
-      <div
-        ref={scrollContainerRef}
-        onScroll={handleScroll}
-        className="flex-1 min-h-0 overflow-y-auto rounded-[18px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-3 sm:p-4 custom-scrollbar"
-      >
-        {loadingOlder && (
-          <div className="flex justify-center py-2 text-xs text-[var(--accent-color)] font-semibold items-center gap-2">
-            <svg className="animate-spin h-3.5 w-3.5" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-            </svg>
-            <span>Loading older messages...</span>
-          </div>
-        )}
-        {messages.length > 0 ? (
-          <div className="space-y-3">
-            {messages.map((message, index) => (
-              <div key={`${message.role}-${index}`} className={`flex flex-col ${message.role === 'user' ? 'items-end' : 'items-start'}`}>
-                <div
-                  className={`max-w-[92%] rounded-[14px] px-3 py-2 text-sm leading-6 ${message.role === 'user'
-                    ? 'bg-[var(--accent-color)] text-[var(--accent-contrast-text)] font-medium'
-                    : 'border border-[var(--border-main)] bg-[var(--bg-elevated)] text-[var(--text-primary)]'
-                  }`}
-                >
-                  <div className="prose prose-invert max-w-none text-sm leading-6">
-                    <ReactMarkdown>{message.content}</ReactMarkdown>
+      <div className="relative flex-1 min-h-0 flex flex-col">
+        <div
+          ref={scrollContainerRef}
+          onScroll={handleScroll}
+          className="flex-1 min-h-0 overflow-y-auto rounded-[18px] border border-[var(--ai-bubble-border)] bg-[var(--ai-chat-bg)] p-3 sm:p-4 custom-scrollbar"
+        >
+          {loadingOlder && (
+            <div className="flex justify-center py-2 text-xs text-amber-500 font-semibold items-center gap-2">
+              <svg className="animate-spin h-3.5 w-3.5" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+              <span>Loading older messages...</span>
+            </div>
+          )}
+          {messages.length > 0 ? (
+            <div className="space-y-2">
+              {messages.map((message, index) => (
+                <AIChatMessage
+                  key={`${message.role}-${index}`}
+                  message={message}
+                  onShareToGroup={onShareToGroup}
+                />
+              ))}
+              {isTyping && (
+                <div className="flex justify-start my-2">
+                  <div className="rounded-2xl rounded-tl-none border border-[var(--ai-bubble-border)] bg-[var(--ai-bubble-bg)] px-4 py-3">
+                    <span className="inline-flex gap-1.5 items-center">
+                      <span className="h-2 w-2 animate-pulse rounded-full bg-amber-400" />
+                      <span className="h-2 w-2 animate-pulse rounded-full bg-amber-400" style={{ animationDelay: '0.15s' }} />
+                      <span className="h-2 w-2 animate-pulse rounded-full bg-amber-400" style={{ animationDelay: '0.3s' }} />
+                    </span>
                   </div>
                 </div>
-                {message.role === 'assistant' && onShareToGroup && (
-                  <button
-                    type="button"
-                    onClick={() => onShareToGroup(message.content)}
-                    className="mt-1 text-[11px] font-semibold text-[var(--accent-color)] hover:underline flex items-center gap-1"
-                  >
-                    <span>📤 Share to Group Chat</span>
-                  </button>
-                )}
-              </div>
-            ))}
-            {isTyping && (
-              <div className="flex justify-start">
-                <div className="rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-elevated)] px-3 py-2">
-                  <span className="inline-flex gap-1">
-                    <span className="h-2 w-2 animate-pulse rounded-full bg-[var(--accent-color)]" />
-                    <span className="h-2 w-2 animate-pulse rounded-full bg-[var(--accent-color)]" style={{ animationDelay: '0.15s' }} />
-                    <span className="h-2 w-2 animate-pulse rounded-full bg-[var(--accent-color)]" style={{ animationDelay: '0.3s' }} />
-                  </span>
-                </div>
-              </div>
-            )}
-            <div ref={endRef} />
-          </div>
-        ) : (
-          <div className="flex h-full min-h-[8rem] items-center justify-center px-4 text-center text-sm text-[var(--text-muted)]">
-            {emptyStateText}
-          </div>
+              )}
+              <div ref={endRef} />
+            </div>
+          ) : (
+            <div className="flex h-full min-h-[8rem] items-center justify-center px-4 text-center text-sm text-[var(--ai-text-secondary)]">
+              {emptyStateText}
+            </div>
+          )}
+        </div>
+
+        {showScrollToBottom && (
+          <button
+            type="button"
+            onClick={() => scrollToBottom('smooth')}
+            className="absolute bottom-4 right-4 z-20 inline-flex items-center gap-1.5 rounded-full border border-zinc-300 dark:border-zinc-700/80 bg-white text-zinc-900 hover:bg-zinc-100 dark:bg-[#1F2937] dark:text-[#F9FAFB] dark:hover:bg-[#374151] dark:hover:text-[#FFFFFF] px-3.5 py-1.5 text-xs font-bold shadow-xl backdrop-blur-md transition active:scale-95 animate-fadeIn cursor-pointer"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+            </svg>
+            <span>Scroll to Latest</span>
+          </button>
         )}
       </div>
 

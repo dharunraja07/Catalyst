@@ -1,6 +1,7 @@
 import User from '../models/User.js'
 import StudyRequest from '../models/StudyRequest.js'
 import StudyGroup from '../models/StudyGroup.js'
+import { emitNotificationCount } from '../sockets/chatSocket.js'
 
 async function populateGroup(group) {
   if (!group) return group
@@ -42,8 +43,15 @@ export async function createStudyRequest(req, res, next) {
     if (existing) return res.status(400).json({ error: 'A pending request already exists between these users' })
 
     const request = await StudyRequest.create({ sender: req.user._id, receiver: receiverId })
-    await request.populate('sender', 'name email')
-    await request.populate('receiver', 'name email')
+    await request.populate('sender', 'name email avatar')
+    await request.populate('receiver', 'name email avatar')
+
+    const io = req.app.get('io')
+    if (io) {
+      io.to(`user:${receiverId.toString()}`).emit('invite_received', request)
+      await emitNotificationCount(io, receiverId)
+    }
+
     res.json(request)
   } catch (error) {
     next(error)
@@ -151,7 +159,25 @@ export async function acceptRequest(req, res, next) {
       }
       io.to(`user:${request.receiver.toString()}`).emit('invite_accepted', payload)
       io.to(`user:${request.sender.toString()}`).emit('invite_accepted', payload)
-      await emitNotificationCount(io, req.user._id)
+      io.emit('group_updated', populated)
+
+      try {
+        const systemMsg = await Message.create({
+          groupId: populated._id,
+          sender: req.user._id,
+          message: `🟢 ${req.user.name} joined the study group`,
+          isSystem: true,
+          systemEventType: 'join'
+        })
+        const populatedMsg = await systemMsg.populate('sender', 'name email')
+        io.to(populated._id.toString()).emit('receive_message', populatedMsg)
+        io.to(populated._id.toString()).emit('member_joined', { userId: req.user._id.toString(), name: req.user.name, groupId: populated._id.toString() })
+      } catch (err) {
+        console.error('Error broadcasting system join message in acceptRequest:', err)
+      }
+
+      await emitNotificationCount(io, request.receiver)
+      await emitNotificationCount(io, request.sender)
     }
 
     res.json(populated)
@@ -177,7 +203,8 @@ export async function rejectRequest(req, res, next) {
       }
       io.to(`user:${request.receiver.toString()}`).emit('invite_declined', payload)
       io.to(`user:${request.sender.toString()}`).emit('invite_declined', payload)
-      await emitNotificationCount(io, req.user._id)
+      await emitNotificationCount(io, request.receiver)
+      await emitNotificationCount(io, request.sender)
     }
 
     res.json(request)
@@ -221,7 +248,6 @@ export async function inviteToGroup(req, res, next) {
     }
 
     const pendingInvite = await StudyRequest.findOne({
-      sender: req.user._id,
       receiver: userId,
       status: 'pending',
       group: group._id

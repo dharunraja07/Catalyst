@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import ReactMarkdown from 'react-markdown'
+import AIChatMessage from './AIChatMessage.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 
 export default function AIAssistantPanel() {
@@ -79,23 +79,17 @@ export default function AIAssistantPanel() {
 
             {error && <p className="mb-4 rounded-[14px] bg-[var(--error-bg)] border border-[var(--error-color)]/30 px-4 py-3 text-sm text-[var(--error-color)]">{error}</p>}
 
-            <div className="max-h-[28rem] space-y-3 overflow-y-auto rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-4">
+            <div className="max-h-[28rem] space-y-2 overflow-y-auto rounded-[18px] border border-[rgba(255,255,255,0.08)] bg-[#111827]/80 p-3 sm:p-4 custom-scrollbar">
                 {messages.map((message, index) => (
-                    <div key={`${message.role}-${index}`} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`max-w-[90%] rounded-[14px] px-4 py-3 ${message.role === 'user' ? 'bg-[var(--accent-color)] text-[var(--accent-contrast-text)] font-medium' : 'bg-[var(--bg-elevated)] border border-[var(--border-main)] text-[var(--text-primary)]'}`}>
-                            <div className="prose prose-invert max-w-none text-sm leading-6">
-                                <ReactMarkdown>{message.content}</ReactMarkdown>
-                            </div>
-                        </div>
-                    </div>
+                    <AIChatMessage key={`${message.role}-${index}`} message={message} />
                 ))}
                 {isTyping && (
-                    <div className="flex justify-start">
-                        <div className="rounded-[14px] bg-[var(--bg-elevated)] border border-[var(--border-main)] px-4 py-3 text-[var(--text-primary)]">
-                            <span className="inline-flex gap-1">
-                                <span className="h-2 w-2 animate-pulse rounded-full bg-[var(--accent-color)]" />
-                                <span className="h-2 w-2 animate-pulse rounded-full bg-[var(--accent-color)]" style={{ animationDelay: '0.15s' }} />
-                                <span className="h-2 w-2 animate-pulse rounded-full bg-[var(--accent-color)]" style={{ animationDelay: '0.3s' }} />
+                    <div className="flex justify-start my-2">
+                        <div className="rounded-2xl rounded-tl-none border border-[rgba(255,255,255,0.08)] bg-[#1B2432] px-4 py-3">
+                            <span className="inline-flex gap-1.5 items-center">
+                                <span className="h-2 w-2 animate-pulse rounded-full bg-amber-400" />
+                                <span className="h-2 w-2 animate-pulse rounded-full bg-amber-400" style={{ animationDelay: '0.15s' }} />
+                                <span className="h-2 w-2 animate-pulse rounded-full bg-amber-400" style={{ animationDelay: '0.3s' }} />
                             </span>
                         </div>
                     </div>
