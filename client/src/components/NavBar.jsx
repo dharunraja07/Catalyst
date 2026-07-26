@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import { AvatarVisual } from './ProfileModal.jsx'
+import NotificationBell from './NotificationBell.jsx'
 
 const authNavLinks = [
   { href: '/', label: 'Home', icon: '🏠' },
@@ -152,6 +153,8 @@ export default function NavBar({ onOpenProfile }) {
 
           {/* Right Section: Theme Toggle & Profile Component (or Login button when logged out) */}
           <div className="flex items-center gap-3">
+            {user && <NotificationBell />}
+
             {/* Animated Theme Toggle */}
             <AnimatedThemeToggle isDark={isDark} onToggle={toggleTheme} />
 

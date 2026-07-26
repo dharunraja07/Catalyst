@@ -5,6 +5,7 @@ const studyRequestSchema = new mongoose.Schema({
   receiver: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   status: { type: String, enum: ['pending', 'accepted', 'rejected'], default: 'pending' },
   group: { type: mongoose.Schema.Types.ObjectId, ref: 'StudyGroup', default: null },
+  isRead: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now }
 })
 

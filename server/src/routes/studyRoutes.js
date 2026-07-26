@@ -5,6 +5,9 @@ import {
   getIncomingRequests,
   acceptRequest,
   rejectRequest,
+  getNotifications,
+  markAllNotificationsRead,
+  clearNotifications,
   getMyGroups,
   inviteToGroup,
   renameGroup,
@@ -26,6 +29,9 @@ router.use(authMiddleware)
 router.get('/users', searchUsers)
 router.post('/requests', createStudyRequest)
 router.get('/requests/incoming', getIncomingRequests)
+router.get('/notifications', getNotifications)
+router.patch('/notifications/read-all', markAllNotificationsRead)
+router.delete('/notifications', clearNotifications)
 router.post('/requests/:id/accept', acceptRequest)
 router.post('/requests/:id/reject', rejectRequest)
 router.get('/groups', getMyGroups)

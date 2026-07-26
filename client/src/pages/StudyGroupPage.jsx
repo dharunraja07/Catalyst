@@ -1,10 +1,24 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import ReactMarkdown from 'react-markdown'
 import { useAuth } from '../context/AuthContext.jsx'
+import { useNotifications } from '../context/NotificationContext.jsx'
 import AIChatSurface from '../components/AIChatSurface.jsx'
 import getSocket from '../api/socket.js'
 
 const MAX_MEMBERS = 15
+
+export function getUniqueMembers(members = []) {
+  if (!Array.isArray(members)) return []
+  const map = new Map()
+  for (const m of members) {
+    if (!m) continue
+    const id = (m._id || m).toString()
+    if (!map.has(id)) {
+      map.set(id, m)
+    }
+  }
+  return Array.from(map.values())
+}
 
 function GroupChatAI({ groupId, api, onShareToGroup }) {
   const [messages, setMessages] = useState(() => {
@@ -65,6 +79,7 @@ function GroupChatAI({ groupId, api, onShareToGroup }) {
 
 export default function StudyGroupPage() {
   const { api, user } = useAuth()
+  const { sendInvite, subscribeGroupJoined } = useNotifications()
   const [query, setQuery] = useState('')
   const [searchResults, setSearchResults] = useState([])
   const [incomingRequests, setIncomingRequests] = useState([])
@@ -129,6 +144,11 @@ export default function StudyGroupPage() {
     [groups, selectedGroupId]
   )
 
+  const uniqueGroupMembers = useMemo(
+    () => getUniqueMembers(selectedGroup?.members),
+    [selectedGroup?.members]
+  )
+
   const scrollToBottom = (behavior = 'smooth') => {
     if (scrollContainerRef.current) {
       scrollContainerRef.current.scrollTo({
@@ -162,6 +182,20 @@ export default function StudyGroupPage() {
     }
     loadInitialData()
   }, [api])
+
+  useEffect(() => {
+    const unsubscribe = subscribeGroupJoined((newGroup) => {
+      if (!newGroup) return
+      setGroups((prev) => {
+        if (prev.some((g) => g._id === newGroup._id)) {
+          return prev.map((g) => (g._id === newGroup._id ? newGroup : g))
+        }
+        return [...prev, newGroup]
+      })
+      setSelectedGroupId((prev) => prev || newGroup._id)
+    })
+    return unsubscribe
+  }, [subscribeGroupJoined])
 
   const loadOlderMessages = async () => {
     if (loadingOlder || !hasMoreMessages || !selectedGroupId || messages.length === 0) return
@@ -295,6 +329,28 @@ export default function StudyGroupPage() {
       setOnlineMembers(users || [])
     }
 
+    const handleMemberJoined = ({ groupId }) => {
+      api.get('/study-groups/groups').then((res) => {
+        setGroups(res.data)
+      }).catch(() => {})
+    }
+
+    const handleMemberLeft = ({ groupId }) => {
+      api.get('/study-groups/groups').then((res) => {
+        setGroups(res.data)
+      }).catch(() => {})
+    }
+
+    const handleGroupUpdated = (updatedGroup) => {
+      if (!updatedGroup?._id) return
+      setGroups((prev) => {
+        if (prev.some((g) => g._id === updatedGroup._id)) {
+          return prev.map((g) => (g._id === updatedGroup._id ? updatedGroup : g))
+        }
+        return [...prev, updatedGroup]
+      })
+    }
+
     // Typing indicators
     const handleUserTyping = (userObj) => {
       setTypingUsers((prev) => {
@@ -310,6 +366,9 @@ export default function StudyGroupPage() {
     socket.on('connect', handleConnect)
     socket.on('receive_message', handleReceiveMessage)
     socket.on('presence_update', handlePresenceUpdate)
+    socket.on('member_joined', handleMemberJoined)
+    socket.on('member_left', handleMemberLeft)
+    socket.on('group_updated', handleGroupUpdated)
     socket.on('user_typing', handleUserTyping)
     socket.on('user_stop_typing', handleUserStopTyping)
 
@@ -319,6 +378,9 @@ export default function StudyGroupPage() {
       socket.off('connect', handleConnect)
       socket.off('receive_message', handleReceiveMessage)
       socket.off('presence_update', handlePresenceUpdate)
+      socket.off('member_joined', handleMemberJoined)
+      socket.off('member_left', handleMemberLeft)
+      socket.off('group_updated', handleGroupUpdated)
       socket.off('user_typing', handleUserTyping)
       socket.off('user_stop_typing', handleUserStopTyping)
     }
@@ -468,8 +530,8 @@ export default function StudyGroupPage() {
     setError('')
 
     try {
-      await api.post(`/study-groups/groups/${selectedGroupId}/invite`, { userId })
-      setStatus('Invite sent. The user can accept or reject it from their requests list.')
+      await sendInvite({ groupId: selectedGroupId, targetUserId: userId })
+      setStatus('Invite sent! The member will receive it instantly in their notification bell.')
       clearTransientMessage()
       setInviteResults((prev) => prev.filter((u) => u._id !== userId))
     } catch (err) {
@@ -714,9 +776,9 @@ export default function StudyGroupPage() {
                     <p className="small-text mt-1">Everyone currently in this study group.</p>
                   </div>
                   <div className="space-y-3 max-h-80 overflow-y-auto custom-scrollbar">
-                    {selectedGroup.members?.map((member) => {
-                      const memberId = member._id || member
-                      const isOnline = onlineMembers.some((u) => u.userId === memberId)
+                    {uniqueGroupMembers.map((member) => {
+                      const memberId = (member._id || member).toString()
+                      const isOnline = onlineMembers.some((u) => (u.userId || u._id || u).toString() === memberId)
                       const isHost = hostUserId === memberId
 
                       return (
@@ -855,7 +917,21 @@ export default function StudyGroupPage() {
                   const senderId = msg.sender?._id || msg.sender
                   const isSelf = senderId === currentUserId
                   const isAiMsg = msg.message?.startsWith('🤖') || senderId === 'ai'
+                  const isSystemMsg = msg.isSystem || msg.systemEventType || msg.message?.startsWith('🟢') || msg.message?.startsWith('🔴')
                   const formattedTime = new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+
+                  if (isSystemMsg) {
+                    return (
+                      <div key={msg._id} className="w-full flex justify-center my-3 animate-fadeIn">
+                        <div className="inline-flex items-center gap-2 rounded-full border border-[var(--border-main)] bg-[var(--bg-secondary)]/90 px-4 py-1.5 text-xs font-semibold text-[var(--text-muted)] shadow-sm">
+                          <span>{msg.message}</span>
+                          <span className="text-[10px] text-[var(--text-muted)] opacity-80 border-l border-[var(--border-main)] pl-2">
+                            {formattedTime}
+                          </span>
+                        </div>
+                      </div>
+                    )
+                  }
 
                   if (isAiMsg) {
                     return (
@@ -1048,21 +1124,17 @@ export default function StudyGroupPage() {
             <hr className="canvas-divider" />
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-              {incomingRequests.length > 0 && (
+              {incomingRequests.filter((req) => !req.group).length > 0 && (
                 <div className="lg:col-span-6 space-y-4">
-                  <h2 className="section-title">Incoming Requests ({incomingRequests.length})</h2>
+                  <h2 className="section-title">Peer Requests ({incomingRequests.filter((req) => !req.group).length})</h2>
                   <div className="space-y-4">
-                    {incomingRequests.map((req) => (
+                    {incomingRequests.filter((req) => !req.group).map((req) => (
                       <div key={req._id} className="rounded-[16px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-4 shadow-sm">
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                           <div>
                             <p className="card-title font-bold">{req.sender?.name}</p>
                             <p className="caption-text">{req.sender?.email}</p>
-                            {req.group ? (
-                              <p className="mt-1 text-xs font-bold uppercase tracking-widest text-[var(--accent-color)]">Group Invite</p>
-                            ) : (
-                              <p className="mt-1 text-xs font-bold uppercase tracking-widest text-[var(--text-muted)]">Peer Request</p>
-                            )}
+                            <p className="mt-1 text-xs font-bold uppercase tracking-widest text-[var(--text-muted)]">Peer Request</p>
                           </div>
                           <div className="flex gap-2">
                             <button
@@ -1087,12 +1159,14 @@ export default function StudyGroupPage() {
                 </div>
               )}
 
-              <div className={`${incomingRequests.length > 0 ? 'lg:col-span-6' : 'lg:col-span-12'} space-y-4`}>
+              <div className={`${incomingRequests.filter((req) => !req.group).length > 0 ? 'lg:col-span-6' : 'lg:col-span-12'} space-y-4`}>
                 <h2 className="section-title">My Study Groups ({groups.length})</h2>
                 {groups.length > 0 ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {groups.map((group) => {
                       const isHost = group.createdBy?._id === currentUserId || group.createdBy === currentUserId
+                      const uniqueMembers = getUniqueMembers(group.members)
+                      const memberNames = uniqueMembers.map((m) => (typeof m === 'object' && m?.name ? m.name : 'Member')).join(', ')
                       return (
                         <div
                           key={group._id}
@@ -1102,11 +1176,11 @@ export default function StudyGroupPage() {
                             <div className="flex items-center justify-between gap-3 mb-2">
                               <p className="card-title font-bold text-base">{group.groupName || 'Study Group'}</p>
                               <span className="rounded-full border border-[var(--border-main)] bg-[var(--bg-primary)] px-3 py-1 text-xs font-bold text-[var(--text-secondary)] shrink-0">
-                                {group.members?.length || 0}/{group.maxMembers || MAX_MEMBERS}
+                                {uniqueMembers.length}/{group.maxMembers || MAX_MEMBERS}
                               </span>
                             </div>
                             <p className="body-text text-xs text-[var(--text-secondary)] line-clamp-2">
-                              Members: {group.members?.map((m) => m.name).join(', ') || 'None'}
+                              Members: {memberNames || 'None'}
                             </p>
                           </div>
 

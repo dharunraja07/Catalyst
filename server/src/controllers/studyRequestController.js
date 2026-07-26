@@ -50,10 +50,54 @@ export async function createStudyRequest(req, res, next) {
   }
 }
 
+export async function getNotifications(req, res, next) {
+  try {
+    const notifications = await StudyRequest.find({ receiver: req.user._id })
+      .populate('sender', 'name email avatar educationLevel interestedSubjects')
+      .populate('group', 'groupName createdBy joinCode')
+      .sort({ createdAt: -1 })
+    res.json(notifications)
+  } catch (error) {
+    next(error)
+  }
+}
+
+export async function markAllNotificationsRead(req, res, next) {
+  try {
+    await StudyRequest.updateMany(
+      { receiver: req.user._id, isRead: false },
+      { $set: { isRead: true } }
+    )
+    const io = req.app.get('io')
+    if (io) {
+      await emitNotificationCount(io, req.user._id)
+    }
+    res.json({ message: 'All notifications marked as read' })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export async function clearNotifications(req, res, next) {
+  try {
+    await StudyRequest.deleteMany({
+      receiver: req.user._id,
+      status: { $in: ['accepted', 'rejected'] }
+    })
+    const io = req.app.get('io')
+    if (io) {
+      await emitNotificationCount(io, req.user._id)
+    }
+    res.json({ message: 'Notifications cleared' })
+  } catch (error) {
+    next(error)
+  }
+}
+
 export async function getIncomingRequests(req, res, next) {
   try {
     const requests = await StudyRequest.find({ receiver: req.user._id, status: 'pending' })
-      .populate('sender', 'name email educationLevel interestedSubjects careerInterests')
+      .populate('sender', 'name email avatar educationLevel interestedSubjects careerInterests')
       .populate('group', 'groupName createdBy')
       .sort({ createdAt: -1 })
     res.json(requests)
@@ -68,37 +112,48 @@ export async function acceptRequest(req, res, next) {
     if (!request) return res.status(404).json({ error: 'Request not found' })
 
     request.status = 'accepted'
+    request.isRead = true
     await request.save()
 
+    let populated
     if (request.group) {
       const group = await StudyGroup.findById(request.group)
       if (!group) return res.status(404).json({ error: 'Group not found' })
-      if (group.members.some((memberId) => memberId.toString() === request.sender.toString())) {
-        return res.status(400).json({ error: 'User is already a member of this group' })
+      if (!group.members.some((memberId) => memberId.toString() === req.user._id.toString())) {
+        if (group.members.length >= group.maxMembers) {
+          return res.status(400).json({ error: 'This group is full' })
+        }
+        group.members.push(req.user._id)
+        await group.save()
       }
-      if (group.members.length >= group.maxMembers) {
-        return res.status(400).json({ error: 'This group is full' })
+      populated = await populateGroup(group)
+    } else {
+      const existingGroup = await StudyGroup.findOne({ members: { $all: [request.sender, request.receiver] } })
+      let group = existingGroup
+      if (!existingGroup) {
+        const sender = await User.findById(request.sender)
+        const receiver = await User.findById(request.receiver)
+        group = await StudyGroup.create({
+          groupName: `${sender.name} & ${receiver.name} Study Group`,
+          members: [request.sender, request.receiver],
+          createdBy: req.user._id
+        })
       }
-
-      group.members.push(request.sender)
-      await group.save()
-      const populated = await populateGroup(group)
-      return res.json(populated)
+      populated = await populateGroup(group)
     }
 
-    const existingGroup = await StudyGroup.findOne({ members: { $all: [request.sender, request.receiver] } })
-    let group = existingGroup
-    if (!existingGroup) {
-      const sender = await User.findById(request.sender)
-      const receiver = await User.findById(request.receiver)
-      group = await StudyGroup.create({
-        groupName: `${sender.name} & ${receiver.name} Study Group`,
-        members: [request.sender, request.receiver],
-        createdBy: req.user._id
-      })
+    const io = req.app.get('io')
+    if (io) {
+      const payload = {
+        requestId: request._id,
+        group: populated,
+        acceptedBy: { _id: req.user._id, name: req.user.name }
+      }
+      io.to(`user:${request.receiver.toString()}`).emit('invite_accepted', payload)
+      io.to(`user:${request.sender.toString()}`).emit('invite_accepted', payload)
+      await emitNotificationCount(io, req.user._id)
     }
 
-    const populated = await populateGroup(group)
     res.json(populated)
   } catch (error) {
     next(error)
@@ -110,7 +165,21 @@ export async function rejectRequest(req, res, next) {
     const request = await StudyRequest.findOne({ _id: req.params.id, receiver: req.user._id, status: 'pending' })
     if (!request) return res.status(404).json({ error: 'Request not found' })
     request.status = 'rejected'
+    request.isRead = true
     await request.save()
+
+    const io = req.app.get('io')
+    if (io) {
+      const payload = {
+        requestId: request._id,
+        groupId: request.group,
+        declinedBy: { _id: req.user._id, name: req.user.name }
+      }
+      io.to(`user:${request.receiver.toString()}`).emit('invite_declined', payload)
+      io.to(`user:${request.sender.toString()}`).emit('invite_declined', payload)
+      await emitNotificationCount(io, req.user._id)
+    }
+
     res.json(request)
   } catch (error) {
     next(error)
@@ -162,10 +231,17 @@ export async function inviteToGroup(req, res, next) {
       return res.status(400).json({ error: 'A pending invite already exists for this user' })
     }
 
-    const request = await StudyRequest.create({ sender: req.user._id, receiver: userId, group: group._id })
-    await request.populate('sender', 'name email')
-    await request.populate('receiver', 'name email')
-    await request.populate('group', 'groupName createdBy')
+    const request = await StudyRequest.create({ sender: req.user._id, receiver: userId, group: group._id, isRead: false })
+    await request.populate('sender', 'name email avatar')
+    await request.populate('receiver', 'name email avatar')
+    await request.populate('group', 'groupName createdBy joinCode')
+
+    const io = req.app.get('io')
+    if (io) {
+      io.to(`user:${userId.toString()}`).emit('invite_received', request)
+      await emitNotificationCount(io, userId)
+    }
+
     res.json(request)
   } catch (error) {
     next(error)
@@ -212,6 +288,26 @@ export async function joinByCode(req, res, next) {
     group.members.push(req.user._id)
     await group.save()
     const populated = await populateGroup(group)
+
+    const io = req.app.get('io')
+    if (io) {
+      try {
+        const systemMsg = await Message.create({
+          groupId: group._id,
+          sender: req.user._id,
+          message: `🟢 ${req.user.name} joined the study group`,
+          isSystem: true,
+          systemEventType: 'join'
+        })
+        const populatedMsg = await systemMsg.populate('sender', 'name email')
+        io.to(group._id.toString()).emit('receive_message', populatedMsg)
+        io.to(group._id.toString()).emit('member_joined', { userId: req.user._id.toString(), name: req.user.name, groupId: group._id.toString() })
+        io.emit('group_updated', populated)
+      } catch (err) {
+        console.error('Error creating join system message in joinByCode:', err)
+      }
+    }
+
     res.json(populated)
   } catch (error) {
     next(error)
@@ -278,6 +374,27 @@ export async function leaveGroup(req, res, next) {
     }
 
     await group.save()
+
+    const io = req.app.get('io')
+    if (io) {
+      try {
+        const systemMsg = await Message.create({
+          groupId: group._id,
+          sender: req.user._id,
+          message: `🔴 ${req.user.name} left the study group`,
+          isSystem: true,
+          systemEventType: 'leave'
+        })
+        const populatedMsg = await systemMsg.populate('sender', 'name email')
+        io.to(group._id.toString()).emit('receive_message', populatedMsg)
+        io.to(group._id.toString()).emit('member_left', { userId: req.user._id.toString(), name: req.user.name, groupId: group._id.toString() })
+        const populated = await populateGroup(group)
+        io.emit('group_updated', populated)
+      } catch (err) {
+        console.error('Error creating leave system message in leaveGroup:', err)
+      }
+    }
+
     res.json({ message: 'Left study group successfully', groupId })
   } catch (error) {
     next(error)
