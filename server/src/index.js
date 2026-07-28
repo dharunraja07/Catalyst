@@ -61,13 +61,13 @@ const allowedOrigins = env.CLIENT_URL
 
 function isAllowedOrigin(origin) {
   if (!origin) return true
+  if (env.NODE_ENV !== 'production') return true
   if (allowedOrigins.length === 0) return true
   if (allowedOrigins.includes(origin)) return true
   try {
     const { hostname } = new URL(origin)
-    if (hostname.endsWith('.vercel.app') && hostname.includes('ai-based-personalized-learning-platform')) {
-      return true
-    }
+    if (hostname === 'localhost' || hostname === '127.0.0.1') return true
+    if (hostname.endsWith('.vercel.app') || hostname.endsWith('.onrender.com')) return true
   } catch {
     return false
   }
@@ -79,7 +79,7 @@ app.use(cors({
     if (isAllowedOrigin(origin)) {
       callback(null, true)
     } else {
-      callback(new Error('Not allowed by CORS'))
+      callback(null, false)
     }
   },
   credentials: true
@@ -111,7 +111,7 @@ const io = new Server(httpServer, {
       if (isAllowedOrigin(origin)) {
         callback(null, true)
       } else {
-        callback(new Error('Not allowed by CORS'))
+        callback(null, false)
       }
     },
     credentials: true

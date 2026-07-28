@@ -26,7 +26,19 @@ export function AuthProvider({ children }) {
       }
       return config
     })
-    return () => api.interceptors.request.eject(requestInterceptor)
+    const responseInterceptor = api.interceptors.response.use(
+      (res) => res,
+      (err) => {
+        if (err.response?.status === 401) {
+          logout()
+        }
+        return Promise.reject(err)
+      }
+    )
+    return () => {
+      api.interceptors.request.eject(requestInterceptor)
+      api.interceptors.response.eject(responseInterceptor)
+    }
   }, [token])
 
   useEffect(() => {
@@ -89,7 +101,7 @@ export function AuthProvider({ children }) {
     setUser((prevUser) => (prevUser ? { ...prevUser, ...nextUser } : nextUser))
   }
 
-  const logout = () => {
+  function logout() {
     delete api.defaults.headers.common.Authorization
     setUser(null)
     setToken('')

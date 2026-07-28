@@ -81,7 +81,8 @@ export function setupChatSocket(io) {
       }
 
       const token = authToken.startsWith('Bearer ') ? authToken.split(' ')[1] : authToken
-      const decoded = jwt.verify(token, process.env.JWT_SECRET)
+      const secret = (process.env.JWT_SECRET || 'supersecretjwtkey').trim()
+      const decoded = jwt.verify(token, secret)
       const user = await User.findById(decoded.id).select('-password')
       if (!user) {
         return next(new Error('Authentication error: User not found'))

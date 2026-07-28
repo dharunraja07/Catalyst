@@ -17,6 +17,12 @@ export function getSocketUrl() {
 
 export function getSocket() {
   const token = localStorage.getItem('ai_learning_token')
+  if (!token) {
+    if (socket && socket.connected) {
+      socket.disconnect()
+    }
+    return null
+  }
 
   if (!socket) {
     const socketUrl = getSocketUrl()

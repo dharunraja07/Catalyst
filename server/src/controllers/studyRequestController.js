@@ -1,6 +1,7 @@
 import User from '../models/User.js'
 import StudyRequest from '../models/StudyRequest.js'
 import StudyGroup from '../models/StudyGroup.js'
+import Message from '../models/Message.js'
 import { emitNotificationCount } from '../sockets/chatSocket.js'
 
 async function populateGroup(group) {
@@ -141,7 +142,7 @@ export async function acceptRequest(req, res, next) {
       const group = await StudyGroup.create({
         groupName: `${sender?.name || 'User'} & ${receiver?.name || 'User'} Study Group`,
         members: [request.sender, request.receiver],
-        createdBy: req.user._id
+        createdBy: request.sender
       })
       populated = await populateGroup(group)
     }
@@ -336,8 +337,6 @@ export async function joinByCode(req, res, next) {
   }
 }
 
-import Message from '../models/Message.js'
-
 export async function addMemberToGroup(req, res, next) {
   try {
     const { groupId, userId } = req.body
@@ -387,6 +386,7 @@ export async function leaveGroup(req, res, next) {
     const isMember = group.members.some((m) => m.toString() === req.user._id.toString())
     if (!isMember) return res.status(400).json({ error: 'You are not a member of this group' })
 
+    const isHost = group.createdBy.toString() === req.user._id.toString()
     group.members = group.members.filter((m) => m.toString() !== req.user._id.toString())
 
     if (group.members.length === 0) {
@@ -395,6 +395,80 @@ export async function leaveGroup(req, res, next) {
       return res.json({ message: 'Left and deleted empty study group', groupId })
     }
 
+    let newHost = null
+    if (isHost && group.members.length > 0) {
+      group.createdBy = group.members[0]
+      newHost = await User.findById(group.createdBy).select('name email')
+    }
+
+    await group.save()
+
+    const io = req.app.get('io')
+    if (io) {
+      try {
+        const leaveMsgText = newHost
+          ? `🔴 ${req.user.name} left. 👑 ${newHost.name} is now the Host of the group.`
+          : `🔴 ${req.user.name} left the study group`
+
+        const systemMsg = await Message.create({
+          groupId: group._id,
+          sender: req.user._id,
+          message: leaveMsgText,
+          isSystem: true,
+          systemEventType: isHost ? 'host_change' : 'leave'
+        })
+        const populatedMsg = await systemMsg.populate('sender', 'name email')
+        io.to(group._id.toString()).emit('receive_message', populatedMsg)
+        io.to(group._id.toString()).emit('member_left', { userId: req.user._id.toString(), name: req.user.name, groupId: group._id.toString() })
+
+        if (newHost) {
+          io.to(group._id.toString()).emit('host_changed', {
+            groupId: group._id.toString(),
+            newHostId: newHost._id.toString(),
+            newHostName: newHost.name
+          })
+        }
+
+        const populated = await populateGroup(group)
+        io.emit('group_updated', populated)
+      } catch (err) {
+        console.error('Error creating leave system message in leaveGroup:', err)
+      }
+    }
+
+    res.json({ message: 'Left study group successfully', groupId, newHost })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export async function transferHost(req, res, next) {
+  try {
+    const { groupId } = req.params
+    const { newHostId } = req.body
+
+    if (!newHostId) {
+      return res.status(400).json({ error: 'New Host ID is required' })
+    }
+
+    const group = await StudyGroup.findById(groupId)
+    if (!group) return res.status(404).json({ error: 'Study group not found' })
+
+    if (group.createdBy.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ error: 'Only the current Host can transfer Host privileges' })
+    }
+
+    const isTargetMember = group.members.some((m) => m.toString() === newHostId.toString())
+    if (!isTargetMember) {
+      return res.status(400).json({ error: 'Target user is not a member of this group' })
+    }
+
+    const targetUser = await User.findById(newHostId).select('name email')
+    if (!targetUser) {
+      return res.status(404).json({ error: 'Target user not found' })
+    }
+
+    group.createdBy = targetUser._id
     await group.save()
 
     const io = req.app.get('io')
@@ -403,21 +477,76 @@ export async function leaveGroup(req, res, next) {
         const systemMsg = await Message.create({
           groupId: group._id,
           sender: req.user._id,
-          message: `🔴 ${req.user.name} left the study group`,
+          message: `👑 ${req.user.name} transferred Host role to ${targetUser.name}`,
           isSystem: true,
-          systemEventType: 'leave'
+          systemEventType: 'host_change'
         })
         const populatedMsg = await systemMsg.populate('sender', 'name email')
         io.to(group._id.toString()).emit('receive_message', populatedMsg)
-        io.to(group._id.toString()).emit('member_left', { userId: req.user._id.toString(), name: req.user.name, groupId: group._id.toString() })
+        io.to(group._id.toString()).emit('host_changed', {
+          groupId: group._id.toString(),
+          newHostId: targetUser._id.toString(),
+          newHostName: targetUser.name
+        })
         const populated = await populateGroup(group)
         io.emit('group_updated', populated)
       } catch (err) {
-        console.error('Error creating leave system message in leaveGroup:', err)
+        console.error('Error broadcasting host transfer:', err)
       }
     }
 
-    res.json({ message: 'Left study group successfully', groupId })
+    res.json({ message: `Host role transferred to ${targetUser.name} successfully`, group: await populateGroup(group) })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export async function removeMember(req, res, next) {
+  try {
+    const { groupId } = req.params
+    const { userId } = req.body
+
+    if (!userId) return res.status(400).json({ error: 'User ID is required' })
+
+    const group = await StudyGroup.findById(groupId)
+    if (!group) return res.status(404).json({ error: 'Group not found' })
+
+    if (group.createdBy.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ error: 'Only the Host can remove members' })
+    }
+
+    if (userId.toString() === req.user._id.toString()) {
+      return res.status(400).json({ error: 'Host cannot remove themselves. Use Leave Group instead.' })
+    }
+
+    const isMember = group.members.some((m) => m.toString() === userId.toString())
+    if (!isMember) return res.status(400).json({ error: 'User is not in this group' })
+
+    const removedUser = await User.findById(userId).select('name email')
+    group.members = group.members.filter((m) => m.toString() !== userId.toString())
+    await group.save()
+
+    const io = req.app.get('io')
+    if (io) {
+      try {
+        const systemMsg = await Message.create({
+          groupId: group._id,
+          sender: req.user._id,
+          message: `🚫 ${removedUser ? removedUser.name : 'A member'} was removed from the group by Host ${req.user.name}`,
+          isSystem: true,
+          systemEventType: 'remove_member'
+        })
+        const populatedMsg = await systemMsg.populate('sender', 'name email')
+        io.to(group._id.toString()).emit('receive_message', populatedMsg)
+        io.to(group._id.toString()).emit('member_removed', { userId: userId.toString(), groupId: group._id.toString() })
+        const populated = await populateGroup(group)
+        io.emit('group_updated', populated)
+      } catch (err) {
+        console.error('Error broadcasting remove member:', err)
+      }
+    }
+
+    res.json({ message: 'Member removed successfully', group: await populateGroup(group) })
   } catch (error) {
     next(error)
   }
@@ -429,11 +558,19 @@ export async function deleteGroup(req, res, next) {
     const group = await StudyGroup.findById(groupId)
     if (!group) return res.status(404).json({ error: 'Group not found' })
 
-    const isMember = group.members.some((m) => m.toString() === req.user._id.toString())
-    if (!isMember) return res.status(403).json({ error: 'Access denied' })
+    const isHost = group.createdBy.toString() === req.user._id.toString()
+    if (!isHost) {
+      return res.status(403).json({ error: 'Only the Host can delete the study group' })
+    }
 
     await StudyGroup.deleteOne({ _id: group._id })
     await Message.deleteMany({ groupId: group._id })
+
+    const io = req.app.get('io')
+    if (io) {
+      io.to(group._id.toString()).emit('group_deleted', { groupId: group._id.toString() })
+    }
+
     res.json({ message: 'Study group deleted successfully', groupId })
   } catch (error) {
     next(error)

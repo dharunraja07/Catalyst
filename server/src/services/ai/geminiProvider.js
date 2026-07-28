@@ -6,16 +6,45 @@ class GeminiProvider {
     this.displayName = 'Gemini'
   }
 
-  _getModel() {
+  _getModel(modelName) {
     const apiKey = (process.env.GEMINI_API_KEY || '').trim()
     if (!apiKey) {
       throw new AIProviderError('GEMINI_API_KEY is not configured.', this.name)
     }
+    const chosenModel = modelName || process.env.GEMINI_MODEL || 'gemini-2.5-flash'
     const genAI = new GoogleGenerativeAI(apiKey)
     return genAI.getGenerativeModel({
-      model: 'gemini-1.5-flash',
+      model: chosenModel,
       systemInstruction: 'You are a helpful assistant. Return valid JSON only when requested and avoid markdown fences unless the user explicitly asks for them.'
     })
+  }
+
+  async _executeWithModelFallback(fn) {
+    const candidateModels = Array.from(new Set([
+      process.env.GEMINI_MODEL,
+      'gemini-2.5-flash',
+      'gemini-2.0-flash',
+      'gemini-1.5-flash',
+      'gemini-1.5-pro'
+    ].filter(Boolean)))
+
+    let lastError = null
+
+    for (const modelName of candidateModels) {
+      try {
+        const model = this._getModel(modelName)
+        return await fn(model)
+      } catch (error) {
+        lastError = error
+        const errStr = String(error?.message || error || '')
+        if (errStr.includes('404') || errStr.includes('not found') || errStr.includes('is not supported')) {
+          console.warn(`[GeminiProvider] Model '${modelName}' unavailable (404). Trying next candidate...`)
+          continue
+        }
+        throw error
+      }
+    }
+    throw lastError
   }
 
   _normalizeHistory(history = []) {
@@ -36,14 +65,15 @@ class GeminiProvider {
   }
 
   async generateJSON(prompt, { retries = 2 } = {}) {
-    const model = this._getModel()
     const attempts = retries + 1
 
     for (let attempt = 1; attempt <= attempts; attempt += 1) {
       try {
-        const result = await model.generateContent(prompt)
-        const rawText = result?.response?.text?.() || ''
-        return parseJsonResponse(rawText)
+        return await this._executeWithModelFallback(async (model) => {
+          const result = await model.generateContent(prompt)
+          const rawText = result?.response?.text?.() || ''
+          return parseJsonResponse(rawText)
+        })
       } catch (error) {
         if (attempt === attempts) {
           throw this._formatError(error)
@@ -55,13 +85,14 @@ class GeminiProvider {
   }
 
   async chatCompletion(history, userMessage) {
-    const model = this._getModel()
     try {
-      const chat = model.startChat({
-        history: this._normalizeHistory(history)
+      return await this._executeWithModelFallback(async (model) => {
+        const chat = model.startChat({
+          history: this._normalizeHistory(history)
+        })
+        const result = await chat.sendMessage(userMessage)
+        return result?.response?.text?.() || ''
       })
-      const result = await chat.sendMessage(userMessage)
-      return result?.response?.text?.() || ''
     } catch (error) {
       throw this._formatError(error)
     }

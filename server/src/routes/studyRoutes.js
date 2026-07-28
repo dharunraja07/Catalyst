@@ -14,6 +14,8 @@ import {
   joinByCode,
   addMemberToGroup,
   leaveGroup,
+  transferHost,
+  removeMember,
   deleteGroup
 } from '../controllers/studyRequestController.js'
 import {
@@ -39,6 +41,8 @@ router.post('/groups/:groupId/invite', inviteToGroup)
 router.patch('/groups/:groupId', renameGroup)
 router.post('/groups/join', joinByCode)
 router.post('/groups/:groupId/add-member', addMemberToGroup)
+router.post('/groups/:groupId/transfer-host', transferHost)
+router.post('/groups/:groupId/remove-member', removeMember)
 router.post('/groups/:groupId/leave', leaveGroup)
 router.delete('/groups/:groupId', deleteGroup)
 router.get('/groups/:groupId/messages', getGroupMessages)

@@ -8,7 +8,7 @@ import getSocket from '../api/socket.js'
 
 const MAX_MEMBERS = 70
 
-export function getUniqueMembers(members = []) {
+function getUniqueMembers(members = []) {
   if (!Array.isArray(members)) return []
   const map = new Map()
   for (const m of members) {
@@ -150,6 +150,42 @@ export default function StudyGroupPage() {
     [selectedGroup?.members]
   )
 
+  const currentUserId = (user?.id || user?._id || '').toString()
+  const hostUserId = (selectedGroup?.createdBy?._id || selectedGroup?.createdBy || '').toString()
+  const isCurrentHost = Boolean(currentUserId && hostUserId && currentUserId === hostUserId)
+
+  const handleTransferHost = async (targetMemberId, targetMemberName) => {
+    if (!selectedGroupId || !targetMemberId) return
+    setStatus('')
+    setError('')
+    try {
+      const res = await api.post(`/study-groups/groups/${selectedGroupId}/transfer-host`, { newHostId: targetMemberId })
+      setStatus(`👑 Host role transferred to ${targetMemberName}!`)
+      if (res.data?.group) {
+        setGroups((prev) => prev.map((g) => (g._id === selectedGroupId ? res.data.group : g)))
+      }
+      clearTransientMessage()
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to transfer Host role')
+    }
+  }
+
+  const handleRemoveMember = async (targetMemberId, targetMemberName) => {
+    if (!selectedGroupId || !targetMemberId) return
+    setStatus('')
+    setError('')
+    try {
+      const res = await api.post(`/study-groups/groups/${selectedGroupId}/remove-member`, { userId: targetMemberId })
+      setStatus(`🚫 Removed ${targetMemberName} from group.`)
+      if (res.data?.group) {
+        setGroups((prev) => prev.map((g) => (g._id === selectedGroupId ? res.data.group : g)))
+      }
+      clearTransientMessage()
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to remove member')
+    }
+  }
+
   const scrollToBottom = (behavior = 'smooth') => {
     if (scrollContainerRef.current) {
       scrollContainerRef.current.scrollTo({
@@ -171,18 +207,33 @@ export default function StudyGroupPage() {
   useEffect(() => {
     async function loadInitialData() {
       try {
-        const [groupsResp, requestsResp] = await Promise.all([
-          api.get('/study-groups/groups'),
-          api.get('/study-groups/requests/incoming')
-        ])
+        const groupsResp = await api.get('/study-groups/groups')
         setGroups(groupsResp.data)
-        setIncomingRequests(requestsResp.data)
       } catch (err) {
         setError('Unable to load study group dashboard')
       }
     }
     loadInitialData()
   }, [api])
+
+  useEffect(() => {
+    if (!subscribeGroupJoined) return
+    const unsubscribe = subscribeGroupJoined((newGroup) => {
+      if (newGroup?._id) {
+        setGroups((prev) => {
+          if (prev.some((g) => g._id === newGroup._id)) {
+            return prev.map((g) => (g._id === newGroup._id ? newGroup : g))
+          }
+          return [...prev, newGroup]
+        })
+        setStatus(`Joined "${newGroup.groupName || 'Study Group'}"!`)
+        clearTransientMessage()
+      } else {
+        api.get('/study-groups/groups').then((res) => setGroups(res.data)).catch(() => {})
+      }
+    })
+    return () => unsubscribe()
+  }, [subscribeGroupJoined, api])
 
   useEffect(() => {
     const unsubscribe = subscribeGroupJoined((newGroup) => {
@@ -307,15 +358,18 @@ export default function StudyGroupPage() {
       socket.emit('join_group', { groupId: selectedGroupId })
     }
 
-    // Single source of message updates - dedupe by _id
+    // Single source of message updates - dedupe & resolve optimistic messages
     const handleReceiveMessage = (newMessage) => {
       const senderId = newMessage.sender?._id || newMessage.sender
-      const currentId = user?.id || user?._id
-      const isSelf = senderId === currentId
+      const currentId = (user?.id || user?._id || '').toString()
+      const isSelf = senderId?.toString() === currentId
 
       setMessages((prev) => {
-        if (prev.some((msg) => msg._id === newMessage._id)) {
-          return prev
+        const matchIndex = prev.findIndex((m) => m._id === newMessage._id || (m.isOptimistic && m.message === newMessage.message))
+        if (matchIndex !== -1) {
+          const updated = [...prev]
+          updated[matchIndex] = newMessage
+          return updated
         }
         return [...prev, newMessage]
       })
@@ -357,6 +411,31 @@ export default function StudyGroupPage() {
       })
     }
 
+    const handleHostChanged = ({ groupId, newHostName }) => {
+      api.get('/study-groups/groups').then((res) => {
+        setGroups(res.data)
+      }).catch(() => {})
+    }
+
+    const handleMemberRemoved = ({ userId, groupId }) => {
+      const currentId = (user?.id || user?._id || '').toString()
+      if (userId === currentId && groupId === selectedGroupId) {
+        setSelectedGroupId(null)
+        setStatus('You were removed from the study group by the Host.')
+      }
+      api.get('/study-groups/groups').then((res) => {
+        setGroups(res.data)
+      }).catch(() => {})
+    }
+
+    const handleGroupDeleted = ({ groupId }) => {
+      if (groupId === selectedGroupId) {
+        setSelectedGroupId(null)
+        setStatus('The study group was deleted by the Host.')
+      }
+      setGroups((prev) => prev.filter((g) => g._id !== groupId))
+    }
+
     // Typing indicators
     const handleUserTyping = (userObj) => {
       setTypingUsers((prev) => {
@@ -375,6 +454,9 @@ export default function StudyGroupPage() {
     socket.on('member_joined', handleMemberJoined)
     socket.on('member_left', handleMemberLeft)
     socket.on('group_updated', handleGroupUpdated)
+    socket.on('host_changed', handleHostChanged)
+    socket.on('member_removed', handleMemberRemoved)
+    socket.on('group_deleted', handleGroupDeleted)
     socket.on('user_typing', handleUserTyping)
     socket.on('user_stop_typing', handleUserStopTyping)
 
@@ -387,6 +469,9 @@ export default function StudyGroupPage() {
       socket.off('member_joined', handleMemberJoined)
       socket.off('member_left', handleMemberLeft)
       socket.off('group_updated', handleGroupUpdated)
+      socket.off('host_changed', handleHostChanged)
+      socket.off('member_removed', handleMemberRemoved)
+      socket.off('group_deleted', handleGroupDeleted)
       socket.off('user_typing', handleUserTyping)
       socket.off('user_stop_typing', handleUserStopTyping)
     }
@@ -455,11 +540,37 @@ export default function StudyGroupPage() {
     return localStorage.getItem('ai_provider') || 'gemini'
   })
 
-  const sendMessage = async () => {
+  const sendMessage = () => {
     if (!messageText.trim() || !selectedGroupId) return
 
     const trimmed = messageText.trim()
+    const tempId = `temp_${Date.now()}_${Math.random()}`
 
+    // 1. Instant Optimistic Local Update (0ms latency response)
+    const optimisticMsg = {
+      _id: tempId,
+      groupId: selectedGroupId,
+      sender: { _id: user?.id || user?._id, name: user?.name || 'You', email: user?.email },
+      message: trimmed,
+      createdAt: new Date().toISOString(),
+      isOptimistic: true
+    }
+
+    setMessages((prev) => [...prev, optimisticMsg])
+    setMessageText('')
+
+    requestAnimationFrame(() => {
+      scrollToBottom('smooth')
+      setHasUnreadNew(false)
+    })
+
+    // Show AI loading indicator if user triggered @ai
+    if (trimmed.toLowerCase().includes('@ai')) {
+      setIsAiProcessing(true)
+      setTimeout(() => setIsAiProcessing(false), 8000)
+    }
+
+    // 2. Emit over WebSocket in background
     const socket = getSocket()
     if (socket && socket.connected) {
       socket.emit('send_message', {
@@ -471,38 +582,6 @@ export default function StudyGroupPage() {
         clearTimeout(typingTimeoutRef.current)
       }
       socket.emit('stop_typing', { groupId: selectedGroupId })
-    }
-    setMessageText('')
-    requestAnimationFrame(() => {
-      scrollToBottom('smooth')
-      setHasUnreadNew(false)
-    })
-
-    // Support trigger for @ai in group chat so AI responds directly in group chat stream
-    if (trimmed.toLowerCase().startsWith('@ai')) {
-      const aiPrompt = trimmed.replace(/^@ai\s*/i, '').trim()
-      if (aiPrompt) {
-        setIsAiProcessing(true)
-        try {
-          const aiRes = await api.post('/ai/chat', {
-            message: aiPrompt,
-            history: [],
-            provider: groupSelectedProvider
-          })
-          const reply = aiRes.data?.response || aiRes.data?.reply
-          if (reply && socket && socket.connected) {
-            socket.emit('send_message', {
-              groupId: selectedGroupId,
-              message: `🤖 [AI Response to "@ai ${aiPrompt}"]\n${reply}`,
-              provider: groupSelectedProvider
-            })
-          }
-        } catch {
-          // ignore silent AI errors in chat stream
-        } finally {
-          setIsAiProcessing(false)
-        }
-      }
     }
   }
 
@@ -593,9 +672,6 @@ export default function StudyGroupPage() {
       setError(err.response?.data?.error || 'Unable to join the group')
     }
   }
-
-  const hostUserId = selectedGroup?.createdBy?._id || selectedGroup?.createdBy
-  const currentUserId = user?.id || user?._id
 
   return (
     <main className="h-[calc(100vh-90px)] min-h-0 bg-[var(--bg-primary)] text-[var(--text-primary)] overflow-hidden flex flex-col">
@@ -826,9 +902,32 @@ export default function StudyGroupPage() {
                               <p className="caption-text">{member.email}</p>
                             </div>
                           </div>
-                          {isHost && (
-                            <span className="rounded-full bg-[var(--accent-color)] px-3 py-1 text-xs font-semibold text-black">Host</span>
-                          )}
+                          <div className="flex items-center gap-2 shrink-0">
+                            {isHost ? (
+                              <span className="rounded-full bg-[var(--accent-color)] px-2.5 py-1 text-[11px] font-bold text-black flex items-center gap-1 shadow-sm shrink-0">
+                                👑 Host
+                              </span>
+                            ) : isCurrentHost ? (
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => handleTransferHost(memberId, member.name)}
+                                  className="rounded-[10px] border border-[var(--border-main)] bg-[var(--bg-primary)] px-2.5 py-1 text-[11px] font-bold text-[var(--text-primary)] whitespace-nowrap hover:border-[var(--accent-color)] hover:text-[var(--accent-color)] transition-colors shadow-xs"
+                                  title="Transfer Host privileges to this member"
+                                >
+                                  👑 Make Host
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveMember(memberId, member.name)}
+                                  className="rounded-[10px] border border-[var(--error-color)]/30 bg-[var(--bg-primary)] px-2.5 py-1 text-[11px] font-bold text-[var(--error-color)] whitespace-nowrap hover:bg-[var(--error-bg)] transition-colors shadow-xs"
+                                  title="Remove member from group"
+                                >
+                                  ✕ Remove
+                                </button>
+                              </div>
+                            ) : null}
+                          </div>
                         </div>
                       )
                     })}
@@ -1188,44 +1287,8 @@ export default function StudyGroupPage() {
 
             <hr className="canvas-divider" />
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-              {incomingRequests.filter((req) => !req.group).length > 0 && (
-                <div className="lg:col-span-6 space-y-4">
-                  <h2 className="section-title">Peer Requests ({incomingRequests.filter((req) => !req.group).length})</h2>
-                  <div className="space-y-4">
-                    {incomingRequests.filter((req) => !req.group).map((req) => (
-                      <div key={req._id} className="rounded-[16px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-4 shadow-sm">
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                          <div>
-                            <p className="card-title font-bold">{req.sender?.name}</p>
-                            <p className="caption-text">{req.sender?.email}</p>
-                            <p className="mt-1 text-xs font-bold uppercase tracking-widest text-[var(--text-muted)]">Peer Request</p>
-                          </div>
-                          <div className="flex gap-2">
-                            <button
-                              type="button"
-                              onClick={() => respondToRequest(req._id, true)}
-                              className="saas-button-primary min-h-[38px] px-4 text-xs font-bold bg-[var(--success-color)] text-white"
-                            >
-                              ✓ Accept
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => respondToRequest(req._id, false)}
-                              className="saas-button-secondary min-h-[38px] px-4 text-xs font-semibold hover:border-[var(--error-color)] hover:text-[var(--error-color)]"
-                            >
-                              ✕ Reject
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div className={`${incomingRequests.filter((req) => !req.group).length > 0 ? 'lg:col-span-6' : 'lg:col-span-12'} space-y-4`}>
-                <h2 className="section-title">My Study Groups ({groups.length})</h2>
+            <div className="space-y-4">
+              <h2 className="section-title">My Study Groups ({groups.length})</h2>
                 {groups.length > 0 ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {groups.map((group) => {
@@ -1239,7 +1302,12 @@ export default function StudyGroupPage() {
                         >
                           <div>
                             <div className="flex items-center justify-between gap-3 mb-2">
-                              <p className="card-title font-bold text-base">{group.groupName || 'Study Group'}</p>
+                              <div className="flex items-center gap-2 min-w-0">
+                                <p className="card-title font-bold text-base truncate">{group.groupName || 'Study Group'}</p>
+                                {isHost && (
+                                  <span className="rounded-full bg-[var(--accent-color)] px-2 py-0.5 text-[10px] font-bold text-black shadow-sm shrink-0">👑 Host</span>
+                                )}
+                              </div>
                               <span className="rounded-full border border-[var(--border-main)] bg-[var(--bg-primary)] px-3 py-1 text-xs font-bold text-[var(--text-secondary)] shrink-0">
                                 {uniqueMembers.length}/{group.maxMembers || MAX_MEMBERS}
                               </span>
@@ -1288,7 +1356,6 @@ export default function StudyGroupPage() {
                 ) : (
                   <p className="body-text text-[var(--text-muted)] italic">No study groups created or joined yet.</p>
                 )}
-              </div>
             </div>
           </div>
         </div>
