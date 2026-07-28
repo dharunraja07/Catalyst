@@ -144,6 +144,16 @@ export default function AIChatSurface({
     }
   }, [conversationId, messages, storageKey])
 
+  const [selectedProvider, setSelectedProvider] = useState(() => {
+    return localStorage.getItem('ai_provider') || 'gemini'
+  })
+
+  const handleProviderChange = (e) => {
+    const val = e.target.value
+    setSelectedProvider(val)
+    localStorage.setItem('ai_provider', val)
+  }
+
   const handleSend = async () => {
     const trimmed = input.trim()
     if (!trimmed || isTyping) return
@@ -160,7 +170,8 @@ export default function AIChatSurface({
 
       try {
         const response = await api.post(`/ai/conversations/${conversationId}/messages`, {
-          message: trimmed
+          message: trimmed,
+          provider: selectedProvider
         })
 
         if (response.data) {
@@ -198,7 +209,8 @@ export default function AIChatSurface({
     try {
       const response = await api.post('/ai/chat', {
         message: trimmed,
-        history: nextMessages.slice(-20)
+        history: nextMessages.slice(-20),
+        provider: selectedProvider
       })
 
       if (response.status === 200 && response.data) {
@@ -331,7 +343,7 @@ export default function AIChatSurface({
         )}
       </div>
 
-      <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+      <div className="mt-3 flex flex-col gap-2">
         <textarea
           value={input}
           onChange={(event) => setInput(event.target.value)}
@@ -345,14 +357,25 @@ export default function AIChatSurface({
           placeholder={placeholder}
           className="saas-input min-h-[48px] w-full resize-none"
         />
-        <button
-          type="button"
-          onClick={handleSend}
-          disabled={isTyping}
-          className="saas-button-primary self-end"
-        >
-          Send
-        </button>
+        <div className="flex items-center justify-between gap-2 w-full">
+          <select
+            value={selectedProvider}
+            onChange={handleProviderChange}
+            className="saas-input text-xs font-semibold px-3 py-1.5 min-h-[38px] cursor-pointer bg-[var(--bg-secondary)] border-[var(--border-main)] rounded-[12px] text-[var(--text-primary)]"
+            title="Select AI Model Provider"
+          >
+            <option value="gemini">Gemini</option>
+            <option value="groq">Groq</option>
+          </select>
+          <button
+            type="button"
+            onClick={handleSend}
+            disabled={isTyping}
+            className="saas-button-primary min-h-[38px] px-5 text-sm font-bold shadow-sm"
+          >
+            Send
+          </button>
+        </div>
       </div>
     </div>
   )

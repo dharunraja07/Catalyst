@@ -14,6 +14,10 @@ export default function QuestionsPage() {
   const [aiError, setAiError] = useState('')
   const [visibleAnswers, setVisibleAnswers] = useState({})
 
+  const [selectedProvider, setSelectedProvider] = useState(() => {
+    return localStorage.getItem('ai_provider') || 'gemini'
+  })
+
   const longAnswerLabel = practiceData.counts?.longAnswerMarks === 14 ? '14-mark Questions' : '5-mark Questions'
 
   const handleGenerateQuestions = async () => {
@@ -27,7 +31,8 @@ export default function QuestionsPage() {
     try {
       const response = await api.post('/ai/generate-practice', {
         studentType,
-        syllabus: syllabus.trim()
+        syllabus: syllabus.trim(),
+        provider: selectedProvider
       })
       setPracticeData(response.data)
       setVisibleAnswers({}) // Reset visible answers
@@ -113,17 +118,34 @@ export default function QuestionsPage() {
           <h1 className="page-title mb-2">Adaptive Questions</h1>
           <p className="page-description">Generate personalized practice questions from any syllabus or topic.</p>
         </div>
-        <div className="flex items-center gap-3 shrink-0">
-          <label className="small-text font-semibold whitespace-nowrap text-[var(--text-primary)]">Student Type</label>
-          <select
-            value={studentType}
-            onChange={(event) => setStudentType(event.target.value)}
-            className="saas-input min-h-[44px] py-2 px-3 text-sm font-medium"
-          >
-            <option value="">Unspecified</option>
-            <option>School Student</option>
-            <option>College Student</option>
-          </select>
+        <div className="flex flex-wrap items-center gap-3 shrink-0">
+          <div className="flex items-center gap-2">
+            <label className="small-text font-semibold whitespace-nowrap text-[var(--text-primary)]">AI Model</label>
+            <select
+              value={selectedProvider}
+              onChange={(e) => {
+                const val = e.target.value
+                setSelectedProvider(val)
+                localStorage.setItem('ai_provider', val)
+              }}
+              className="saas-input min-h-[44px] py-2 px-3 text-sm font-medium"
+            >
+              <option value="gemini">Gemini</option>
+              <option value="groq">Groq</option>
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="small-text font-semibold whitespace-nowrap text-[var(--text-primary)]">Student Type</label>
+            <select
+              value={studentType}
+              onChange={(event) => setStudentType(event.target.value)}
+              className="saas-input min-h-[44px] py-2 px-3 text-sm font-medium"
+            >
+              <option value="">Unspecified</option>
+              <option>School Student</option>
+              <option>College Student</option>
+            </select>
+          </div>
         </div>
       </div>
 

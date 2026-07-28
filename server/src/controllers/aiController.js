@@ -1,4 +1,7 @@
-import { generateJSON, chatCompletion, GeminiServiceError } from '../services/geminiService.js'
+import mongoose from 'mongoose'
+import AiConversation from '../models/AiConversation.js'
+import AiMessage from '../models/AiMessage.js'
+import { generateJSON, chatCompletion, AIProviderError, getAvailableProviderNames } from '../services/ai/aiService.js'
 
 function buildMappedQuestion(item) {
     return {
@@ -40,18 +43,22 @@ function validatePracticePayload(payload) {
 
 export async function generateAssessment(req, res, next) {
     try {
-        const { syllabus } = req.body
+        const { syllabus, provider } = req.body
         if (!syllabus || !syllabus.trim()) {
             return res.status(400).json({ error: 'Syllabus is required' })
+        }
+
+        if (syllabus.length > 10000) {
+            return res.status(400).json({ error: 'Syllabus text is too long (max 10,000 characters)' })
         }
 
         const prompt = `Create 15 multiple-choice questions based on the following syllabus. Return only valid JSON in this exact shape: {"questions":[{"question":"...","options":["...","...","...","..."],"correctAnswer":"...","explanation":"..."}]}. Every question must have exactly 4 options, and the correctAnswer must match one of the options. Syllabus: ${syllabus}`
 
         let payload
         try {
-            payload = await generateJSON(prompt)
+            payload = await generateJSON(prompt, { provider })
         } catch (error) {
-            if (error instanceof GeminiServiceError) {
+            if (error instanceof AIProviderError) {
                 return res.status(502).json({ error: 'Failed to generate a valid assessment. Please try again.' })
             }
             return next(error)
@@ -70,9 +77,13 @@ export async function generateAssessment(req, res, next) {
 
 export async function generatePractice(req, res, next) {
     try {
-        const { studentType = '', syllabus } = req.body
+        const { studentType = '', syllabus, provider } = req.body
         if (!syllabus || !syllabus.trim()) {
             return res.status(400).json({ error: 'Syllabus is required' })
+        }
+
+        if (syllabus.length > 10000) {
+            return res.status(400).json({ error: 'Syllabus text is too long (max 10,000 characters)' })
         }
 
         const normalizedType = studentType === 'School Student' ? 'School Student' : 'College Student'
@@ -87,10 +98,12 @@ export async function generatePractice(req, res, next) {
 
         let payload
         try {
-            payload = await generateJSON(prompt, { retries: 1 })
+            payload = await generateJSON(prompt, { provider, retries: 1 })
         } catch (error) {
-            console.error('Gemini generatePractice error:', error)
-            return res.status(502).json({ error: 'Failed to generate practice questions from AI service.' })
+            if (error instanceof AIProviderError) {
+                return res.status(502).json({ error: 'Failed to generate practice questions from AI service.' })
+            }
+            return next(error)
         }
 
         if (!validatePracticePayload(payload)) {
@@ -120,32 +133,31 @@ export async function generatePractice(req, res, next) {
     }
 }
 
-import mongoose from 'mongoose'
-import AiConversation from '../models/AiConversation.js'
-import AiMessage from '../models/AiMessage.js'
-
 export async function chatWithAI(req, res, next) {
     try {
-        const { message, history = [] } = req.body
+        const { message, history = [], provider } = req.body
         if (!message || !message.trim()) {
             return res.status(400).json({ error: 'Message is required' })
+        }
+
+        if (message.length > 10000) {
+            return res.status(400).json({ error: 'Message is too long (max 10,000 characters)' })
         }
 
         const trimmedHistory = Array.isArray(history) ? history.slice(-20) : []
 
         let response
         try {
-            response = await chatCompletion(trimmedHistory, message.trim())
+            response = await chatCompletion(trimmedHistory, message.trim(), { provider })
         } catch (error) {
-            if (error instanceof GeminiServiceError) {
-                console.error('Gemini Service Error:', error.message, error.cause?.message)
-                if (error.message.includes('GEMINI_API_KEY is not configured')) {
+            if (error instanceof AIProviderError) {
+                if (error.providerName === 'none') {
                     return res.status(503).json({
-                        error: 'AI service is not configured. Please set GEMINI_API_KEY in server environment.'
+                        error: 'AI service is not configured. Please set an API key in server environment.'
                     })
                 }
                 return res.status(502).json({
-                    error: 'Failed to reach Gemini API. Please try again in a moment.'
+                    error: 'Failed to reach AI service. Please try again in a moment.'
                 })
             }
             throw error
@@ -163,10 +175,8 @@ export async function chatWithAI(req, res, next) {
             reply: response.trim()
         })
     } catch (error) {
-        console.error('Chat Error:', error.message)
         return res.status(500).json({
-            error: 'Internal server error processing your message.',
-            message: error.message
+            error: 'Internal server error processing your message.'
         })
     }
 }
@@ -261,9 +271,13 @@ export async function getConversationMessages(req, res, next) {
 
 export async function sendConversationMessage(req, res, next) {
     try {
-        const { message } = req.body
+        const { message, provider } = req.body
         if (!message || !message.trim()) {
             return res.status(400).json({ error: 'Message is required' })
+        }
+
+        if (message.length > 10000) {
+            return res.status(400).json({ error: 'Message is too long (max 10,000 characters)' })
         }
 
         const conversation = await AiConversation.findOne({ _id: req.params.id, user: req.user._id })
@@ -287,13 +301,13 @@ export async function sendConversationMessage(req, res, next) {
             content: m.content
         }))
 
-        // Generate AI response
+        // Generate AI response with failover
         let aiReplyText = ''
         try {
-            aiReplyText = await chatCompletion(historyContext, message.trim())
+            aiReplyText = await chatCompletion(historyContext, message.trim(), { provider })
         } catch (error) {
-            if (error instanceof GeminiServiceError && error.message.includes('GEMINI_API_KEY is not configured')) {
-                aiReplyText = 'AI service is not configured. Please set GEMINI_API_KEY in server environment.'
+            if (error instanceof AIProviderError && error.providerName === 'none') {
+                aiReplyText = 'AI service is not configured. Please set an API key in server environment.'
             } else {
                 aiReplyText = 'Failed to reach AI service. Please try again in a moment.'
             }
@@ -322,5 +336,15 @@ export async function sendConversationMessage(req, res, next) {
         })
     } catch (error) {
         next(error)
+    }
+}
+
+export async function getAvailableProviders(req, res) {
+    try {
+        const providers = getAvailableProviderNames()
+        const defaultProvider = process.env.AI_PROVIDER_DEFAULT || 'gemini'
+        res.json({ providers, default: defaultProvider })
+    } catch (error) {
+        res.json({ providers: [], default: 'gemini' })
     }
 }

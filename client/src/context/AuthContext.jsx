@@ -97,11 +97,17 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('ai_learning_user')
   }
 
+  const contextValue = useMemo(
+    () => ({ user, token, loading, error, login, register, logout, updateUser, api }),
+    [user, token, loading, error]
+  )
+
   return (
-    <AuthContext.Provider value={{ user, token, loading, error, login, register, logout, updateUser, api }}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   )
 }
 
 export const useAuth = () => useContext(AuthContext)
+

@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import AIChatSurface from './AIChatSurface.jsx'
 
 export default function FloatingAIAssistant() {
-  const { api } = useAuth()
+  const { user, api } = useAuth()
+  const location = useLocation()
   const [isOpen, setIsOpen] = useState(false)
   const [conversations, setConversations] = useState([])
   const [activeConversationId, setActiveConversationId] = useState(null)
@@ -12,7 +14,12 @@ export default function FloatingAIAssistant() {
   const [renameDraft, setRenameDraft] = useState('')
   const [deleteConfirmId, setDeleteConfirmId] = useState(null)
 
+  const authPaths = ['/login', '/register', '/forgot-password']
+  const isAuthPage = authPaths.includes(location.pathname) || location.pathname.startsWith('/reset-password')
+  const shouldHide = !user || isAuthPage
+
   useEffect(() => {
+    if (shouldHide) return
     async function loadConversations() {
       try {
         const response = await api.get('/ai/conversations')
@@ -26,11 +33,15 @@ export default function FloatingAIAssistant() {
       }
     }
     loadConversations()
-  }, [api])
+  }, [api, shouldHide])
 
   const activeConversation = useMemo(() => {
     return conversations.find((conversation) => conversation._id === activeConversationId) || conversations[0] || null
   }, [activeConversationId, conversations])
+
+  if (shouldHide) {
+    return null
+  }
 
   const startNewConversation = async () => {
     try {
@@ -339,8 +350,15 @@ export default function FloatingAIAssistant() {
                 showHeader={false}
               />
             ) : (
-              <div className="flex h-full items-center justify-center text-[var(--ai-text-secondary)] text-sm">
-                No active conversation. Start a new chat!
+              <div className="flex h-full flex-col items-center justify-center text-[var(--ai-text-secondary)] text-sm gap-3">
+                <p>No active conversation.</p>
+                <button
+                  type="button"
+                  onClick={startNewConversation}
+                  className="saas-button-primary min-h-[38px] px-4 text-xs font-bold shadow-sm"
+                >
+                  + Start New Chat
+                </button>
               </div>
             )}
           </div>

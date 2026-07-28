@@ -66,7 +66,8 @@ export default function AssessmentPage() {
     setAnswers({})
     setResult(null)
     try {
-      const response = await api.post('/ai/generate-assessment', { syllabus: syllabus.trim() })
+      const provider = localStorage.getItem('ai_provider') || 'gemini'
+      const response = await api.post('/ai/generate-assessment', { syllabus: syllabus.trim(), provider })
       setQuestions(response.data.questions || [])
     } catch (err) {
       setAiError(err.response?.data?.error || 'Unable to generate assessment questions')
@@ -76,6 +77,10 @@ export default function AssessmentPage() {
   }
 
   const derivedCorrectAnswers = result?.correctAnswers ?? result?.answers?.filter((item) => item.correct).length ?? 0
+  const [selectedProvider, setSelectedProvider] = useState(() => {
+    return localStorage.getItem('ai_provider') || 'gemini'
+  })
+
   const derivedTotalQuestions = result?.totalQuestions ?? result?.answers?.length ?? questions.length ?? 15
   const derivedPercentage = result?.percentage ?? Math.round((derivedCorrectAnswers / Math.max(derivedTotalQuestions, 1)) * 100)
   const totalQuestions = questions.length || derivedTotalQuestions || 15
@@ -86,10 +91,27 @@ export default function AssessmentPage() {
   return (
     <main className="mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {/* Page Header */}
-      <div>
-        <p className="page-label">Assessment</p>
-        <h1 className="page-title mb-2">Diagnostic Assessment</h1>
-        <p className="page-description">Answer the questions to generate a personalized roadmap and instant recommendations.</p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="page-label">Assessment</p>
+          <h1 className="page-title mb-2">Diagnostic Assessment</h1>
+          <p className="page-description">Answer the questions to generate a personalized roadmap and instant recommendations.</p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <label className="small-text font-semibold whitespace-nowrap text-[var(--text-primary)]">AI Model</label>
+          <select
+            value={selectedProvider}
+            onChange={(e) => {
+              const val = e.target.value
+              setSelectedProvider(val)
+              localStorage.setItem('ai_provider', val)
+            }}
+            className="saas-input min-h-[44px] py-2 px-3 text-sm font-medium"
+          >
+            <option value="gemini">Gemini</option>
+            <option value="groq">Groq</option>
+          </select>
+        </div>
       </div>
 
       <hr className="canvas-divider" />

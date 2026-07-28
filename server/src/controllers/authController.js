@@ -165,11 +165,10 @@ export async function forgotPassword(req, res, next) {
       user.resetPasswordExpires = Date.now() + 15 * 60 * 1000 // 15 minutes
       await user.save()
 
-      try {
-        await sendResetPasswordEmail({ to: user.email, token: unhashedToken })
-      } catch (emailError) {
+      // Send email asynchronously in background so response returns instantly
+      sendResetPasswordEmail({ to: user.email, token: unhashedToken }).catch(emailError => {
         console.error('Failed to send reset password email:', emailError)
-      }
+      })
     }
 
     // Always return generic success message to prevent email enumeration

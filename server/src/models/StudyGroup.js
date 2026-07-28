@@ -5,7 +5,7 @@ const studyGroupSchema = new mongoose.Schema({
   members: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }],
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   joinCode: { type: String, unique: true, sparse: true },
-  maxMembers: { type: Number, default: 15 },
+  maxMembers: { type: Number, default: () => parseInt(process.env.MAX_GROUP_MEMBERS || '70', 10) },
   createdAt: { type: Date, default: Date.now }
 }, { timestamps: true })
 

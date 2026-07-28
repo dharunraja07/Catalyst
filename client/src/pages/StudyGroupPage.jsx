@@ -6,7 +6,7 @@ import { useNotifications } from '../context/NotificationContext.jsx'
 import AIChatSurface from '../components/AIChatSurface.jsx'
 import getSocket from '../api/socket.js'
 
-const MAX_MEMBERS = 15
+const MAX_MEMBERS = 70
 
 export function getUniqueMembers(members = []) {
   if (!Array.isArray(members)) return []
@@ -451,15 +451,21 @@ export default function StudyGroupPage() {
     }
   }
 
+  const [groupSelectedProvider, setGroupSelectedProvider] = useState(() => {
+    return localStorage.getItem('ai_provider') || 'gemini'
+  })
+
   const sendMessage = async () => {
+    if (!messageText.trim() || !selectedGroupId) return
+
     const trimmed = messageText.trim()
-    if (!trimmed || !selectedGroupId) return
 
     const socket = getSocket()
     if (socket && socket.connected) {
       socket.emit('send_message', {
         groupId: selectedGroupId,
-        message: trimmed
+        message: trimmed,
+        provider: groupSelectedProvider
       })
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current)
@@ -480,13 +486,15 @@ export default function StudyGroupPage() {
         try {
           const aiRes = await api.post('/ai/chat', {
             message: aiPrompt,
-            history: []
+            history: [],
+            provider: groupSelectedProvider
           })
           const reply = aiRes.data?.response || aiRes.data?.reply
           if (reply && socket && socket.connected) {
             socket.emit('send_message', {
               groupId: selectedGroupId,
-              message: `🤖 [AI Response to "@ai ${aiPrompt}"]\n${reply}`
+              message: `🤖 [AI Response to "@ai ${aiPrompt}"]\n${reply}`,
+              provider: groupSelectedProvider
             })
           }
         } catch {
@@ -643,7 +651,7 @@ export default function StudyGroupPage() {
                   )}
                 </div>
                 <div className="flex flex-wrap items-center gap-2 mt-1 text-xs font-medium text-[var(--text-secondary)]">
-                  <span>{selectedGroup.members?.length || 0}/{selectedGroup.maxMembers || MAX_MEMBERS} Members</span>
+                  <span>{uniqueGroupMembers?.length || selectedGroup.members?.length || 0}/{!selectedGroup.maxMembers || selectedGroup.maxMembers <= 15 ? 70 : selectedGroup.maxMembers} Members</span>
                   <span>•</span>
                   <span className="inline-flex items-center gap-1 font-bold text-[var(--success-color)]">
                     <span className="h-1.5 w-1.5 rounded-full bg-[var(--success-color)] animate-pulse" />
@@ -1069,7 +1077,7 @@ export default function StudyGroupPage() {
                   <span>AI Companion is generating a response...</span>
                 </div>
               )}
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center pr-14 sm:pr-16">
                 <textarea
                   value={messageText}
                   onChange={handleInputChange}
@@ -1081,15 +1089,30 @@ export default function StudyGroupPage() {
                   }}
                   placeholder="Type your message... (Tip: start with @ai to ask AI in group chat)"
                   rows="2"
-                  className="saas-input w-full min-h-[46px] max-h-24 resize-none p-3 text-sm font-medium"
+                  className="saas-input w-full min-h-[46px] max-h-24 resize-none p-3 text-sm font-medium flex-1"
                 />
-                <button
-                  type="button"
-                  onClick={sendMessage}
-                  className="saas-button-primary min-h-[46px] px-6 sm:self-center font-bold shadow-sm"
-                >
-                  Send
-                </button>
+                <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                  <select
+                    value={groupSelectedProvider}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      setGroupSelectedProvider(val)
+                      localStorage.setItem('ai_provider', val)
+                    }}
+                    className="saas-input text-xs font-semibold px-2.5 min-h-[46px] cursor-pointer bg-[var(--bg-secondary)] border-[var(--border-main)] rounded-[12px] text-[var(--text-primary)]"
+                    title="Select AI Model Provider for @ai group chat"
+                  >
+                    <option value="gemini">Gemini</option>
+                    <option value="groq">Groq</option>
+                  </select>
+                  <button
+                    type="button"
+                    onClick={sendMessage}
+                    className="saas-button-primary min-h-[46px] px-6 font-bold shadow-sm"
+                  >
+                    Send
+                  </button>
+                </div>
               </div>
             </div>
           </div>

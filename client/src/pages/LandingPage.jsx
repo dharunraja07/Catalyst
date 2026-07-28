@@ -20,9 +20,12 @@ export default function LandingPage() {
   }
 
   useEffect(() => {
-    if (!user) return undefined
+    if (!user) return
     fetchTasks()
+  }, [user, api])
 
+  useEffect(() => {
+    if (!user) return
     const timer = window.setInterval(() => {
       const now = Date.now()
       const dueTask = tasks.find(
@@ -36,7 +39,7 @@ export default function LandingPage() {
     }, 10000)
 
     return () => window.clearInterval(timer)
-  }, [user, tasks, api])
+  }, [user, tasks])
 
   const addTask = async (event) => {
     event.preventDefault()

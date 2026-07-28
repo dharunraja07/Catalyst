@@ -30,9 +30,9 @@ export default function AppLayout({ children }) {
   // Logged Out Layout: Render top header without side navigation
   if (!user) {
     return (
-      <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)] transition-colors duration-200">
+      <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)] transition-colors duration-200 pt-16">
         <NavBar onOpenProfile={() => setIsProfileOpen(true)} />
-        <main className="mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-8 py-6 pb-16">
+        <main className="mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-8 py-4 sm:py-6 pb-16">
           {children}
         </main>
         <ProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />

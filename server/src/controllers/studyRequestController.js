@@ -136,17 +136,13 @@ export async function acceptRequest(req, res, next) {
       }
       populated = await populateGroup(group)
     } else {
-      const existingGroup = await StudyGroup.findOne({ members: { $all: [request.sender, request.receiver] } })
-      let group = existingGroup
-      if (!existingGroup) {
-        const sender = await User.findById(request.sender)
-        const receiver = await User.findById(request.receiver)
-        group = await StudyGroup.create({
-          groupName: `${sender.name} & ${receiver.name} Study Group`,
-          members: [request.sender, request.receiver],
-          createdBy: req.user._id
-        })
-      }
+      const sender = await User.findById(request.sender)
+      const receiver = await User.findById(request.receiver)
+      const group = await StudyGroup.create({
+        groupName: `${sender?.name || 'User'} & ${receiver?.name || 'User'} Study Group`,
+        members: [request.sender, request.receiver],
+        createdBy: req.user._id
+      })
       populated = await populateGroup(group)
     }
 

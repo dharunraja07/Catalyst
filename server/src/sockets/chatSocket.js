@@ -3,6 +3,7 @@ import User from '../models/User.js'
 import StudyGroup from '../models/StudyGroup.js'
 import Message from '../models/Message.js'
 import StudyRequest from '../models/StudyRequest.js'
+import { chatCompletion } from '../services/ai/aiService.js'
 
 // Track presence: roomKey -> Map<userId, { userId: string, name: string, sockets: Set<socketId> }>
 const roomPresence = new Map()
@@ -300,20 +301,49 @@ export function setupChatSocket(io) {
     })
 
     // send_message
-    socket.on('send_message', async ({ groupId, message }) => {
+    socket.on('send_message', async ({ groupId, message, provider }) => {
       if (!groupId || !message?.trim()) return
       try {
         const group = await StudyGroup.findOne({ _id: groupId, members: socket.user._id })
         if (!group) return
 
+        const trimmed = message.trim()
         const newMessage = await Message.create({
           groupId: group._id,
           sender: socket.user._id,
-          message: message.trim()
+          message: trimmed
         })
         const populated = await newMessage.populate('sender', 'name email')
 
         io.to(groupId.toString()).emit('receive_message', populated)
+
+        // Process @ai prompt if included
+        if (trimmed.toLowerCase().includes('@ai')) {
+          const aiQuery = trimmed.replace(/@ai/gi, '').trim() || 'Hello!'
+          const recentMsgs = await Message.find({ groupId: group._id })
+            .sort({ createdAt: -1 })
+            .limit(10)
+
+          const historyContext = recentMsgs.reverse().map((m) => ({
+            role: m.sender?.toString() === socket.user._id.toString() ? 'user' : 'assistant',
+            content: m.message
+          }))
+
+          try {
+            const aiReply = await chatCompletion(historyContext, aiQuery, { provider })
+            if (aiReply && aiReply.trim()) {
+              const aiMsg = await Message.create({
+                groupId: group._id,
+                sender: socket.user._id,
+                message: `🤖 [AI Companion]\n${aiReply.trim()}`
+              })
+              const populatedAiMsg = await aiMsg.populate('sender', 'name email')
+              io.to(groupId.toString()).emit('receive_message', populatedAiMsg)
+            }
+          } catch (aiErr) {
+            console.error('Group @ai error:', aiErr.message)
+          }
+        }
       } catch (error) {
         console.error('Socket send_message error:', error)
       }
