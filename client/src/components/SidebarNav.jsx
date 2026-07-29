@@ -133,16 +133,36 @@ export default function SidebarNav({ isCollapsed, toggleCollapse }) {
         <nav className="space-y-1.5">
           {navItems.map((item) => {
             const active = location.pathname === item.href
+            const itemClasses = `flex items-center gap-3.5 px-3.5 py-3 rounded-[14px] text-sm font-semibold transition-all duration-200 ${
+              active
+                ? 'bg-[var(--accent-color)] text-black shadow-md font-bold'
+                : 'text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)]'
+            } ${isCollapsed ? 'justify-center px-0' : ''}`
+
+            if (item.href === '/meet') {
+              return (
+                <a
+                  key={item.href}
+                  href="/meet"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={isCollapsed ? item.label : undefined}
+                  className={itemClasses}
+                >
+                  {item.icon}
+                  {!isCollapsed && (
+                    <span className="truncate transition-opacity duration-200">{item.label}</span>
+                  )}
+                </a>
+              )
+            }
+
             return (
               <Link
                 key={item.href}
                 to={item.href}
                 title={isCollapsed ? item.label : undefined}
-                className={`flex items-center gap-3.5 px-3.5 py-3 rounded-[14px] text-sm font-semibold transition-all duration-200 ${
-                  active
-                    ? 'bg-[var(--accent-color)] text-black shadow-md font-bold'
-                    : 'text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)]'
-                } ${isCollapsed ? 'justify-center px-0' : ''}`}
+                className={itemClasses}
               >
                 {item.icon}
                 {!isCollapsed && (

@@ -236,6 +236,35 @@ export function setupMeetSocket(io) {
       }
     })
 
+    socket.on('wb_remove_action', ({ roomCode, actionId, actionType }) => {
+      if (!roomCode || !actionId) return
+      const code = roomCode.trim().toUpperCase()
+      const history = meetBoards.get(code)
+      if (history) {
+        const updatedHistory = history.filter((item) => {
+          if (item.payload?.strokeId) {
+            return item.payload.strokeId !== actionId
+          }
+          if (item.payload?.textId) {
+            return item.payload.textId !== actionId
+          }
+          return true
+        })
+        meetBoards.set(code, updatedHistory)
+      }
+      io.to(code).emit('wb_remove_action', { actionId, actionType })
+    })
+
+    socket.on('screen_share_status', ({ roomCode, sharing }) => {
+      if (!roomCode) return
+      const code = roomCode.trim().toUpperCase()
+      socket.to(code).emit('screen_share_status', {
+        userId: socket.user._id.toString(),
+        name: socket.user.name,
+        sharing: Boolean(sharing)
+      })
+    })
+
     // 7. End Meet for Everyone (Host Only)
     socket.on('end_meet_for_all', async ({ roomCode }) => {
       if (!roomCode) return

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 
 export default function RegisterPage() {
@@ -7,6 +7,7 @@ export default function RegisterPage() {
   const [message, setMessage] = useState('')
   const { register } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
 
   const handleChange = (event) => {
     const { name, value } = event.target
@@ -25,7 +26,8 @@ export default function RegisterPage() {
         careerInterests: form.careerInterests.split(',').map((item) => item.trim()),
         learningStyle: form.learningStyle
       })
-      navigate('/dashboard')
+      const destination = location.state?.from || '/dashboard'
+      navigate(destination)
     } catch (error) {
       setMessage(error.response?.data?.error || error.message || 'Registration failed')
     }

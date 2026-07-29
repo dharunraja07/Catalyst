@@ -28,27 +28,60 @@ export default function MeetRoomPage() {
   const [remoteStreams, setRemoteStreams] = useState({}) // userId -> MediaStream
   const [participants, setParticipants] = useState([]) // array of { userId, name, audioOn, videoOn }
 
-  // UI State
-  const [activeMobileTab, setActiveMobileTab] = useState('call') // 'call' | 'board'
-  const [reactions, setReactions] = useState([]) // array of { id, name, emoji, xPercent }
+  // UI Panels / Toggles State
+  const [showWhiteboard, setShowWhiteboard] = useState(false)
+  const [showParticipantsList, setShowParticipantsList] = useState(false)
+  const [showInviteModal, setShowInviteModal] = useState(false)
+  const [showReactionsPicker, setShowReactionsPicker] = useState(false)
   const [confirmEndModal, setConfirmEndModal] = useState(false)
+  const [reactions, setReactions] = useState([]) // array of { id, name, emoji, xPercent }
+
+  // Screen Sharing State
+  const [isSharingScreen, setIsSharingScreen] = useState(false)
+  const [screenSharingUser, setScreenSharingUser] = useState(null) // { userId, name } if remote is sharing
+
+  // Phase 7: Share to Group Modal State
+  const [showShareGroupModal, setShowShareGroupModal] = useState(false)
+  const [userGroups, setUserGroups] = useState([])
+  const [loadingGroups, setLoadingGroups] = useState(false)
+  const [selectedShareGroupId, setSelectedShareGroupId] = useState('')
+  const [shareSuccessMsg, setShareSuccessMsg] = useState('')
+  const [sharingGroup, setSharingGroup] = useState(false)
 
   // Whiteboard State
   const [wbColor, setWbColor] = useState('#F59E0B')
   const [wbWidth, setWbWidth] = useState(3)
-  const [wbTool, setWbTool] = useState('pen') // 'pen' | 'text'
+  const [wbTool, setWbTool] = useState('pen') // 'pen' | 'text' | 'eraser'
   const [textInput, setTextInput] = useState({ open: false, x: 0, y: 0, content: '' })
 
   // Refs
-  const localVideoRef = useRef(null)
+  const localStreamRef = useRef(null)
+  const localScreenStreamRef = useRef(null)
   const peerConnectionsRef = useRef({}) // userId -> RTCPeerConnection
+
+  const canvasRef = useRef(null)
+  const canvasContainerRef = useRef(null)
   const currentStrokeIdRef = useRef(null)
   const isDrawingRef = useRef(false)
-  const canvasRef = useRef(null)
   const remoteBoardActionsRef = useRef([])
+  const undoStackRef = useRef([]) // local user's actions for undo
+  const redoStackRef = useRef([]) // local user's actions for redo
 
-  // 1. Initial Validation on Mount
+  // Helper to reliably attach media streams to video elements on mount/re-render
+  const attachStream = useCallback((node, stream) => {
+    if (node && stream && node.srcObject !== stream) {
+      node.srcObject = stream
+    }
+  }, [])
+
+  // Keep localStreamRef updated
   useEffect(() => {
+    localStreamRef.current = localStream
+  }, [localStream])
+
+  // 1. Initial Room Validation on Mount
+  useEffect(() => {
+    if (!user) return
     async function validateRoom() {
       setIsValidating(true)
       setRoomError('')
@@ -62,48 +95,118 @@ export default function MeetRoomPage() {
       }
     }
     validateRoom()
-  }, [api, upperRoomCode])
+  }, [api, upperRoomCode, user])
 
-  // 2. getUserMedia Media Stream Capture
+  // 2. getUserMedia Media Stream Capture (Resilient with fallbacks and instant prompt)
   const initLocalMedia = useCallback(async () => {
     setMediaError('')
+
+    const hostname = window.location.hostname
+    const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1'
+    const isHTTPS = window.location.protocol === 'https:'
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      if (!isHTTPS && !isLocalhost) {
+        setMediaError(
+          `Chrome/Edge security policy disables camera & mic on plain HTTP IP (http://${hostname}:5173). To enable for local Wi-Fi testing: open chrome://flags/#unsafely-treat-insecure-origin-as-secure on your friend's laptop, add http://${hostname}:5173, and click Relaunch!`
+        )
+      } else {
+        setMediaError('Media devices API is not supported by your browser.')
+      }
+      return null
+    }
+
     try {
+      // Attempt both video and audio
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
       setLocalStream(stream)
       setAudioEnabled(true)
       setVideoEnabled(true)
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = stream
-      }
       return stream
     } catch (err) {
-      console.warn('getUserMedia failure:', err)
-      setMediaError('Could not access camera or microphone. Please check permissions.')
-      return null
+      console.warn('getUserMedia audio+video failed, attempting fallbacks:', err)
+
+      // Fallback 1: Audio only
+      try {
+        const audioOnly = await navigator.mediaDevices.getUserMedia({ video: false, audio: true })
+        setLocalStream(audioOnly)
+        setAudioEnabled(true)
+        setVideoEnabled(false)
+        setMediaError('Camera not detected. Connected using Microphone only.')
+        return audioOnly
+      } catch (audioErr) {
+        console.warn('Audio fallback failed, attempting video only:', audioErr)
+
+        // Fallback 2: Video only
+        try {
+          const videoOnly = await navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+          setLocalStream(videoOnly)
+          setAudioEnabled(false)
+          setVideoEnabled(true)
+          setMediaError('Microphone not detected. Connected using Camera only.')
+          return videoOnly
+        } catch (videoErr) {
+          console.error('All getUserMedia attempts failed:', videoErr)
+          setMediaError('Camera/Microphone permission denied. Please allow permissions in your browser address bar.')
+          return null
+        }
+      }
     }
   }, [])
 
+  // Prompt for media immediately on mount (parallel with room validation)
   useEffect(() => {
-    if (!meetInfo) return
     initLocalMedia()
 
     return () => {
       // Teardown local media tracks on unmount
-      setLocalStream((stream) => {
-        if (stream) {
-          stream.getTracks().forEach((t) => t.stop())
-        }
-        return null
-      })
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach((t) => t.stop())
+      }
+      if (localScreenStreamRef.current) {
+        localScreenStreamRef.current.getTracks().forEach((t) => t.stop())
+      }
     }
-  }, [meetInfo, initLocalMedia])
+  }, [initLocalMedia])
 
-  // Bind local stream to video element when available
+  // Phase 5 Safety Net: Late permission / stream resolution handling
   useEffect(() => {
-    if (localStream && localVideoRef.current) {
-      localVideoRef.current.srcObject = localStream
-    }
-  }, [localStream])
+    if (!localStream) return
+
+    Object.entries(peerConnectionsRef.current).forEach(([peerId, pc]) => {
+      const senders = pc.getSenders()
+      const tracksToAdd = localStream.getTracks()
+      let needsOffer = false
+
+      tracksToAdd.forEach((track) => {
+        const existingSender = senders.find((s) => s.track?.kind === track.kind)
+        if (existingSender) {
+          if (existingSender.track !== track) {
+            existingSender.replaceTrack(track).catch(() => {})
+          }
+        } else {
+          pc.addTrack(track, localStream)
+          needsOffer = true
+        }
+      })
+
+      if (needsOffer) {
+        pc.createOffer()
+          .then((offer) => pc.setLocalDescription(offer))
+          .then(() => {
+            const socket = getSocket()
+            if (socket && socket.connected) {
+              socket.emit('webrtc_offer', {
+                roomCode: upperRoomCode,
+                toUserId: peerId,
+                sdp: pc.localDescription
+              })
+            }
+          })
+          .catch((err) => console.error('Error re-negotiating offer after delayed getUserMedia:', err))
+      }
+    })
+  }, [localStream, upperRoomCode])
 
   // 3. WebRTC Peer Connection Helper
   const createPeerConnection = useCallback((remoteUserId, streamToUse) => {
@@ -115,8 +218,8 @@ export default function MeetRoomPage() {
       iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
     })
 
-    // Attach local tracks
-    const activeStream = streamToUse || localStream
+    // Attach local tracks (screen track if sharing, else camera/mic stream)
+    const activeStream = streamToUse || localStreamRef.current
     if (activeStream) {
       activeStream.getTracks().forEach((track) => {
         pc.addTrack(track, activeStream)
@@ -150,7 +253,7 @@ export default function MeetRoomPage() {
 
     peerConnectionsRef.current[remoteUserId] = pc
     return pc
-  }, [localStream, upperRoomCode])
+  }, [upperRoomCode])
 
   // Clean up a specific peer connection
   const closePeerConnection = useCallback((remoteUserId) => {
@@ -175,15 +278,21 @@ export default function MeetRoomPage() {
     setRemoteStreams({})
   }, [])
 
-  // 4. Whiteboard Canvas Drawing Logic & Helper
+  // 4. Whiteboard Canvas Rendering & Redraw Logic
   const drawStrokeOnCanvas = useCallback((ctx, stroke) => {
     if (!ctx || !stroke) return
-    const { color, width, points } = stroke
+    const { tool, color, width, points } = stroke
     if (!points || points.length === 0) return
 
     ctx.save()
-    ctx.strokeStyle = color || '#F59E0B'
-    ctx.lineWidth = width || 3
+    if (tool === 'eraser') {
+      ctx.globalCompositeOperation = 'destination-out'
+      ctx.lineWidth = width || 20
+    } else {
+      ctx.globalCompositeOperation = 'source-over'
+      ctx.strokeStyle = color || '#F59E0B'
+      ctx.lineWidth = width || 3
+    }
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
 
@@ -202,6 +311,7 @@ export default function MeetRoomPage() {
     if (!content) return
 
     ctx.save()
+    ctx.globalCompositeOperation = 'source-over'
     ctx.fillStyle = color || '#F59E0B'
     ctx.font = 'bold 16px sans-serif'
     ctx.fillText(content, x, y)
@@ -214,7 +324,9 @@ export default function MeetRoomPage() {
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    const dpr = window.devicePixelRatio || 1
+    ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr)
+
     remoteBoardActionsRef.current.forEach((item) => {
       if (item.type === 'stroke') {
         drawStrokeOnCanvas(ctx, item)
@@ -229,10 +341,12 @@ export default function MeetRoomPage() {
     let currentStrokesMap = {}
 
     actions.forEach(({ event, payload }) => {
+      if (!payload) return
       if (event === 'wb_draw_start') {
         currentStrokesMap[payload.strokeId] = {
           type: 'stroke',
           strokeId: payload.strokeId,
+          tool: payload.tool || 'pen',
           color: payload.color,
           width: payload.width,
           points: [payload.point]
@@ -264,7 +378,44 @@ export default function MeetRoomPage() {
     redrawCanvas()
   }, [redrawCanvas])
 
-  // 5. Socket.IO Event Handlers Lifecycle
+  // Phase 2 Canvas ResizeObserver for HiDPI sharpness and accurate cursor positioning
+  useEffect(() => {
+    const container = canvasContainerRef.current
+    const canvas = canvasRef.current
+    if (!container || !canvas) return
+
+    const resizeCanvas = () => {
+      const dpr = window.devicePixelRatio || 1
+      const clientWidth = container.clientWidth
+      const clientHeight = container.clientHeight
+
+      if (clientWidth === 0 || clientHeight === 0) return
+
+      canvas.width = clientWidth * dpr
+      canvas.height = clientHeight * dpr
+      canvas.style.width = `${clientWidth}px`
+      canvas.style.height = `${clientHeight}px`
+
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        ctx.scale(dpr, dpr)
+      }
+      redrawCanvas()
+    }
+
+    const observer = new ResizeObserver(() => {
+      resizeCanvas()
+    })
+
+    observer.observe(container)
+    resizeCanvas()
+
+    return () => {
+      observer.disconnect()
+    }
+  }, [redrawCanvas, showWhiteboard])
+
+  // 5. Socket.IO Event Handlers Lifecycle (Phase 5 fix: localStream removed from dependencies)
   useEffect(() => {
     if (!meetInfo) return
 
@@ -303,14 +454,16 @@ export default function MeetRoomPage() {
     const handleWebrtcOffer = async ({ fromUserId, sdp }) => {
       const pc = createPeerConnection(fromUserId)
       try {
-        await pc.setRemoteDescription(new RTCSessionDescription(sdp))
-        const answer = await pc.createAnswer()
-        await pc.setLocalDescription(answer)
-        socket.emit('webrtc_answer', {
-          roomCode: upperRoomCode,
-          toUserId: fromUserId,
-          sdp: answer
-        })
+        if (pc.signalingState === 'stable' || pc.signalingState === 'have-local-offer') {
+          await pc.setRemoteDescription(new RTCSessionDescription(sdp))
+          const answer = await pc.createAnswer()
+          await pc.setLocalDescription(answer)
+          socket.emit('webrtc_answer', {
+            roomCode: upperRoomCode,
+            toUserId: fromUserId,
+            sdp: answer
+          })
+        }
       } catch (err) {
         console.error('Error handling WebRTC offer:', err)
       }
@@ -320,7 +473,9 @@ export default function MeetRoomPage() {
       const pc = peerConnectionsRef.current[fromUserId]
       if (pc) {
         try {
-          await pc.setRemoteDescription(new RTCSessionDescription(sdp))
+          if (pc.signalingState === 'have-local-offer') {
+            await pc.setRemoteDescription(new RTCSessionDescription(sdp))
+          }
         } catch (err) {
           console.error('Error setting remote description from answer:', err)
         }
@@ -360,6 +515,7 @@ export default function MeetRoomPage() {
       remoteBoardActionsRef.current.push({
         type: 'stroke',
         strokeId: payload.strokeId,
+        tool: payload.tool || 'pen',
         color: payload.color,
         width: payload.width,
         points: [payload.point]
@@ -391,15 +547,34 @@ export default function MeetRoomPage() {
       redrawCanvas()
     }
 
+    const handleWbRemoveAction = ({ actionId }) => {
+      remoteBoardActionsRef.current = remoteBoardActionsRef.current.filter((item) => {
+        if (item.strokeId) return item.strokeId !== actionId
+        if (item.textId) return item.textId !== actionId
+        return true
+      })
+      redrawCanvas()
+    }
+
     const handleWbClear = () => {
       remoteBoardActionsRef.current = []
+      undoStackRef.current = []
+      redoStackRef.current = []
       redrawCanvas()
+    }
+
+    const handleScreenShareStatus = ({ userId, name, sharing }) => {
+      if (sharing) {
+        setScreenSharingUser({ userId, name })
+      } else {
+        setScreenSharingUser((prev) => (prev?.userId === userId ? null : prev))
+      }
     }
 
     const handleMeetEnded = () => {
       closeAllPeerConnections()
-      if (localStream) {
-        localStream.getTracks().forEach((t) => t.stop())
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach((t) => t.stop())
       }
       setRoomError('The host has ended this meeting.')
       setTimeout(() => {
@@ -420,7 +595,9 @@ export default function MeetRoomPage() {
     socket.on('wb_draw_point', handleWbDrawPoint)
     socket.on('wb_draw_end', handleWbDrawEnd)
     socket.on('wb_add_text', handleWbAddText)
+    socket.on('wb_remove_action', handleWbRemoveAction)
     socket.on('wb_clear', handleWbClear)
+    socket.on('screen_share_status', handleScreenShareStatus)
     socket.on('meet_ended', handleMeetEnded)
 
     return () => {
@@ -438,12 +615,14 @@ export default function MeetRoomPage() {
       socket.off('wb_draw_point', handleWbDrawPoint)
       socket.off('wb_draw_end', handleWbDrawEnd)
       socket.off('wb_add_text', handleWbAddText)
+      socket.off('wb_remove_action', handleWbRemoveAction)
       socket.off('wb_clear', handleWbClear)
+      socket.off('screen_share_status', handleScreenShareStatus)
       socket.off('meet_ended', handleMeetEnded)
 
       closeAllPeerConnections()
     }
-  }, [meetInfo, upperRoomCode, createPeerConnection, closePeerConnection, closeAllPeerConnections, replayActionHistory, redrawCanvas, localStream, navigate])
+  }, [meetInfo, upperRoomCode, createPeerConnection, closePeerConnection, closeAllPeerConnections, replayActionHistory, redrawCanvas, navigate])
 
   // 6. Media Controls Handlers
   const toggleAudio = () => {
@@ -482,6 +661,66 @@ export default function MeetRoomPage() {
     }
   }
 
+  // Phase 4 Screen Sharing Handler
+  const handleToggleScreenShare = async () => {
+    if (isSharingScreen) {
+      stopScreenShare()
+      return
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false })
+      const screenTrack = stream.getVideoTracks()[0]
+      if (!screenTrack) return
+
+      localScreenStreamRef.current = stream
+      setIsSharingScreen(true)
+
+      // Swap outgoing video track for all peers
+      Object.values(peerConnectionsRef.current).forEach((pc) => {
+        const videoSender = pc.getSenders().find((s) => s.track && s.track.kind === 'video')
+        if (videoSender) {
+          videoSender.replaceTrack(screenTrack)
+        }
+      })
+
+      const socket = getSocket()
+      if (socket && socket.connected) {
+        socket.emit('screen_share_status', { roomCode: upperRoomCode, sharing: true })
+      }
+
+      // Handle user clicking native browser "Stop sharing" button
+      screenTrack.onended = () => {
+        stopScreenShare()
+      }
+    } catch (err) {
+      // User cancelled picker or error - gracefully stay in call
+      console.log('Screen sharing cancelled or not granted:', err)
+    }
+  }
+
+  const stopScreenShare = () => {
+    if (localScreenStreamRef.current) {
+      localScreenStreamRef.current.getTracks().forEach((t) => t.stop())
+      localScreenStreamRef.current = null
+    }
+    setIsSharingScreen(false)
+
+    // Restore original camera track to all peers
+    const cameraTrack = localStreamRef.current?.getVideoTracks()[0] || null
+    Object.values(peerConnectionsRef.current).forEach((pc) => {
+      const videoSender = pc.getSenders().find((s) => s.track && s.track.kind === 'video')
+      if (videoSender && cameraTrack) {
+        videoSender.replaceTrack(cameraTrack)
+      }
+    })
+
+    const socket = getSocket()
+    if (socket && socket.connected) {
+      socket.emit('screen_share_status', { roomCode: upperRoomCode, sharing: false })
+    }
+  }
+
   const handleLeaveCall = () => {
     const socket = getSocket()
     if (socket && socket.connected) {
@@ -489,8 +728,11 @@ export default function MeetRoomPage() {
     }
 
     closeAllPeerConnections()
-    if (localStream) {
-      localStream.getTracks().forEach((t) => t.stop())
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach((t) => t.stop())
+    }
+    if (localScreenStreamRef.current) {
+      localScreenStreamRef.current.getTracks().forEach((t) => t.stop())
     }
     navigate('/meet')
   }
@@ -509,9 +751,10 @@ export default function MeetRoomPage() {
     if (socket && socket.connected) {
       socket.emit('send_reaction', { roomCode: upperRoomCode, emoji })
     }
+    setShowReactionsPicker(false)
   }
 
-  // 7. Canvas Interaction Event Handlers
+  // 7. Whiteboard Canvas Interaction Handlers
   const getCanvasCoordinates = (e) => {
     const canvas = canvasRef.current
     if (!canvas) return { x: 0, y: 0 }
@@ -535,29 +778,35 @@ export default function MeetRoomPage() {
     isDrawingRef.current = true
 
     const point = { x, y }
+    const effectiveWidth = wbTool === 'eraser' ? 20 : wbWidth
+
     const socket = getSocket()
     if (socket && socket.connected) {
       socket.emit('wb_draw_start', {
         roomCode: upperRoomCode,
         strokeId,
+        tool: wbTool,
         color: wbColor,
-        width: wbWidth,
+        width: effectiveWidth,
         point
       })
     }
 
-    remoteBoardActionsRef.current.push({
+    const newStroke = {
       type: 'stroke',
       strokeId,
+      tool: wbTool,
       color: wbColor,
-      width: wbWidth,
+      width: effectiveWidth,
       points: [point]
-    })
+    }
+
+    remoteBoardActionsRef.current.push(newStroke)
     redrawCanvas()
   }
 
   const handleCanvasPointerMove = (e) => {
-    if (!isDrawingRef.current || !currentStrokeIdRef.current || wbTool !== 'pen') return
+    if (!isDrawingRef.current || !currentStrokeIdRef.current) return
     const { x, y } = getCanvasCoordinates(e)
     const point = { x, y }
     const strokeId = currentStrokeIdRef.current
@@ -583,6 +832,17 @@ export default function MeetRoomPage() {
     const strokeId = currentStrokeIdRef.current
     isDrawingRef.current = false
     currentStrokeIdRef.current = null
+
+    // Push to local user's undo stack
+    const action = remoteBoardActionsRef.current.find((s) => s.strokeId === strokeId)
+    if (action) {
+      undoStackRef.current.push({
+        actionId: strokeId,
+        actionType: 'stroke',
+        action
+      })
+      redoStackRef.current = [] // clear redo stack on new action
+    }
 
     const socket = getSocket()
     if (socket && socket.connected) {
@@ -618,10 +878,19 @@ export default function MeetRoomPage() {
       })
     }
 
-    remoteBoardActionsRef.current.push({
+    const textItem = {
       type: 'text',
       ...payload
+    }
+
+    remoteBoardActionsRef.current.push(textItem)
+    undoStackRef.current.push({
+      actionId: textId,
+      actionType: 'text',
+      action: textItem
     })
+    redoStackRef.current = []
+
     redrawCanvas()
     setTextInput({ open: false, x: 0, y: 0, content: '' })
   }
@@ -633,10 +902,163 @@ export default function MeetRoomPage() {
     }
   }
 
+  // Phase 2: Undo / Redo Scoped Keyboard Shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (!showWhiteboard) return
+
+      // Don't intercept if user is typing in a form input/textarea
+      const targetTag = document.activeElement?.tagName?.toUpperCase()
+      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(targetTag)) return
+
+      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
+      const isCmdOrCtrl = isMac ? e.metaKey : e.ctrlKey
+
+      if (!isCmdOrCtrl) return
+
+      const key = e.key.toLowerCase()
+
+      // UNDO: Ctrl+Z / Cmd+Z
+      if (key === 'z' && !e.shiftKey) {
+        e.preventDefault()
+        if (undoStackRef.current.length === 0) return
+
+        const lastAction = undoStackRef.current.pop()
+        redoStackRef.current.push(lastAction)
+
+        const socket = getSocket()
+        if (socket && socket.connected) {
+          socket.emit('wb_remove_action', {
+            roomCode: upperRoomCode,
+            actionId: lastAction.actionId,
+            actionType: lastAction.actionType
+          })
+        }
+
+        remoteBoardActionsRef.current = remoteBoardActionsRef.current.filter((item) => {
+          if (item.strokeId) return item.strokeId !== lastAction.actionId
+          if (item.textId) return item.textId !== lastAction.actionId
+          return true
+        })
+        redrawCanvas()
+      }
+
+      // REDO: Ctrl+Y or Ctrl+Shift+Z
+      if (key === 'y' || (key === 'z' && e.shiftKey)) {
+        e.preventDefault()
+        if (redoStackRef.current.length === 0) return
+
+        const redoAction = redoStackRef.current.pop()
+        undoStackRef.current.push(redoAction)
+
+        const socket = getSocket()
+        const { action } = redoAction
+
+        if (action.type === 'stroke') {
+          if (socket && socket.connected) {
+            socket.emit('wb_draw_start', {
+              roomCode: upperRoomCode,
+              strokeId: action.strokeId,
+              tool: action.tool || 'pen',
+              color: action.color,
+              width: action.width,
+              point: action.points[0]
+            })
+            for (let i = 1; i < action.points.length; i++) {
+              socket.emit('wb_draw_point', {
+                roomCode: upperRoomCode,
+                strokeId: action.strokeId,
+                point: action.points[i]
+              })
+            }
+            socket.emit('wb_draw_end', {
+              roomCode: upperRoomCode,
+              strokeId: action.strokeId
+            })
+          }
+        } else if (action.type === 'text') {
+          if (socket && socket.connected) {
+            socket.emit('wb_add_text', {
+              roomCode: upperRoomCode,
+              textId: action.textId,
+              x: action.x,
+              y: action.y,
+              content: action.content,
+              color: action.color
+            })
+          }
+        }
+
+        remoteBoardActionsRef.current.push(action)
+        redrawCanvas()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [showWhiteboard, upperRoomCode, redrawCanvas])
+
+  // Phase 7: Fetch Study Groups & Share to Group Chat
+  const handleOpenShareGroupModal = async () => {
+    setShowShareGroupModal(true)
+    setShareSuccessMsg('')
+    setLoadingGroups(true)
+    try {
+      const res = await api.get('/study-groups/groups')
+      const groups = res.data || []
+      setUserGroups(groups)
+      if (groups.length > 0) {
+        setSelectedShareGroupId(groups[0]._id)
+      }
+    } catch (err) {
+      console.error('Failed to load study groups:', err)
+    } finally {
+      setLoadingGroups(false)
+    }
+  }
+
+  const handleSendInviteToGroup = async (e) => {
+    e.preventDefault()
+    if (!selectedShareGroupId) return
+
+    setSharingGroup(true)
+    setShareSuccessMsg('')
+
+    const shareableUrl = `${window.location.origin}/meet/room/${upperRoomCode}`
+    const messageBody = `📹 Join our study meet: ${shareableUrl} (Code: ${upperRoomCode})`
+
+    try {
+      // Send via HTTP endpoint
+      await api.post(`/study-groups/groups/${selectedShareGroupId}/messages`, {
+        message: messageBody
+      })
+
+      // Also emit via chat socket if connected
+      const socket = getSocket()
+      if (socket && socket.connected) {
+        socket.emit('send_message', {
+          groupId: selectedShareGroupId,
+          message: messageBody
+        })
+      }
+
+      setShareSuccessMsg('Invite shared successfully into group chat!')
+      setTimeout(() => {
+        setShowShareGroupModal(false)
+      }, 1800)
+    } catch (err) {
+      console.error('Failed to share invite to group:', err)
+    } finally {
+      setSharingGroup(false)
+    }
+  }
+
   // 8. Render Validation / Error States
   if (isValidating) {
     return (
-      <div className="flex h-full items-center justify-center p-6">
+      <div className="flex h-screen items-center justify-center bg-[var(--bg-primary)] p-6">
         <div className="flex flex-col items-center gap-3">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-[var(--accent-color)] border-t-transparent" />
           <p className="text-sm font-semibold text-[var(--text-secondary)]">Validating meeting room...</p>
@@ -647,7 +1069,7 @@ export default function MeetRoomPage() {
 
   if (roomError) {
     return (
-      <div className="flex h-full items-center justify-center p-6">
+      <div className="flex h-screen items-center justify-center bg-[var(--bg-primary)] p-6">
         <div className="saas-card max-w-md w-full text-center space-y-4 border border-[var(--border-main)] p-8">
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--error-bg)] text-2xl mx-auto">
             🚫
@@ -665,27 +1087,30 @@ export default function MeetRoomPage() {
   }
 
   const hostUserId = (meetInfo?.createdBy?._id || meetInfo?.createdBy || '').toString()
-  const isHost = currentUserId && hostUserId && currentUserId === hostUserId
+  const isHost = Boolean(currentUserId && hostUserId && currentUserId === hostUserId)
   const shareableUrl = `${window.location.origin}/meet/room/${upperRoomCode}`
 
-  // Calculate Grid Layout Columns based on total participant count
-  const allParticipantCount = (participants.length > 0 ? participants.length : 1)
+  // Participant counts & Presentation mode condition
+  const allParticipantCount = participants.length > 0 ? participants.length : 1
+  const isPresentationMode = showWhiteboard || isSharingScreen || Boolean(screenSharingUser)
+
+  // Responsive Grid Columns density mapping for Phase 1
   const gridColsClass =
     allParticipantCount <= 2
       ? 'grid-cols-1 sm:grid-cols-2'
       : allParticipantCount <= 4
-      ? 'grid-cols-2'
-      : 'grid-cols-2 lg:grid-cols-3'
+      ? 'grid-cols-2 lg:grid-cols-2'
+      : 'grid-cols-2 md:grid-cols-3'
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-[var(--bg-primary)] relative">
+    <div className="flex h-screen w-screen min-h-0 flex-col overflow-hidden bg-[var(--bg-primary)] relative select-none">
       {/* Floating Animated Reaction Emojis Overlay */}
       <div className="absolute inset-0 z-40 pointer-events-none overflow-hidden">
         {reactions.map((r) => (
           <div
             key={r.id}
             style={{ left: `${r.xPercent}%` }}
-            className="absolute bottom-20 flex flex-col items-center animate-bounce transition-all duration-1000"
+            className="absolute bottom-24 flex flex-col items-center animate-bounce transition-all duration-1000"
           >
             <span className="text-4xl drop-shadow-lg">{r.emoji}</span>
             <span className="rounded-full bg-black/80 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm mt-1">
@@ -695,14 +1120,14 @@ export default function MeetRoomPage() {
         ))}
       </div>
 
-      {/* Top Header Bar */}
-      <div className="flex-none border-b border-[var(--border-main)] bg-[var(--bg-surface)] px-4 py-3 shadow-xs">
+      {/* Standalone Minimal Top Header Bar (Phase 6) */}
+      <header className="flex-none border-b border-[var(--border-main)] bg-[var(--bg-surface)] px-4 py-2.5 shadow-xs z-30">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
             <Link
               to="/meet"
-              className="flex h-9 w-9 items-center justify-center rounded-[12px] border border-[var(--border-main)] bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition"
-              title="Back to Lobby"
+              className="flex h-9 w-9 items-center justify-center rounded-[12px] border border-[var(--border-main)] bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition shrink-0"
+              title="Back to Meet Lobby"
             >
               ←
             </Link>
@@ -711,7 +1136,7 @@ export default function MeetRoomPage() {
                 <h1 className="text-base font-extrabold text-[var(--text-primary)] truncate">
                   {meetInfo?.title || 'Study Meet'}
                 </h1>
-                <span className="rounded-full bg-[var(--accent-color)]/10 text-[var(--accent-color)] border border-[var(--accent-color)]/30 px-2 py-0.5 text-[10px] font-bold shrink-0">
+                <span className="rounded-full bg-[var(--accent-color)]/10 text-[var(--accent-color)] border border-[var(--accent-color)]/30 px-2.5 py-0.5 text-[10px] font-mono font-bold shrink-0">
                   {upperRoomCode}
                 </span>
                 {isHost && (
@@ -724,303 +1149,695 @@ export default function MeetRoomPage() {
             </div>
           </div>
 
-          {/* Shareable Invite Link Panel */}
-          <div className="flex items-center gap-2 bg-[var(--bg-secondary)] px-3 py-1.5 rounded-[12px] border border-[var(--border-main)]">
-            <span className="text-xs font-semibold text-[var(--text-secondary)] hidden sm:inline">Invite Link:</span>
-            <span className="font-mono text-xs text-[var(--accent-color)] font-bold truncate max-w-[160px] sm:max-w-[240px]">
-              {shareableUrl}
-            </span>
-            <CopyButton text={shareableUrl} />
+          {/* Presenting Screen Banner */}
+          {screenSharingUser && (
+            <div className="hidden sm:flex items-center gap-2 bg-amber-500/10 border border-amber-500/30 text-amber-400 px-3 py-1 rounded-full text-xs font-bold animate-pulse">
+              <span>💻 {screenSharingUser.name} is presenting screen</span>
+            </div>
+          )}
+
+          {/* Top Quick Actions (Invite & Header Buttons) */}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowInviteModal(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-[12px] bg-[var(--bg-secondary)] text-[var(--text-primary)] border border-[var(--border-main)] hover:border-[var(--accent-color)] text-xs font-bold transition cursor-pointer"
+            >
+              <span>🔗 Invite</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowParticipantsList((prev) => !prev)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-[12px] bg-[var(--bg-secondary)] text-[var(--text-primary)] border border-[var(--border-main)] hover:border-[var(--accent-color)] text-xs font-bold transition cursor-pointer"
+            >
+              <span>👥 {allParticipantCount}</span>
+            </button>
           </div>
         </div>
-      </div>
-
-      {/* Mobile Tab Switcher (<lg screens) */}
-      <div className="flex border-b border-[var(--border-main)] bg-[var(--bg-secondary)] lg:hidden">
-        <button
-          type="button"
-          onClick={() => setActiveMobileTab('call')}
-          className={`flex-1 py-2 text-xs font-bold border-b-2 transition ${
-            activeMobileTab === 'call'
-              ? 'border-[var(--accent-color)] text-[var(--accent-color)]'
-              : 'border-transparent text-[var(--text-muted)]'
-          }`}
-        >
-          📹 Video Call ({allParticipantCount})
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveMobileTab('board')}
-          className={`flex-1 py-2 text-xs font-bold border-b-2 transition ${
-            activeMobileTab === 'board'
-              ? 'border-[var(--accent-color)] text-[var(--accent-color)]'
-              : 'border-transparent text-[var(--text-muted)]'
-          }`}
-        >
-          🎨 Shared Whiteboard
-        </button>
-      </div>
+      </header>
 
       {/* Media Hardware Error Toast */}
       {mediaError && (
-        <div className="flex-none bg-[var(--error-bg)] border-b border-[var(--error-color)]/30 px-4 py-2 flex items-center justify-between text-xs text-[var(--error-color)]">
+        <div className="flex-none bg-[var(--error-bg)] border-b border-[var(--error-color)]/30 px-4 py-2 flex items-center justify-between text-xs text-[var(--error-color)] z-30">
           <span>⚠️ {mediaError}</span>
           <button
             type="button"
             onClick={initLocalMedia}
-            className="font-bold underline hover:opacity-80"
+            className="font-bold underline hover:opacity-80 cursor-pointer"
           >
             Retry Camera/Mic
           </button>
         </div>
       )}
 
-      {/* Main Workspace Area (Desktop side-by-side / Mobile tabbed) */}
-      <div className="flex-1 min-h-0 flex overflow-hidden p-3 sm:p-4 gap-4">
-        {/* VIDEO CALL PANEL */}
-        <div
-          className={`flex-1 min-h-0 flex-col overflow-y-auto custom-scrollbar ${
-            activeMobileTab === 'call' ? 'flex' : 'hidden lg:flex'
-          }`}
-        >
-          <div className={`grid ${gridColsClass} gap-3 auto-rows-fr h-full min-h-[300px]`}>
-            {/* Local User Tile */}
-            <div className="relative rounded-[20px] border border-[var(--border-main)] bg-slate-950 overflow-hidden flex items-center justify-center shadow-md">
-              <video
-                ref={localVideoRef}
-                autoPlay
-                playsInline
-                muted
-                className={`h-full w-full object-cover transform -scale-x-100 ${!videoEnabled ? 'hidden' : ''}`}
-              />
-              {!videoEnabled && (
-                <div className="flex flex-col items-center justify-center gap-2">
-                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--accent-color)] text-black text-2xl font-bold shadow-lg">
-                    {user?.name?.[0]?.toUpperCase() || 'U'}
-                  </div>
-                  <p className="text-xs font-bold text-slate-300">Camera Off</p>
-                </div>
-              )}
-              <div className="absolute bottom-3 left-3 flex items-center gap-2 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full text-white text-xs font-bold">
-                <span>{user?.name || 'You'} (You)</span>
-                {!audioEnabled && <span className="text-red-400">🔇</span>}
-              </div>
-            </div>
+      {/* MAIN CONTENT WORKSPACE AREA */}
+      <div className="flex-1 min-h-0 flex flex-col overflow-hidden p-3 sm:p-4 gap-3 relative">
+        {/* PRESENTATION MODE LAYOUT (Phase 3 & Phase 4) */}
+        {isPresentationMode ? (
+          <div className="flex-1 min-h-0 flex flex-col gap-3 overflow-hidden">
+            {/* Top Main Presentation Feature Canvas / Video */}
+            <div className="flex-1 min-h-0 rounded-[20px] border border-[var(--border-main)] bg-slate-950 overflow-hidden relative shadow-lg">
+              {showWhiteboard ? (
+                <div className="h-full w-full flex flex-col bg-[var(--bg-surface)] overflow-hidden">
+                  {/* Whiteboard Header Toolbar */}
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border-main)] bg-[var(--bg-secondary)] p-2.5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-[var(--text-primary)]">Tool:</span>
+                      <button
+                        type="button"
+                        onClick={() => setWbTool('pen')}
+                        className={`px-3 py-1 rounded-[8px] text-xs font-bold transition cursor-pointer ${
+                          wbTool === 'pen'
+                            ? 'bg-[var(--accent-color)] text-black'
+                            : 'bg-[var(--bg-primary)] text-[var(--text-secondary)] border border-[var(--border-main)]'
+                        }`}
+                      >
+                        ✏️ Pen
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setWbTool('text')}
+                        className={`px-3 py-1 rounded-[8px] text-xs font-bold transition cursor-pointer ${
+                          wbTool === 'text'
+                            ? 'bg-[var(--accent-color)] text-black'
+                            : 'bg-[var(--bg-primary)] text-[var(--text-secondary)] border border-[var(--border-main)]'
+                        }`}
+                      >
+                        🔤 Text
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setWbTool('eraser')}
+                        className={`px-3 py-1 rounded-[8px] text-xs font-bold transition cursor-pointer ${
+                          wbTool === 'eraser'
+                            ? 'bg-[var(--accent-color)] text-black'
+                            : 'bg-[var(--bg-primary)] text-[var(--text-secondary)] border border-[var(--border-main)]'
+                        }`}
+                      >
+                        🧹 Eraser
+                      </button>
+                    </div>
 
-            {/* Remote Participants Tiles */}
-            {participants
-              .filter((p) => p.userId !== currentUserId)
-              .map((p) => {
-                const stream = remoteStreams[p.userId]
-                return (
-                  <div
-                    key={p.userId}
-                    className="relative rounded-[20px] border border-[var(--border-main)] bg-slate-950 overflow-hidden flex items-center justify-center shadow-md"
-                  >
-                    {stream && p.videoOn ? (
-                      <video
-                        ref={(el) => {
-                          if (el && el.srcObject !== stream) {
-                            el.srcObject = stream
-                          }
-                        }}
-                        autoPlay
-                        playsInline
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex flex-col items-center justify-center gap-2">
-                        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--bg-secondary)] border border-[var(--border-main)] text-[var(--accent-color)] text-2xl font-bold shadow-lg">
-                          {p.name?.[0]?.toUpperCase() || 'P'}
-                        </div>
-                        <p className="text-xs font-bold text-slate-300">
-                          {!p.videoOn ? 'Camera Off' : 'Connecting stream...'}
-                        </p>
-                      </div>
-                    )}
-                    <div className="absolute bottom-3 left-3 flex items-center gap-2 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full text-white text-xs font-bold">
-                      <span>{p.name}</span>
-                      {!p.audioOn && <span className="text-red-400">🔇</span>}
+                    {/* Stroke Width & Color Swatches */}
+                    <div className="flex items-center gap-2">
+                      {wbTool !== 'eraser' && (
+                        <>
+                          <select
+                            value={wbWidth}
+                            onChange={(e) => setWbWidth(Number(e.target.value))}
+                            className="saas-input text-xs py-1 px-2 min-h-[32px] bg-[var(--bg-primary)]"
+                          >
+                            <option value={2}>Thin (2px)</option>
+                            <option value={4}>Medium (4px)</option>
+                            <option value={8}>Thick (8px)</option>
+                          </select>
+
+                          <div className="flex items-center gap-1">
+                            {COLOR_SWATCHES.map((c) => (
+                              <button
+                                key={c}
+                                type="button"
+                                onClick={() => setWbColor(c)}
+                                style={{ backgroundColor: c }}
+                                className={`h-5 w-5 rounded-full border border-black/30 transition transform hover:scale-110 cursor-pointer ${
+                                  wbColor === c ? 'ring-2 ring-[var(--accent-color)] scale-110' : ''
+                                }`}
+                              />
+                            ))}
+                          </div>
+                        </>
+                      )}
+
+                      <span className="text-[10px] text-[var(--text-muted)] font-semibold hidden md:inline">
+                        (Ctrl+Z Undo / Ctrl+Y Redo)
+                      </span>
+
+                      {isHost && (
+                        <button
+                          type="button"
+                          onClick={handleClearBoard}
+                          className="px-2.5 py-1 rounded-[8px] text-xs font-bold bg-[var(--error-bg)] text-[var(--error-color)] border border-[var(--error-color)]/30 hover:opacity-80 transition cursor-pointer"
+                          title="Clear whiteboard for everyone"
+                        >
+                          Clear Board
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => setShowWhiteboard(false)}
+                        className="px-2.5 py-1 rounded-[8px] text-xs font-bold bg-[var(--bg-primary)] text-[var(--text-secondary)] border border-[var(--border-main)] hover:text-[var(--text-primary)] transition cursor-pointer"
+                      >
+                        ✕ Close
+                      </button>
                     </div>
                   </div>
-                )
-              })}
-          </div>
-        </div>
 
-        {/* SHARED WHITEBOARD PANEL */}
-        <div
-          className={`flex-1 min-h-0 flex-col rounded-[20px] border border-[var(--border-main)] bg-[var(--bg-surface)] shadow-md overflow-hidden ${
-            activeMobileTab === 'board' ? 'flex' : 'hidden lg:flex'
-          }`}
-        >
-          {/* Whiteboard Header Toolbar */}
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border-main)] bg-[var(--bg-secondary)] p-2.5">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-[var(--text-primary)]">Tool:</span>
-              <button
-                type="button"
-                onClick={() => setWbTool('pen')}
-                className={`px-2.5 py-1 rounded-[8px] text-xs font-bold transition ${
-                  wbTool === 'pen'
-                    ? 'bg-[var(--accent-color)] text-black'
-                    : 'bg-[var(--bg-primary)] text-[var(--text-secondary)] border border-[var(--border-main)]'
-                }`}
-              >
-                ✏️ Pen
-              </button>
-              <button
-                type="button"
-                onClick={() => setWbTool('text')}
-                className={`px-2.5 py-1 rounded-[8px] text-xs font-bold transition ${
-                  wbTool === 'text'
-                    ? 'bg-[var(--accent-color)] text-black'
-                    : 'bg-[var(--bg-primary)] text-[var(--text-secondary)] border border-[var(--border-main)]'
-                }`}
-              >
-                🔤 Text
-              </button>
+                  {/* Canvas Container Workspace */}
+                  <div ref={canvasContainerRef} className="relative flex-1 min-h-0 bg-slate-900 overflow-hidden cursor-crosshair">
+                    <canvas
+                      ref={canvasRef}
+                      onPointerDown={handleCanvasPointerDown}
+                      onPointerMove={handleCanvasPointerMove}
+                      onPointerUp={handleCanvasPointerUp}
+                      className="touch-none"
+                    />
+
+                    {/* Floating Text Input Box */}
+                    {textInput.open && (
+                      <form
+                        onSubmit={handleSubmitText}
+                        style={{ left: `${textInput.x}px`, top: `${textInput.y}px` }}
+                        className="absolute z-20 flex gap-1 bg-black/80 p-1.5 rounded-[10px] border border-[var(--accent-color)] shadow-xl"
+                      >
+                        <input
+                          type="text"
+                          autoFocus
+                          value={textInput.content}
+                          onChange={(e) => setTextInput((prev) => ({ ...prev, content: e.target.value }))}
+                          placeholder="Type text..."
+                          className="saas-input text-xs min-h-[30px] px-2 py-0.5 text-white"
+                        />
+                        <button type="submit" className="saas-button-primary text-xs min-h-[30px] px-2 font-bold cursor-pointer">
+                          Add
+                        </button>
+                      </form>
+                    )}
+                  </div>
+                </div>
+              ) : isSharingScreen ? (
+                /* Sharer Local Preview */
+                <div className="h-full w-full flex flex-col items-center justify-center bg-black relative">
+                  <video
+                    ref={(node) => attachStream(node, localScreenStreamRef.current)}
+                    autoPlay
+                    playsInline
+                    muted
+                    className="h-full w-full object-contain"
+                  />
+                  <div className="absolute top-4 left-4 bg-black/70 backdrop-blur-md text-white px-3 py-1 rounded-full text-xs font-bold">
+                    💻 You are sharing your screen
+                  </div>
+                </div>
+              ) : screenSharingUser ? (
+                /* Remote Presenter Video Stream */
+                <div className="h-full w-full flex flex-col items-center justify-center bg-black relative">
+                  {remoteStreams[screenSharingUser.userId] ? (
+                    <video
+                      ref={(node) => attachStream(node, remoteStreams[screenSharingUser.userId])}
+                      autoPlay
+                      playsInline
+                      className="h-full w-full object-contain"
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center gap-2 text-white">
+                      <div className="h-10 w-10 animate-spin rounded-full border-4 border-amber-400 border-t-transparent" />
+                      <p className="text-sm font-bold">{screenSharingUser.name}'s screen feed loading...</p>
+                    </div>
+                  )}
+                  <div className="absolute top-4 left-4 bg-black/70 backdrop-blur-md text-white px-3 py-1 rounded-full text-xs font-bold">
+                    💻 {screenSharingUser.name}'s Screen
+                  </div>
+                </div>
+              ) : null}
             </div>
 
-            {/* Stroke Width & Color Swatches */}
-            <div className="flex items-center gap-2">
-              <select
-                value={wbWidth}
-                onChange={(e) => setWbWidth(Number(e.target.value))}
-                className="saas-input text-xs py-1 px-2 min-h-[32px] bg-[var(--bg-primary)]"
-              >
-                <option value={2}>Thin (2px)</option>
-                <option value={4}>Medium (4px)</option>
-                <option value={8}>Thick (8px)</option>
-              </select>
-
-              <div className="flex items-center gap-1">
-                {COLOR_SWATCHES.map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    onClick={() => setWbColor(c)}
-                    style={{ backgroundColor: c }}
-                    className={`h-5 w-5 rounded-full border border-black/30 transition transform hover:scale-110 ${
-                      wbColor === c ? 'ring-2 ring-[var(--accent-color)] scale-110' : ''
-                    }`}
+            {/* Bottom Horizontal Participant Strip (Phase 3) */}
+            <div className="flex-none h-28 flex gap-2.5 overflow-x-auto custom-scrollbar pb-1">
+              {/* Local User Tile */}
+              <div className="relative h-full w-36 shrink-0 rounded-[16px] border border-[var(--border-main)] bg-slate-950 overflow-hidden flex items-center justify-center shadow-md">
+                {localStream ? (
+                  <video
+                    ref={(node) => attachStream(node, localStream)}
+                    autoPlay
+                    playsInline
+                    muted
+                    className={`h-full w-full object-cover transform -scale-x-100 ${!videoEnabled ? 'hidden' : ''}`}
                   />
-                ))}
+                ) : null}
+
+                {!localStream ? (
+                  <button
+                    type="button"
+                    onClick={initLocalMedia}
+                    className="flex flex-col items-center justify-center text-center p-2 hover:bg-slate-900 w-full h-full transition cursor-pointer"
+                  >
+                    <span className="text-base mb-1">📹</span>
+                    <span className="text-[10px] font-bold text-amber-400">Allow Media</span>
+                  </button>
+                ) : !videoEnabled ? (
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--accent-color)] text-black text-sm font-bold shadow-md">
+                    {user?.name?.[0]?.toUpperCase() || 'U'}
+                  </div>
+                ) : null}
+
+                <div className="absolute bottom-1.5 left-1.5 right-1.5 flex items-center justify-between bg-black/70 backdrop-blur-md px-2 py-0.5 rounded-full text-white text-[10px] font-bold truncate">
+                  <span className="truncate">{user?.name || 'You'}</span>
+                  {!audioEnabled && <span className="text-red-400">🔇</span>}
+                </div>
               </div>
 
-              {isHost && (
-                <button
-                  type="button"
-                  onClick={handleClearBoard}
-                  className="px-2.5 py-1 rounded-[8px] text-xs font-bold bg-[var(--error-bg)] text-[var(--error-color)] border border-[var(--error-color)]/30 hover:opacity-80 transition"
-                  title="Clear whiteboard for everyone"
-                >
-                  Clear Board
-                </button>
-              )}
+              {/* Remote Participants Horizontal Tiles */}
+              {participants
+                .filter((p) => p.userId !== currentUserId)
+                .map((p) => {
+                  const stream = remoteStreams[p.userId]
+                  return (
+                    <div
+                      key={p.userId}
+                      className="relative h-full w-36 shrink-0 rounded-[16px] border border-[var(--border-main)] bg-slate-950 overflow-hidden flex items-center justify-center shadow-md"
+                    >
+                      {stream && p.videoOn ? (
+                        <video
+                          ref={(node) => attachStream(node, stream)}
+                          autoPlay
+                          playsInline
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--bg-secondary)] border border-[var(--border-main)] text-[var(--accent-color)] text-sm font-bold shadow-md">
+                          {p.name?.[0]?.toUpperCase() || 'P'}
+                        </div>
+                      )}
+                      <div className="absolute bottom-1.5 left-1.5 right-1.5 flex items-center justify-between bg-black/70 backdrop-blur-md px-2 py-0.5 rounded-full text-white text-[10px] font-bold truncate">
+                        <span className="truncate">{p.name}</span>
+                        {!p.audioOn && <span className="text-red-400">🔇</span>}
+                      </div>
+                    </div>
+                  )
+                })}
             </div>
           </div>
+        ) : (
+          /* PHASE 1 DEFAULT ZOOM-STYLE GRID LAYOUT */
+          <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
+            <div className={`grid ${gridColsClass} gap-3 auto-rows-fr h-full min-h-[340px]`}>
+              {/* Local User Tile */}
+              <div className="relative rounded-[20px] border border-[var(--border-main)] bg-slate-950 overflow-hidden flex items-center justify-center shadow-md min-h-[200px]">
+                {localStream ? (
+                  <video
+                    ref={(node) => attachStream(node, localStream)}
+                    autoPlay
+                    playsInline
+                    muted
+                    className={`h-full w-full object-cover transform -scale-x-100 ${!videoEnabled ? 'hidden' : ''}`}
+                  />
+                ) : null}
 
-          {/* Canvas Canvas Workspace */}
-          <div className="relative flex-1 min-h-0 bg-slate-900 overflow-hidden cursor-crosshair">
-            <canvas
-              ref={canvasRef}
-              width={800}
-              height={600}
-              onPointerDown={handleCanvasPointerDown}
-              onPointerMove={handleCanvasPointerMove}
-              onPointerUp={handleCanvasPointerUp}
-              className="h-full w-full touch-none"
-            />
+                {!localStream ? (
+                  <div className="flex flex-col items-center justify-center gap-3 p-4 text-center">
+                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-amber-500/20 text-amber-400 text-2xl font-bold animate-pulse">
+                      📹
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-200">Camera & Microphone Access</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5 max-w-[220px]">
+                        Click below to allow browser camera and mic permissions to join call
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={initLocalMedia}
+                      className="saas-button-primary text-xs font-bold px-4 py-2 rounded-xl shadow-md cursor-pointer"
+                    >
+                      Allow Camera & Mic →
+                    </button>
+                  </div>
+                ) : !videoEnabled ? (
+                  <div className="flex flex-col items-center justify-center gap-2">
+                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--accent-color)] text-black text-2xl font-bold shadow-lg">
+                      {user?.name?.[0]?.toUpperCase() || 'U'}
+                    </div>
+                    <p className="text-xs font-bold text-slate-300">Camera Off</p>
+                  </div>
+                ) : null}
 
-            {/* Floating Text Input Box */}
-            {textInput.open && (
-              <form
-                onSubmit={handleSubmitText}
-                style={{ left: `${textInput.x}px`, top: `${textInput.y}px` }}
-                className="absolute z-20 flex gap-1 bg-black/80 p-1.5 rounded-[10px] border border-[var(--accent-color)]"
-              >
-                <input
-                  type="text"
-                  autoFocus
-                  value={textInput.content}
-                  onChange={(e) => setTextInput((prev) => ({ ...prev, content: e.target.value }))}
-                  placeholder="Type text..."
-                  className="saas-input text-xs min-h-[30px] px-2 py-0.5 text-white"
-                />
-                <button type="submit" className="saas-button-primary text-xs min-h-[30px] px-2 font-bold">
-                  Add
-                </button>
-              </form>
-            )}
+                <div className="absolute bottom-3 left-3 flex items-center gap-2 bg-black/70 backdrop-blur-md px-3 py-1 rounded-full text-white text-xs font-bold shadow-sm">
+                  <span>{user?.name || 'You'} (You)</span>
+                  {!audioEnabled && <span className="text-red-400">🔇</span>}
+                </div>
+              </div>
+
+              {/* Remote Participants Tiles */}
+              {participants
+                .filter((p) => p.userId !== currentUserId)
+                .map((p) => {
+                  const stream = remoteStreams[p.userId]
+                  return (
+                    <div
+                      key={p.userId}
+                      className="relative rounded-[20px] border border-[var(--border-main)] bg-slate-950 overflow-hidden flex items-center justify-center shadow-md min-h-[200px]"
+                    >
+                      {stream && p.videoOn ? (
+                        <video
+                          ref={(node) => attachStream(node, stream)}
+                          autoPlay
+                          playsInline
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex flex-col items-center justify-center gap-2">
+                          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--bg-secondary)] border border-[var(--border-main)] text-[var(--accent-color)] text-2xl font-bold shadow-lg">
+                            {p.name?.[0]?.toUpperCase() || 'P'}
+                          </div>
+                          <p className="text-xs font-bold text-slate-300">
+                            {!p.videoOn ? 'Camera Off' : 'Connecting stream...'}
+                          </p>
+                        </div>
+                      )}
+                      <div className="absolute bottom-3 left-3 flex items-center gap-2 bg-black/70 backdrop-blur-md px-3 py-1 rounded-full text-white text-xs font-bold shadow-sm">
+                        <span>{p.name}</span>
+                        {!p.audioOn && <span className="text-red-400">🔇</span>}
+                      </div>
+                    </div>
+                  )
+                })}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
-      {/* Bottom Fixed Control Bar */}
-      <div className="flex-none border-t border-[var(--border-main)] bg-[var(--bg-surface)] px-4 py-3 shadow-lg z-30">
-        <div className="flex flex-wrap items-center justify-between gap-3 max-w-[1280px] mx-auto">
-          {/* Reaction Bar */}
-          <div className="flex items-center gap-1 bg-[var(--bg-secondary)] px-2 py-1 rounded-[14px] border border-[var(--border-main)]">
-            {REACTION_EMOJIS.map((emoji) => (
-              <button
-                key={emoji}
-                type="button"
-                onClick={() => sendReaction(emoji)}
-                className="p-1.5 hover:bg-[var(--bg-primary)] rounded-[10px] text-lg transition transform active:scale-125 cursor-pointer"
-                title={`Send ${emoji} reaction`}
-              >
-                {emoji}
-              </button>
-            ))}
-          </div>
-
-          {/* Media Controls (Mute, Video, Leave, End) */}
-          <div className="flex items-center gap-3">
+      {/* PHASE 1 BOTTOM FIXED CONTROL BAR */}
+      <div className="flex-none border-t border-[var(--border-main)] bg-[var(--bg-surface)] px-4 py-3 shadow-2xl z-30">
+        <div className="flex items-center justify-between gap-2 max-w-[1280px] mx-auto overflow-x-auto custom-scrollbar">
+          {/* Left Media Group: Mic & Camera */}
+          <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
               onClick={toggleAudio}
-              className={`flex items-center gap-1.5 px-4 py-2.5 rounded-[14px] font-bold text-xs shadow-sm transition ${
+              className={`flex items-center gap-2 px-3.5 py-2.5 rounded-[14px] font-bold text-xs shadow-sm transition cursor-pointer ${
                 audioEnabled
                   ? 'bg-[var(--bg-secondary)] border border-[var(--border-main)] text-[var(--text-primary)] hover:border-[var(--accent-color)]'
                   : 'bg-[var(--error-color)] text-white'
               }`}
             >
-              <span>{audioEnabled ? '🎙️ Mic On' : '🔇 Muted'}</span>
+              <span>{audioEnabled ? '🎙️ Mute' : '🔇 Unmute'}</span>
             </button>
 
             <button
               type="button"
               onClick={toggleVideo}
-              className={`flex items-center gap-1.5 px-4 py-2.5 rounded-[14px] font-bold text-xs shadow-sm transition ${
+              className={`flex items-center gap-2 px-3.5 py-2.5 rounded-[14px] font-bold text-xs shadow-sm transition cursor-pointer ${
                 videoEnabled
                   ? 'bg-[var(--bg-secondary)] border border-[var(--border-main)] text-[var(--text-primary)] hover:border-[var(--accent-color)]'
                   : 'bg-[var(--error-color)] text-white'
               }`}
             >
-              <span>{videoEnabled ? '📹 Camera On' : '📷 Cam Off'}</span>
+              <span>{videoEnabled ? '📹 Stop Video' : '📷 Start Video'}</span>
+            </button>
+          </div>
+
+          {/* Center Collaboration Tools Group: Invite, Participants, Share Screen, Reactions, Whiteboard */}
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => setShowInviteModal(true)}
+              className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-[14px] font-bold text-xs bg-[var(--bg-secondary)] border border-[var(--border-main)] text-[var(--text-primary)] hover:border-[var(--accent-color)] transition cursor-pointer"
+            >
+              <span>🔗 Invite</span>
             </button>
 
             <button
               type="button"
-              onClick={handleLeaveCall}
-              className="px-5 py-2.5 rounded-[14px] font-bold text-xs bg-[var(--bg-secondary)] text-[var(--error-color)] border border-[var(--error-color)]/30 hover:bg-[var(--error-bg)] transition shadow-sm"
+              onClick={() => setShowParticipantsList((prev) => !prev)}
+              className={`flex items-center gap-1.5 px-3.5 py-2.5 rounded-[14px] font-bold text-xs border transition cursor-pointer ${
+                showParticipantsList
+                  ? 'bg-[var(--accent-color)] text-black border-transparent'
+                  : 'bg-[var(--bg-secondary)] border-[var(--border-main)] text-[var(--text-primary)] hover:border-[var(--accent-color)]'
+              }`}
             >
-              Leave Call
+              <span>👥 Participants ({allParticipantCount})</span>
+            </button>
+
+            {/* Share Screen (Phase 4) */}
+            <button
+              type="button"
+              onClick={handleToggleScreenShare}
+              className={`flex items-center gap-1.5 px-3.5 py-2.5 rounded-[14px] font-bold text-xs border transition cursor-pointer ${
+                isSharingScreen
+                  ? 'bg-amber-500 text-black border-transparent font-extrabold'
+                  : 'bg-[var(--bg-secondary)] border-[var(--border-main)] text-[var(--text-primary)] hover:border-[var(--accent-color)]'
+              }`}
+            >
+              <span>{isSharingScreen ? '🛑 Stop Share' : '💻 Share Screen'}</span>
+            </button>
+
+            {/* Reactions Trigger Button */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowReactionsPicker((prev) => !prev)}
+                className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-[14px] font-bold text-xs bg-[var(--bg-secondary)] border border-[var(--border-main)] text-[var(--text-primary)] hover:border-[var(--accent-color)] transition cursor-pointer"
+              >
+                <span>😊 Reactions</span>
+              </button>
+
+              {/* Reactions Emoji Picker Popover */}
+              {showReactionsPicker && (
+                <div className="absolute bottom-14 left-0 flex items-center gap-1 bg-[var(--bg-surface)] p-2 rounded-[16px] border border-[var(--border-main)] shadow-xl z-50 animate-fadeIn">
+                  {REACTION_EMOJIS.map((emoji) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      onClick={() => sendReaction(emoji)}
+                      className="p-2 hover:bg-[var(--bg-secondary)] rounded-[10px] text-xl transition transform active:scale-125 cursor-pointer"
+                      title={`Send ${emoji}`}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Whiteboard Toggle (Replaces reference Breakout Rooms slot) */}
+            <button
+              type="button"
+              onClick={() => setShowWhiteboard((prev) => !prev)}
+              className={`flex items-center gap-1.5 px-3.5 py-2.5 rounded-[14px] font-bold text-xs border transition cursor-pointer ${
+                showWhiteboard
+                  ? 'bg-[var(--accent-color)] text-black border-transparent font-extrabold'
+                  : 'bg-[var(--bg-secondary)] border-[var(--border-main)] text-[var(--text-primary)] hover:border-[var(--accent-color)]'
+              }`}
+            >
+              <span>🎨 Whiteboard</span>
+            </button>
+          </div>
+
+          {/* Right Edge: Red End / Leave Button */}
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={handleLeaveCall}
+              className="px-4 py-2.5 rounded-[14px] font-bold text-xs bg-[var(--error-bg)] text-[var(--error-color)] border border-[var(--error-color)]/30 hover:opacity-90 transition cursor-pointer shadow-sm"
+            >
+              Leave
             </button>
 
             {isHost && (
               <button
                 type="button"
                 onClick={() => setConfirmEndModal(true)}
-                className="px-5 py-2.5 rounded-[14px] font-extrabold text-xs bg-[var(--error-color)] text-white hover:bg-[var(--error-color)]/90 transition shadow-md"
+                className="px-4 py-2.5 rounded-[14px] font-extrabold text-xs bg-[var(--error-color)] text-white hover:opacity-90 transition cursor-pointer shadow-md"
               >
-                End Meet for Everyone
+                End Meeting
               </button>
             )}
           </div>
         </div>
       </div>
+
+      {/* PARTICIPANTS LIST DRAWER / MODAL */}
+      {showParticipantsList && (
+        <div className="fixed inset-y-0 right-0 z-50 w-72 bg-[var(--bg-surface)] border-l border-[var(--border-main)] shadow-2xl p-4 flex flex-col animate-slideLeft">
+          <div className="flex items-center justify-between pb-3 border-b border-[var(--border-main)]">
+            <h3 className="font-bold text-sm text-[var(--text-primary)]">
+              Participants ({allParticipantCount})
+            </h3>
+            <button
+              type="button"
+              onClick={() => setShowParticipantsList(false)}
+              className="text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto custom-scrollbar py-3 space-y-2">
+            {/* Local User */}
+            <div className="flex items-center justify-between p-2.5 rounded-[12px] bg-[var(--bg-secondary)] border border-[var(--border-main)]">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--accent-color)] text-black text-xs font-bold">
+                  {user?.name?.[0]?.toUpperCase() || 'U'}
+                </div>
+                <span className="text-xs font-bold text-[var(--text-primary)] truncate">
+                  {user?.name || 'You'} (You)
+                </span>
+              </div>
+              <div className="flex items-center gap-1 text-xs">
+                {!audioEnabled ? <span>🔇</span> : <span>🎙️</span>}
+                {!videoEnabled ? <span>📷</span> : <span>📹</span>}
+              </div>
+            </div>
+
+            {/* Remote Participants */}
+            {participants
+              .filter((p) => p.userId !== currentUserId)
+              .map((p) => (
+                <div
+                  key={p.userId}
+                  className="flex items-center justify-between p-2.5 rounded-[12px] bg-[var(--bg-secondary)] border border-[var(--border-main)]"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--bg-primary)] border border-[var(--border-main)] text-[var(--accent-color)] text-xs font-bold">
+                      {p.name?.[0]?.toUpperCase() || 'P'}
+                    </div>
+                    <span className="text-xs font-semibold text-[var(--text-primary)] truncate">
+                      {p.name}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1 text-xs">
+                    {!p.audioOn ? <span>🔇</span> : <span>🎙️</span>}
+                    {!p.videoOn ? <span>📷</span> : <span>📹</span>}
+                  </div>
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
+
+      {/* INVITE MODAL (Phase 7 Integration) */}
+      {showInviteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4 animate-fadeIn">
+          <div className="saas-card max-w-md w-full p-6 space-y-4 border border-[var(--border-main)] shadow-2xl">
+            <div className="flex items-center justify-between">
+              <h3 className="section-title text-lg font-bold">Invite Peers</h3>
+              <button
+                type="button"
+                onClick={() => setShowInviteModal(false)}
+                className="text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-xs font-semibold text-[var(--text-secondary)]">
+                Shareable Meeting URL:
+              </label>
+              <div className="flex items-center gap-2 bg-[var(--bg-secondary)] p-2.5 rounded-[12px] border border-[var(--border-main)]">
+                <span className="font-mono text-xs text-[var(--accent-color)] font-bold truncate flex-1">
+                  {shareableUrl}
+                </span>
+                <CopyButton text={shareableUrl} />
+              </div>
+            </div>
+
+            <div className="space-y-2 pt-2 border-t border-[var(--border-main)]">
+              <label className="block text-xs font-semibold text-[var(--text-secondary)]">
+                Room Code:
+              </label>
+              <div className="flex items-center justify-between bg-[var(--bg-secondary)] p-2.5 rounded-[12px] border border-[var(--border-main)]">
+                <span className="font-mono text-sm font-bold text-[var(--text-primary)]">
+                  {upperRoomCode}
+                </span>
+                <CopyButton text={upperRoomCode} />
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-[var(--border-main)] flex justify-between gap-3">
+              <button
+                type="button"
+                onClick={handleOpenShareGroupModal}
+                className="saas-button-primary flex-1 font-bold text-xs min-h-[38px] cursor-pointer"
+              >
+                📢 Share to Group Chat
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowInviteModal(false)}
+                className="saas-button-secondary font-semibold text-xs min-h-[38px] px-4 cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PHASE 7: SHARE TO STUDY GROUP MODAL */}
+      {showShareGroupModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4 animate-fadeIn">
+          <div className="saas-card max-w-md w-full p-6 space-y-4 border border-[var(--border-main)] shadow-2xl">
+            <div className="flex items-center justify-between">
+              <h3 className="section-title text-lg font-bold">Share to Study Group</h3>
+              <button
+                type="button"
+                onClick={() => setShowShareGroupModal(false)}
+                className="text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {shareSuccessMsg ? (
+              <p className="rounded-[12px] bg-[var(--success-bg)] border border-[var(--success-color)]/30 p-3 text-xs text-[var(--success-color)] font-bold">
+                {shareSuccessMsg}
+              </p>
+            ) : loadingGroups ? (
+              <p className="caption-text text-xs italic">Loading your study groups...</p>
+            ) : userGroups.length === 0 ? (
+              <p className="body-text text-xs text-[var(--text-muted)] italic">
+                You haven't joined any study groups yet.
+              </p>
+            ) : (
+              <form onSubmit={handleSendInviteToGroup} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
+                    Select Study Group:
+                  </label>
+                  <select
+                    value={selectedShareGroupId}
+                    onChange={(e) => setSelectedShareGroupId(e.target.value)}
+                    className="saas-input w-full text-xs min-h-[42px]"
+                  >
+                    {userGroups.map((g) => (
+                      <option key={g._id} value={g._id}>
+                        {g.groupName || g.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="p-3 rounded-[12px] bg-[var(--bg-secondary)] border border-[var(--border-main)] text-xs text-[var(--text-secondary)] space-y-1">
+                  <p className="font-bold text-[var(--text-primary)]">Message Preview:</p>
+                  <p className="font-mono text-[11px]">
+                    📹 Join our study meet: {shareableUrl} (Code: {upperRoomCode})
+                  </p>
+                </div>
+
+                <div className="flex justify-end gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowShareGroupModal(false)}
+                    className="saas-button-secondary text-xs min-h-[38px] px-4 cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={sharingGroup}
+                    className="saas-button-primary font-bold text-xs min-h-[38px] px-5 cursor-pointer disabled:opacity-50"
+                  >
+                    {sharingGroup ? 'Sending...' : 'Send to Group'}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Host End Meeting Confirmation Modal */}
       {confirmEndModal && (
@@ -1029,8 +1846,8 @@ export default function MeetRoomPage() {
             <div className="flex items-center gap-3">
               <span className="text-2xl">⚠️</span>
               <div>
-                <h3 className="section-title text-lg font-bold">End Meet for Everyone?</h3>
-                <p className="caption-text">This will disconnect all participants and end this session.</p>
+                <h3 className="section-title text-lg font-bold">End Meeting for Everyone?</h3>
+                <p className="caption-text text-xs">This will disconnect all participants and end this session.</p>
               </div>
             </div>
 
@@ -1038,16 +1855,16 @@ export default function MeetRoomPage() {
               <button
                 type="button"
                 onClick={() => setConfirmEndModal(false)}
-                className="saas-button-secondary font-semibold text-xs min-h-[38px] px-4"
+                className="saas-button-secondary font-semibold text-xs min-h-[38px] px-4 cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={handleEndMeetForEveryone}
-                className="saas-button-primary bg-[var(--error-color)] text-white hover:bg-[var(--error-color)]/90 font-bold text-xs min-h-[38px] px-5"
+                className="saas-button-primary bg-[var(--error-color)] text-white hover:bg-[var(--error-color)]/90 font-bold text-xs min-h-[38px] px-5 cursor-pointer"
               >
-                End Meet Now
+                End Meeting Now
               </button>
             </div>
           </div>

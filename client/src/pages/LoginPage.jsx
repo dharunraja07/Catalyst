@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 
 export default function LoginPage() {
@@ -8,6 +8,7 @@ export default function LoginPage() {
   const [resetSent, setResetSent] = useState(false)
   const { login } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
 
   const handleChange = (event) => {
     const { name, value } = event.target
@@ -18,7 +19,8 @@ export default function LoginPage() {
     event.preventDefault()
     try {
       await login({ email: form.email, password: form.password })
-      navigate('/dashboard')
+      const destination = location.state?.from || '/dashboard'
+      navigate(destination)
     } catch (error) {
       setMessage(error.response?.data?.error || error.message || 'Login failed')
     }

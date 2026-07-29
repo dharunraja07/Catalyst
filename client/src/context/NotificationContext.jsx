@@ -36,8 +36,13 @@ export function NotificationProvider({ children }) {
       let res
       try {
         res = await api.get('/study-groups/notifications')
-      } catch {
-        res = await api.get('/study-groups/requests/incoming')
+      } catch (e1) {
+        if (e1.response?.status === 401) return
+        try {
+          res = await api.get('/study-groups/requests/incoming')
+        } catch {
+          return
+        }
       }
 
       const list = res.data || []

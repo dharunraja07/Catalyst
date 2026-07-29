@@ -78,8 +78,29 @@ export default function MeetLobbyPage() {
   }
 
   return (
-    <div className="overflow-y-auto px-4 py-8 sm:px-6 lg:px-8 lg:h-full custom-scrollbar">
-      <div className="mx-auto max-w-[1280px] space-y-8">
+    <div className="min-h-screen flex flex-col bg-[var(--bg-primary)] text-[var(--text-primary)]">
+      {/* Minimal Standalone Header */}
+      <header className="flex-none border-b border-[var(--border-main)] bg-[var(--bg-surface)] px-4 sm:px-8 py-3.5 shadow-xs flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <span className="inline-flex h-9 w-9 items-center justify-center rounded-[12px] bg-[var(--accent-color)] text-sm font-extrabold text-black shadow-sm">
+            AI
+          </span>
+          <div className="flex flex-col leading-tight">
+            <span className="font-extrabold text-lg tracking-tight text-[var(--text-primary)]">Catalyst Meet</span>
+            <span className="text-[9px] uppercase tracking-widest text-[var(--text-secondary)] font-bold">
+              Standalone Workspace
+            </span>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 text-xs font-bold text-[var(--text-secondary)]">
+          <span className="bg-[var(--bg-secondary)] px-3 py-1.5 rounded-full border border-[var(--border-main)]">
+            👤 {user?.name || 'User'}
+          </span>
+        </div>
+      </header>
+
+      <div className="flex-1 overflow-y-auto px-4 py-8 sm:px-6 lg:px-8 custom-scrollbar">
+        <div className="mx-auto max-w-[1280px] space-y-8">
         {/* Header */}
         <div>
           <p className="page-label">Catalyst Meet</p>
@@ -286,6 +307,7 @@ export default function MeetLobbyPage() {
           )}
         </div>
       </div>
+    </div>
     </div>
   )
 }
