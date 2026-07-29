@@ -15,6 +15,8 @@ import ProgressPage from './pages/ProgressPage.jsx'
 import CareerPage from './pages/CareerPage.jsx'
 import StudyGroupPage from './pages/StudyGroupPage.jsx'
 import TeacherDashboardPage from './pages/TeacherDashboardPage.jsx'
+import MeetLobbyPage from './pages/MeetLobbyPage.jsx'
+import MeetRoomPage from './pages/MeetRoomPage.jsx'
 import AppLayout from './components/AppLayout.jsx'
 
 function ProtectedRoute({ children }) {
@@ -52,6 +54,8 @@ function App() {
               <Route path="/career" element={<ProtectedRoute><CareerPage /></ProtectedRoute>} />
               <Route path="/study-group" element={<ProtectedRoute><StudyGroupPage /></ProtectedRoute>} />
               <Route path="/teacher" element={<ProtectedRoute><TeacherDashboardPage /></ProtectedRoute>} />
+              <Route path="/meet" element={<ProtectedRoute><MeetLobbyPage /></ProtectedRoute>} />
+              <Route path="/meet/room/:roomCode" element={<ProtectedRoute><MeetRoomPage /></ProtectedRoute>} />
             </Routes>
           </AppLayout>
         </BrowserRouter>

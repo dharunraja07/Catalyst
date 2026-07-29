@@ -26,7 +26,9 @@ import studyGroupRoutes from './routes/studyGroupRoutes.js'
 import teacherRoutes from './routes/teacherRoutes.js'
 import aiRoutes from './routes/aiRoutes.js'
 import todoRoutes from './routes/todoRoutes.js'
+import meetRoutes from './routes/meetRoutes.js'
 import { setupChatSocket } from './sockets/chatSocket.js'
+import { setupMeetSocket } from './sockets/meetSocket.js'
 import { errorHandler } from './middleware/errorMiddleware.js'
 import { env, ensureRequiredEnv } from './config/env.js'
 
@@ -97,6 +99,7 @@ app.use('/api/study-groups', studyGroupRoutes)
 app.use('/api/teacher', teacherRoutes)
 app.use('/api/ai', aiRoutes)
 app.use('/api/todos', todoRoutes)
+app.use('/api/meets', meetRoutes)
 
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', environment: env.NODE_ENV })
@@ -120,6 +123,7 @@ const io = new Server(httpServer, {
 
 app.set('io', io)
 setupChatSocket(io)
+setupMeetSocket(io)
 
 function startServer(port, attemptsLeft = 5) {
   const host = '0.0.0.0'
