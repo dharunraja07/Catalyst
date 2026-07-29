@@ -58,6 +58,19 @@ export default function MeetRoomPage() {
   const localStreamRef = useRef(null)
   const localScreenStreamRef = useRef(null)
   const peerConnectionsRef = useRef({}) // userId -> RTCPeerConnection
+  const candidateQueuesRef = useRef({}) // userId -> Array<RTCIceCandidateInit>
+
+  const processQueuedIceCandidates = useCallback(async (remoteUserId, pc) => {
+    const queue = candidateQueuesRef.current[remoteUserId] || []
+    while (queue.length > 0) {
+      const candidate = queue.shift()
+      try {
+        await pc.addIceCandidate(new RTCIceCandidate(candidate))
+      } catch (err) {
+        console.error('Error adding queued ICE candidate:', err)
+      }
+    }
+  }, [])
 
   const canvasRef = useRef(null)
   const canvasContainerRef = useRef(null)
@@ -215,7 +228,12 @@ export default function MeetRoomPage() {
     }
 
     const pc = new RTCPeerConnection({
-      iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'stun:stun2.l.google.com:19302' },
+        { urls: 'stun:global.stun.twilio.com:3478' }
+      ]
     })
 
     // Attach local tracks (screen track if sharing, else camera/mic stream)
@@ -262,6 +280,7 @@ export default function MeetRoomPage() {
       pc.close()
       delete peerConnectionsRef.current[remoteUserId]
     }
+    delete candidateQueuesRef.current[remoteUserId]
     setRemoteStreams((prev) => {
       const copy = { ...prev }
       delete copy[remoteUserId]
@@ -275,6 +294,7 @@ export default function MeetRoomPage() {
       peerConnectionsRef.current[id].close()
     })
     peerConnectionsRef.current = {}
+    candidateQueuesRef.current = {}
     setRemoteStreams({})
   }, [])
 
@@ -439,7 +459,7 @@ export default function MeetRoomPage() {
     const handlePeerJoined = async ({ userId, name }) => {
       const pc = createPeerConnection(userId)
       try {
-        const offer = await pc.createOffer()
+        const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true })
         await pc.setLocalDescription(offer)
         socket.emit('webrtc_offer', {
           roomCode: upperRoomCode,
@@ -456,7 +476,8 @@ export default function MeetRoomPage() {
       try {
         if (pc.signalingState === 'stable' || pc.signalingState === 'have-local-offer') {
           await pc.setRemoteDescription(new RTCSessionDescription(sdp))
-          const answer = await pc.createAnswer()
+          await processQueuedIceCandidates(fromUserId, pc)
+          const answer = await pc.createAnswer({ offerToReceiveAudio: true, offerToReceiveVideo: true })
           await pc.setLocalDescription(answer)
           socket.emit('webrtc_answer', {
             roomCode: upperRoomCode,
@@ -475,6 +496,7 @@ export default function MeetRoomPage() {
         try {
           if (pc.signalingState === 'have-local-offer') {
             await pc.setRemoteDescription(new RTCSessionDescription(sdp))
+            await processQueuedIceCandidates(fromUserId, pc)
           }
         } catch (err) {
           console.error('Error setting remote description from answer:', err)
@@ -486,7 +508,14 @@ export default function MeetRoomPage() {
       const pc = peerConnectionsRef.current[fromUserId]
       if (pc && candidate) {
         try {
-          await pc.addIceCandidate(new RTCIceCandidate(candidate))
+          if (pc.remoteDescription && pc.remoteDescription.type) {
+            await pc.addIceCandidate(new RTCIceCandidate(candidate))
+          } else {
+            if (!candidateQueuesRef.current[fromUserId]) {
+              candidateQueuesRef.current[fromUserId] = []
+            }
+            candidateQueuesRef.current[fromUserId].push(candidate)
+          }
         } catch (err) {
           console.error('Error adding ICE candidate:', err)
         }

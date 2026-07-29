@@ -97,6 +97,26 @@ export function AuthProvider({ children }) {
     }
   }
 
+  const googleLogin = async (credentialToken) => {
+    setLoading(true)
+    setError(null)
+    try {
+      const response = await api.post('/auth/google', { token: credentialToken })
+      const nextToken = response.data.token
+      const nextUser = response.data.user
+      api.defaults.headers.common.Authorization = `Bearer ${nextToken}`
+      setUser(nextUser)
+      setToken(nextToken)
+      return nextUser
+    } catch (err) {
+      const errMsg = err.response?.data?.error || err.message || 'Google login failed'
+      setError(errMsg)
+      throw new Error(errMsg)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const updateUser = (nextUser) => {
     setUser((prevUser) => (prevUser ? { ...prevUser, ...nextUser } : nextUser))
   }
@@ -110,7 +130,7 @@ export function AuthProvider({ children }) {
   }
 
   const contextValue = useMemo(
-    () => ({ user, token, loading, error, login, register, logout, updateUser, api }),
+    () => ({ user, token, loading, error, login, register, googleLogin, logout, updateUser, api }),
     [user, token, loading, error]
   )
 

@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
+import { GoogleOAuthProvider } from '@react-oauth/google'
 import { AuthProvider, useAuth } from './context/AuthContext.jsx'
 import { NotificationProvider } from './context/NotificationContext.jsx'
 import LandingPage from './pages/LandingPage.jsx'
@@ -19,6 +20,8 @@ import MeetLobbyPage from './pages/MeetLobbyPage.jsx'
 import MeetRoomPage from './pages/MeetRoomPage.jsx'
 import AppLayout from './components/AppLayout.jsx'
 
+const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
+
 function ProtectedRoute({ children }) {
   const { user } = useAuth()
   const location = useLocation()
@@ -37,38 +40,40 @@ function App() {
   }, [])
 
   return (
-    <AuthProvider>
-      <NotificationProvider>
-        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-          <Routes>
-            <Route path="/meet" element={<ProtectedRoute><MeetLobbyPage /></ProtectedRoute>} />
-            <Route path="/meet/room/:roomCode" element={<ProtectedRoute><MeetRoomPage /></ProtectedRoute>} />
-            <Route
-              path="*"
-              element={
-                <AppLayout>
-                  <Routes>
-                    <Route path="/" element={<LandingPage />} />
-                    <Route path="/register" element={<RegisterPage />} />
-                    <Route path="/login" element={<LoginPage />} />
-                    <Route path="/forgot-password" element={<ForgotPassword />} />
-                    <Route path="/reset-password/:token" element={<ResetPassword />} />
-                    <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
-                    <Route path="/assessment" element={<ProtectedRoute><AssessmentPage /></ProtectedRoute>} />
-                    <Route path="/roadmap" element={<ProtectedRoute><RoadmapPage /></ProtectedRoute>} />
-                    <Route path="/questions" element={<ProtectedRoute><QuestionsPage /></ProtectedRoute>} />
-                    <Route path="/progress" element={<ProtectedRoute><ProgressPage /></ProtectedRoute>} />
-                    <Route path="/career" element={<ProtectedRoute><CareerPage /></ProtectedRoute>} />
-                    <Route path="/study-group" element={<ProtectedRoute><StudyGroupPage /></ProtectedRoute>} />
-                    <Route path="/teacher" element={<ProtectedRoute><TeacherDashboardPage /></ProtectedRoute>} />
-                  </Routes>
-                </AppLayout>
-              }
-            />
-          </Routes>
-        </BrowserRouter>
-      </NotificationProvider>
-    </AuthProvider>
+    <GoogleOAuthProvider clientId={googleClientId}>
+      <AuthProvider>
+        <NotificationProvider>
+          <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+            <Routes>
+              <Route path="/meet" element={<ProtectedRoute><MeetLobbyPage /></ProtectedRoute>} />
+              <Route path="/meet/room/:roomCode" element={<ProtectedRoute><MeetRoomPage /></ProtectedRoute>} />
+              <Route
+                path="*"
+                element={
+                  <AppLayout>
+                    <Routes>
+                      <Route path="/" element={<LandingPage />} />
+                      <Route path="/register" element={<RegisterPage />} />
+                      <Route path="/login" element={<LoginPage />} />
+                      <Route path="/forgot-password" element={<ForgotPassword />} />
+                      <Route path="/reset-password/:token" element={<ResetPassword />} />
+                      <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
+                      <Route path="/assessment" element={<ProtectedRoute><AssessmentPage /></ProtectedRoute>} />
+                      <Route path="/roadmap" element={<ProtectedRoute><RoadmapPage /></ProtectedRoute>} />
+                      <Route path="/questions" element={<ProtectedRoute><QuestionsPage /></ProtectedRoute>} />
+                      <Route path="/progress" element={<ProtectedRoute><ProgressPage /></ProtectedRoute>} />
+                      <Route path="/career" element={<ProtectedRoute><CareerPage /></ProtectedRoute>} />
+                      <Route path="/study-group" element={<ProtectedRoute><StudyGroupPage /></ProtectedRoute>} />
+                      <Route path="/teacher" element={<ProtectedRoute><TeacherDashboardPage /></ProtectedRoute>} />
+                    </Routes>
+                  </AppLayout>
+                }
+              />
+            </Routes>
+          </BrowserRouter>
+        </NotificationProvider>
+      </AuthProvider>
+    </GoogleOAuthProvider>
   )
 }
 

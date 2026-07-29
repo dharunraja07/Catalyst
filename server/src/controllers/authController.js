@@ -1,9 +1,12 @@
 import bcrypt from 'bcryptjs'
 import crypto from 'crypto'
 import jwt from 'jsonwebtoken'
+import { OAuth2Client } from 'google-auth-library'
 import User from '../models/User.js'
 import LearningProgress from '../models/LearningProgress.js'
 import { sendResetPasswordEmail } from '../utils/sendEmail.js'
+
+const googleClient = new OAuth2Client()
 
 function generateToken(userId) {
   const secret = (process.env.JWT_SECRET || 'supersecretjwtkey').trim()
@@ -215,3 +218,89 @@ export async function resetPassword(req, res, next) {
     next(error)
   }
 }
+
+export async function googleLogin(req, res, next) {
+  try {
+    const { token, credential } = req.body || {}
+    const googleToken = token || credential
+    if (!googleToken) {
+      return res.status(400).json({ error: 'Google token is required' })
+    }
+
+    let email, name, googleId, picture
+
+    if (googleToken.startsWith('eyJ')) {
+      const clientId = (process.env.GOOGLE_CLIENT_ID || '').trim()
+      const ticket = await googleClient.verifyIdToken({
+        idToken: googleToken,
+        audience: clientId
+      })
+      const payload = ticket.getPayload()
+      if (!payload || !payload.email) {
+        return res.status(400).json({ error: 'Invalid Google ID token payload' })
+      }
+      email = payload.email
+      name = payload.name
+      googleId = payload.sub
+      picture = payload.picture
+    } else {
+      const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { Authorization: `Bearer ${googleToken}` }
+      })
+      if (!response.ok) {
+        return res.status(400).json({ error: 'Failed to verify Google access token' })
+      }
+      const data = await response.json()
+      email = data.email
+      name = data.name
+      googleId = data.sub
+      picture = data.picture
+    }
+
+    if (!email) {
+      return res.status(400).json({ error: 'Google account email not found' })
+    }
+
+    const normalizedEmail = email.trim().toLowerCase()
+
+    let user = await User.findOne({
+      $or: [{ googleId }, { email: normalizedEmail }]
+    })
+
+    if (!user) {
+      user = await User.create({
+        name: name || normalizedEmail.split('@')[0],
+        email: normalizedEmail,
+        googleId,
+        authProvider: 'google',
+        avatar: picture || '',
+        role: 'student'
+      })
+      await LearningProgress.create({ user: user._id })
+    } else {
+      let updated = false
+      if (!user.googleId) {
+        user.googleId = googleId
+        updated = true
+      }
+      if (user.authProvider !== 'google' && !user.password) {
+        user.authProvider = 'google'
+        updated = true
+      }
+      if (!user.avatar && picture) {
+        user.avatar = picture
+        updated = true
+      }
+      if (updated) {
+        await user.save()
+      }
+    }
+
+    const jwtToken = generateToken(user._id)
+    res.json({ token: jwtToken, user: serializeUser(user) })
+  } catch (error) {
+    console.error('Google Auth Error:', error)
+    return res.status(400).json({ error: 'Google authentication failed: ' + (error.message || 'Invalid token') })
+  }
+}
+

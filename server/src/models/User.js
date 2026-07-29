@@ -8,7 +8,9 @@ const studySessionSchema = new mongoose.Schema({
 const userSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true, lowercase: true, trim: true },
-  password: { type: String, required: true },
+  password: { type: String, required: false },
+  googleId: { type: String },
+  authProvider: { type: String, enum: ['local', 'google'], default: 'local' },
   role: { type: String, enum: ['student', 'teacher', 'admin'], default: 'student' },
   educationLevel: { type: String, default: 'College' },
   interestedSubjects: { type: [String], default: [] },

@@ -4,7 +4,7 @@ let socket = null
 
 export function getSocketUrl() {
   const apiUrl = import.meta.env.VITE_API_URL
-  if (apiUrl) {
+  if (apiUrl && /^https?:\/\//i.test(apiUrl)) {
     return apiUrl.replace(/\/api\/?$/, '')
   }
   if (typeof window !== 'undefined') {

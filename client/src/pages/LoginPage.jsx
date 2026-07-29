@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { useGoogleLogin } from '@react-oauth/google'
 import { useAuth } from '../context/AuthContext.jsx'
 
 export default function LoginPage() {
   const [form, setForm] = useState({ email: '', password: '' })
   const [message, setMessage] = useState('')
   const [resetSent, setResetSent] = useState(false)
-  const { login } = useAuth()
+  const { login, googleLogin } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -26,21 +27,22 @@ export default function LoginPage() {
     }
   }
 
-  const handleForgotPassword = () => {
-    if (!form.email) {
-      setMessage('Please enter your email address to reset password.')
-      return
+  const triggerGoogleLogin = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      try {
+        setMessage('Authenticating with Google...')
+        await googleLogin(tokenResponse.access_token)
+        const destination = location.state?.from || '/dashboard'
+        navigate(destination)
+      } catch (error) {
+        setMessage(error.message || 'Google authentication failed.')
+      }
+    },
+    onError: (errorResponse) => {
+      console.error('Google Auth Error:', errorResponse)
+      setMessage('Google authentication was cancelled or failed.')
     }
-    setResetSent(true)
-    setMessage('')
-  }
-
-  const handleGoogleLogin = () => {
-    setMessage('Connecting to Google Authentication...')
-    setTimeout(() => {
-      setMessage('Google authentication service ready.')
-    }, 1000)
-  }
+  })
 
   return (
     <main className="min-h-[calc(100vh-8rem)] flex items-center justify-center px-4 py-4 sm:px-6">
@@ -121,8 +123,8 @@ export default function LoginPage() {
         {/* Google Authentication Button */}
         <button
           type="button"
-          onClick={handleGoogleLogin}
-          className="saas-button-secondary w-full flex items-center justify-center gap-3 font-semibold min-h-[46px] text-xs sm:text-sm shadow-sm"
+          onClick={() => triggerGoogleLogin()}
+          className="saas-button-secondary w-full flex items-center justify-center gap-3 font-semibold min-h-[46px] text-xs sm:text-sm shadow-sm hover:border-[var(--accent-color)] transition-all cursor-pointer"
         >
           <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24">
             <path
