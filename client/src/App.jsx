@@ -20,7 +20,9 @@ import MeetLobbyPage from './pages/MeetLobbyPage.jsx'
 import MeetRoomPage from './pages/MeetRoomPage.jsx'
 import AppLayout from './components/AppLayout.jsx'
 
-const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
+const googleClientId =
+  import.meta.env.VITE_GOOGLE_CLIENT_ID ||
+  '123456789000-dummyclientid0000000000000000.apps.googleusercontent.com'
 
 function ProtectedRoute({ children }) {
   const { user } = useAuth()

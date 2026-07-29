@@ -3,6 +3,8 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import getSocket from '../api/socket.js'
 import CopyButton from '../components/CopyButton.jsx'
+import { useJitsiMeet } from '../hooks/useJitsiMeet.js'
+import MeetChatPanel from '../components/MeetChatPanel.jsx'
 
 const REACTION_EMOJIS = ['👍', '❤️', '😂', '👏', '🎉', '🤔', '✋', '🔥']
 const COLOR_SWATCHES = ['#F59E0B', '#EF4444', '#10B981', '#3B82F6', '#8B5CF6', '#FFFFFF', '#1E293B']
@@ -19,18 +21,19 @@ export default function MeetRoomPage() {
   const [meetInfo, setMeetInfo] = useState(null)
   const [isValidating, setIsValidating] = useState(true)
   const [roomError, setRoomError] = useState('')
-  const [mediaError, setMediaError] = useState('')
 
   // Media state
-  const [localStream, setLocalStream] = useState(null)
   const [audioEnabled, setAudioEnabled] = useState(true)
   const [videoEnabled, setVideoEnabled] = useState(true)
-  const [remoteStreams, setRemoteStreams] = useState({}) // userId -> MediaStream
   const [participants, setParticipants] = useState([]) // array of { userId, name, audioOn, videoOn }
 
-  // UI Panels / Toggles State
-  const [showWhiteboard, setShowWhiteboard] = useState(false)
-  const [showParticipantsList, setShowParticipantsList] = useState(false)
+  // Side Panel State ('participants' | 'chat' | 'whiteboard' | null)
+  const [activeSidePanel, setActiveSidePanel] = useState(null)
+
+  // In-Meeting Real-Time Chat State
+  const [meetMessages, setMeetMessages] = useState([])
+
+  // Floating UI Modals State
   const [showInviteModal, setShowInviteModal] = useState(false)
   const [showReactionsPicker, setShowReactionsPicker] = useState(false)
   const [confirmEndModal, setConfirmEndModal] = useState(false)
@@ -39,9 +42,8 @@ export default function MeetRoomPage() {
 
   // Screen Sharing State
   const [isSharingScreen, setIsSharingScreen] = useState(false)
-  const [screenSharingUser, setScreenSharingUser] = useState(null) // { userId, name } if remote is sharing
 
-  // Phase 7: Share to Group Modal State
+  // Share to Group Modal State
   const [showShareGroupModal, setShowShareGroupModal] = useState(false)
   const [userGroups, setUserGroups] = useState([])
   const [loadingGroups, setLoadingGroups] = useState(false)
@@ -56,33 +58,37 @@ export default function MeetRoomPage() {
   const [wbTool, setWbTool] = useState('pen') // 'pen' | 'text' | 'eraser'
   const [textInput, setTextInput] = useState({ open: false, x: 0, y: 0, nx: 0, ny: 0, content: '' })
 
-  // Refs
-  const localStreamRef = useRef(null)
-  const localScreenStreamRef = useRef(null)
-  const peerConnectionsRef = useRef({}) // userId -> RTCPeerConnection
-  const candidateQueuesRef = useRef({}) // userId -> Array<RTCIceCandidateInit>
+  // Jitsi Container Node State
+  const [jitsiContainerEl, setJitsiContainerEl] = useState(null)
 
-  const processQueuedIceCandidates = useCallback(async (remoteUserId, pc) => {
-    const queue = candidateQueuesRef.current[remoteUserId] || []
-    while (queue.length > 0) {
-      const candidate = queue.shift()
-      try {
-        await pc.addIceCandidate(new RTCIceCandidate(candidate))
-      } catch (err) {
-        console.error('Error adding queued ICE candidate:', err)
-      }
+  // Jitsi Engine Custom Hook
+  const {
+    isJoined: isJitsiJoined,
+    isLoading: isJitsiLoading,
+    error: jitsiError,
+    toggleAudio: toggleJitsiAudio,
+    toggleVideo: toggleJitsiVideo,
+    toggleShareScreen: toggleJitsiShareScreen,
+    hangup: hangupJitsi
+  } = useJitsiMeet({
+    roomName: upperRoomCode,
+    containerEl: jitsiContainerEl,
+    displayName: user?.name,
+    onLeave: () => {
+      handleLeaveCall()
     }
-  }, [])
+  })
 
+  // Whiteboard Canvas Refs
   const canvasRef = useRef(null)
   const canvasContainerRef = useRef(null)
   const currentStrokeIdRef = useRef(null)
   const isDrawingRef = useRef(false)
   const remoteBoardActionsRef = useRef([])
-  const undoStackRef = useRef([]) // local user's actions for undo
-  const redoStackRef = useRef([]) // local user's actions for redo
+  const undoStackRef = useRef([])
+  const redoStackRef = useRef([])
 
-  // Helper to trigger reaction locally and for remote participants
+  // Helper to trigger floating reaction
   const triggerReaction = useCallback(({ userId, name, emoji }) => {
     const id = `${Date.now()}_${Math.random()}`
 
@@ -119,34 +125,12 @@ export default function MeetRoomPage() {
     }, 2800)
   }, [])
 
-  const getTileReaction = useCallback(
-    (userId, name) => {
-      if (userId && activeTileReactions[userId]) {
-        return activeTileReactions[userId].emoji
-      }
-      if (name && activeTileReactions[name]) {
-        return activeTileReactions[name].emoji
-      }
-      return null
-    },
-    [activeTileReactions]
-  )
-
-  // Helper to reliably attach media streams to video elements on mount/re-render
-  const attachStream = useCallback((node, stream) => {
-    if (node && stream && node.srcObject !== stream) {
-      node.srcObject = stream
-    }
-  }, [])
-
-  // Keep localStreamRef updated
-  useEffect(() => {
-    localStreamRef.current = localStream
-  }, [localStream])
-
   // 1. Initial Room Validation on Mount
   useEffect(() => {
-    if (!user) return
+    if (!user) {
+      navigate('/login')
+      return
+    }
     async function validateRoom() {
       setIsValidating(true)
       setRoomError('')
@@ -154,203 +138,19 @@ export default function MeetRoomPage() {
         const res = await api.get(`/meets/${upperRoomCode}`)
         setMeetInfo(res.data)
       } catch (err) {
+        if (err.response?.status === 401) {
+          navigate('/login')
+          return
+        }
         setRoomError(err.response?.data?.error || "This meet doesn't exist or has ended")
       } finally {
         setIsValidating(false)
       }
     }
     validateRoom()
-  }, [api, upperRoomCode, user])
+  }, [api, upperRoomCode, user, navigate])
 
-  // 2. getUserMedia Media Stream Capture (Resilient with fallbacks and instant prompt)
-  const initLocalMedia = useCallback(async () => {
-    setMediaError('')
-
-    const hostname = window.location.hostname
-    const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1'
-    const isHTTPS = window.location.protocol === 'https:'
-
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      if (!isHTTPS && !isLocalhost) {
-        setMediaError(
-          `Chrome/Edge security policy disables camera & mic on plain HTTP IP (http://${hostname}:5173). To enable for local Wi-Fi testing: open chrome://flags/#unsafely-treat-insecure-origin-as-secure on your friend's laptop, add http://${hostname}:5173, and click Relaunch!`
-        )
-      } else {
-        setMediaError('Media devices API is not supported by your browser.')
-      }
-      return null
-    }
-
-    try {
-      // Attempt both video and audio
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-      setLocalStream(stream)
-      setAudioEnabled(true)
-      setVideoEnabled(true)
-      return stream
-    } catch (err) {
-      console.warn('getUserMedia audio+video failed, attempting fallbacks:', err)
-
-      // Fallback 1: Audio only
-      try {
-        const audioOnly = await navigator.mediaDevices.getUserMedia({ video: false, audio: true })
-        setLocalStream(audioOnly)
-        setAudioEnabled(true)
-        setVideoEnabled(false)
-        setMediaError('Camera not detected. Connected using Microphone only.')
-        return audioOnly
-      } catch (audioErr) {
-        console.warn('Audio fallback failed, attempting video only:', audioErr)
-
-        // Fallback 2: Video only
-        try {
-          const videoOnly = await navigator.mediaDevices.getUserMedia({ video: true, audio: false })
-          setLocalStream(videoOnly)
-          setAudioEnabled(false)
-          setVideoEnabled(true)
-          setMediaError('Microphone not detected. Connected using Camera only.')
-          return videoOnly
-        } catch (videoErr) {
-          console.error('All getUserMedia attempts failed:', videoErr)
-          setMediaError('Camera/Microphone permission denied. Please allow permissions in your browser address bar.')
-          return null
-        }
-      }
-    }
-  }, [])
-
-  // Prompt for media immediately on mount (parallel with room validation)
-  useEffect(() => {
-    initLocalMedia()
-
-    return () => {
-      // Teardown local media tracks on unmount
-      if (localStreamRef.current) {
-        localStreamRef.current.getTracks().forEach((t) => t.stop())
-      }
-      if (localScreenStreamRef.current) {
-        localScreenStreamRef.current.getTracks().forEach((t) => t.stop())
-      }
-    }
-  }, [initLocalMedia])
-
-  // Phase 5 Safety Net: Late permission / stream resolution handling
-  useEffect(() => {
-    if (!localStream) return
-
-    Object.entries(peerConnectionsRef.current).forEach(([peerId, pc]) => {
-      const senders = pc.getSenders()
-      const tracksToAdd = localStream.getTracks()
-      let needsOffer = false
-
-      tracksToAdd.forEach((track) => {
-        const existingSender = senders.find((s) => s.track?.kind === track.kind)
-        if (existingSender) {
-          if (existingSender.track !== track) {
-            existingSender.replaceTrack(track).catch(() => {})
-          }
-        } else {
-          pc.addTrack(track, localStream)
-          needsOffer = true
-        }
-      })
-
-      if (needsOffer) {
-        pc.createOffer()
-          .then((offer) => pc.setLocalDescription(offer))
-          .then(() => {
-            const socket = getSocket()
-            if (socket && socket.connected) {
-              socket.emit('webrtc_offer', {
-                roomCode: upperRoomCode,
-                toUserId: peerId,
-                sdp: pc.localDescription
-              })
-            }
-          })
-          .catch((err) => console.error('Error re-negotiating offer after delayed getUserMedia:', err))
-      }
-    })
-  }, [localStream, upperRoomCode])
-
-  // 3. WebRTC Peer Connection Helper
-  const createPeerConnection = useCallback((remoteUserId, streamToUse) => {
-    if (peerConnectionsRef.current[remoteUserId]) {
-      return peerConnectionsRef.current[remoteUserId]
-    }
-
-    const pc = new RTCPeerConnection({
-      iceServers: [
-        { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' },
-        { urls: 'stun:stun2.l.google.com:19302' },
-        { urls: 'stun:global.stun.twilio.com:3478' }
-      ]
-    })
-
-    // Attach local tracks (screen track if sharing, else camera/mic stream)
-    const activeStream = streamToUse || localStreamRef.current
-    if (activeStream) {
-      activeStream.getTracks().forEach((track) => {
-        pc.addTrack(track, activeStream)
-      })
-    }
-
-    // ICE Candidate handler
-    pc.onicecandidate = (event) => {
-      if (event.candidate) {
-        const socket = getSocket()
-        if (socket && socket.connected) {
-          socket.emit('webrtc_ice_candidate', {
-            roomCode: upperRoomCode,
-            toUserId: remoteUserId,
-            candidate: event.candidate
-          })
-        }
-      }
-    }
-
-    // Incoming Track handler
-    pc.ontrack = (event) => {
-      if (event.streams && event.streams[0]) {
-        const incomingStream = event.streams[0]
-        setRemoteStreams((prev) => ({
-          ...prev,
-          [remoteUserId]: incomingStream
-        }))
-      }
-    }
-
-    peerConnectionsRef.current[remoteUserId] = pc
-    return pc
-  }, [upperRoomCode])
-
-  // Clean up a specific peer connection
-  const closePeerConnection = useCallback((remoteUserId) => {
-    const pc = peerConnectionsRef.current[remoteUserId]
-    if (pc) {
-      pc.close()
-      delete peerConnectionsRef.current[remoteUserId]
-    }
-    delete candidateQueuesRef.current[remoteUserId]
-    setRemoteStreams((prev) => {
-      const copy = { ...prev }
-      delete copy[remoteUserId]
-      return copy
-    })
-  }, [])
-
-  // Clean up all peer connections
-  const closeAllPeerConnections = useCallback(() => {
-    Object.keys(peerConnectionsRef.current).forEach((id) => {
-      peerConnectionsRef.current[id].close()
-    })
-    peerConnectionsRef.current = {}
-    candidateQueuesRef.current = {}
-    setRemoteStreams({})
-  }, [])
-
-  // 4. Whiteboard Canvas Rendering & Redraw Logic
+  // 2. Whiteboard Canvas Rendering & Redraw Logic
   const drawStrokeOnCanvas = useCallback((ctx, stroke) => {
     if (!ctx || !stroke) return
     const { tool, color, width, points } = stroke
@@ -433,52 +233,57 @@ export default function MeetRoomPage() {
     })
   }, [drawStrokeOnCanvas, renderTextOnCanvas])
 
-  const replayActionHistory = useCallback((actions) => {
-    remoteBoardActionsRef.current = []
-    let currentStrokesMap = {}
+  const replayActionHistory = useCallback(
+    (actions) => {
+      remoteBoardActionsRef.current = []
+      let currentStrokesMap = {}
 
-    actions.forEach(({ event, payload }) => {
-      if (!payload) return
-      if (event === 'wb_draw_start') {
-        currentStrokesMap[payload.strokeId] = {
-          type: 'stroke',
-          strokeId: payload.strokeId,
-          tool: payload.tool || 'pen',
-          color: payload.color,
-          width: payload.width,
-          points: [payload.point]
+      actions.forEach(({ event, payload }) => {
+        if (!payload) return
+        if (event === 'wb_draw_start') {
+          currentStrokesMap[payload.strokeId] = {
+            type: 'stroke',
+            strokeId: payload.strokeId,
+            tool: payload.tool || 'pen',
+            color: payload.color,
+            width: payload.width,
+            points: [payload.point]
+          }
+        } else if (event === 'wb_draw_point') {
+          if (currentStrokesMap[payload.strokeId]) {
+            currentStrokesMap[payload.strokeId].points.push(payload.point)
+          }
+        } else if (event === 'wb_draw_end') {
+          if (currentStrokesMap[payload.strokeId]) {
+            remoteBoardActionsRef.current.push(currentStrokesMap[payload.strokeId])
+            delete currentStrokesMap[payload.strokeId]
+          }
+        } else if (event === 'wb_add_text') {
+          remoteBoardActionsRef.current.push({
+            type: 'text',
+            textId: payload.textId,
+            x: payload.x,
+            y: payload.y,
+            nx: payload.nx,
+            ny: payload.ny,
+            content: payload.content,
+            color: payload.color
+          })
+        } else if (event === 'wb_clear') {
+          remoteBoardActionsRef.current = []
+          currentStrokesMap = {}
         }
-      } else if (event === 'wb_draw_point') {
-        if (currentStrokesMap[payload.strokeId]) {
-          currentStrokesMap[payload.strokeId].points.push(payload.point)
-        }
-      } else if (event === 'wb_draw_end') {
-        if (currentStrokesMap[payload.strokeId]) {
-          remoteBoardActionsRef.current.push(currentStrokesMap[payload.strokeId])
-          delete currentStrokesMap[payload.strokeId]
-        }
-      } else if (event === 'wb_add_text') {
-        remoteBoardActionsRef.current.push({
-          type: 'text',
-          textId: payload.textId,
-          x: payload.x,
-          y: payload.y,
-          nx: payload.nx,
-          ny: payload.ny,
-          content: payload.content,
-          color: payload.color
-        })
-      } else if (event === 'wb_clear') {
-        remoteBoardActionsRef.current = []
-        currentStrokesMap = {}
-      }
-    })
+      })
 
-    redrawCanvas()
-  }, [redrawCanvas])
+      redrawCanvas()
+    },
+    [redrawCanvas]
+  )
 
-  // Phase 2 Canvas ResizeObserver for HiDPI sharpness and accurate cursor positioning
+  // ResizeObserver for Whiteboard Canvas
   useEffect(() => {
+    if (activeSidePanel !== 'whiteboard') return
+
     const container = canvasContainerRef.current
     const canvas = canvasRef.current
     if (!container || !canvas) return
@@ -512,9 +317,9 @@ export default function MeetRoomPage() {
     return () => {
       observer.disconnect()
     }
-  }, [redrawCanvas, showWhiteboard])
+  }, [redrawCanvas, activeSidePanel])
 
-  // 5. Socket.IO Event Handlers Lifecycle (Phase 5 fix: localStream removed from dependencies)
+  // 3. Socket.IO Event Handlers Lifecycle
   useEffect(() => {
     if (!meetInfo) return
 
@@ -533,76 +338,6 @@ export default function MeetRoomPage() {
 
     const handleParticipantsUpdate = (list) => {
       setParticipants(list || [])
-    }
-
-    const handlePeerJoined = async ({ userId, name }) => {
-      const pc = createPeerConnection(userId)
-      try {
-        const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true })
-        await pc.setLocalDescription(offer)
-        socket.emit('webrtc_offer', {
-          roomCode: upperRoomCode,
-          toUserId: userId,
-          sdp: offer
-        })
-      } catch (err) {
-        console.error('Error creating WebRTC offer for peer:', err)
-      }
-    }
-
-    const handleWebrtcOffer = async ({ fromUserId, sdp }) => {
-      const pc = createPeerConnection(fromUserId)
-      try {
-        if (pc.signalingState === 'stable' || pc.signalingState === 'have-local-offer') {
-          await pc.setRemoteDescription(new RTCSessionDescription(sdp))
-          await processQueuedIceCandidates(fromUserId, pc)
-          const answer = await pc.createAnswer({ offerToReceiveAudio: true, offerToReceiveVideo: true })
-          await pc.setLocalDescription(answer)
-          socket.emit('webrtc_answer', {
-            roomCode: upperRoomCode,
-            toUserId: fromUserId,
-            sdp: answer
-          })
-        }
-      } catch (err) {
-        console.error('Error handling WebRTC offer:', err)
-      }
-    }
-
-    const handleWebrtcAnswer = async ({ fromUserId, sdp }) => {
-      const pc = peerConnectionsRef.current[fromUserId]
-      if (pc) {
-        try {
-          if (pc.signalingState === 'have-local-offer') {
-            await pc.setRemoteDescription(new RTCSessionDescription(sdp))
-            await processQueuedIceCandidates(fromUserId, pc)
-          }
-        } catch (err) {
-          console.error('Error setting remote description from answer:', err)
-        }
-      }
-    }
-
-    const handleWebrtcIceCandidate = async ({ fromUserId, candidate }) => {
-      const pc = peerConnectionsRef.current[fromUserId]
-      if (pc && candidate) {
-        try {
-          if (pc.remoteDescription && pc.remoteDescription.type) {
-            await pc.addIceCandidate(new RTCIceCandidate(candidate))
-          } else {
-            if (!candidateQueuesRef.current[fromUserId]) {
-              candidateQueuesRef.current[fromUserId] = []
-            }
-            candidateQueuesRef.current[fromUserId].push(candidate)
-          }
-        } catch (err) {
-          console.error('Error adding ICE candidate:', err)
-        }
-      }
-    }
-
-    const handlePeerLeft = ({ userId }) => {
-      closePeerConnection(userId)
     }
 
     const handleReactionReceived = ({ userId, name, emoji }) => {
@@ -643,6 +378,8 @@ export default function MeetRoomPage() {
         textId: payload.textId,
         x: payload.x,
         y: payload.y,
+        nx: payload.nx,
+        ny: payload.ny,
         content: payload.content,
         color: payload.color
       })
@@ -665,32 +402,23 @@ export default function MeetRoomPage() {
       redrawCanvas()
     }
 
-    const handleScreenShareStatus = ({ userId, name, sharing }) => {
-      if (sharing) {
-        setScreenSharingUser({ userId, name })
-      } else {
-        setScreenSharingUser((prev) => (prev?.userId === userId ? null : prev))
-      }
+    const handleMeetChatHistory = (history) => {
+      setMeetMessages(history || [])
+    }
+
+    const handleReceiveMeetMessage = (msg) => {
+      setMeetMessages((prev) => [...prev, msg])
     }
 
     const handleMeetEnded = () => {
-      closeAllPeerConnections()
-      if (localStreamRef.current) {
-        localStreamRef.current.getTracks().forEach((t) => t.stop())
-      }
-      setRoomError('The host has ended this meeting.')
-      setTimeout(() => {
-        navigate('/meet')
-      }, 3000)
+      try {
+        hangupJitsi()
+      } catch (_) {}
+      navigate('/meet')
     }
 
     socket.on('meet_error', handleMeetError)
     socket.on('meet_participants_update', handleParticipantsUpdate)
-    socket.on('peer_joined', handlePeerJoined)
-    socket.on('webrtc_offer', handleWebrtcOffer)
-    socket.on('webrtc_answer', handleWebrtcAnswer)
-    socket.on('webrtc_ice_candidate', handleWebrtcIceCandidate)
-    socket.on('peer_left', handlePeerLeft)
     socket.on('reaction_received', handleReactionReceived)
     socket.on('meet_board_history', handleMeetBoardHistory)
     socket.on('wb_draw_start', handleWbDrawStart)
@@ -699,18 +427,13 @@ export default function MeetRoomPage() {
     socket.on('wb_add_text', handleWbAddText)
     socket.on('wb_remove_action', handleWbRemoveAction)
     socket.on('wb_clear', handleWbClear)
-    socket.on('screen_share_status', handleScreenShareStatus)
+    socket.on('meet_chat_history', handleMeetChatHistory)
+    socket.on('receive_meet_message', handleReceiveMeetMessage)
     socket.on('meet_ended', handleMeetEnded)
 
     return () => {
-      socket.emit('leave_meet', { roomCode: upperRoomCode })
       socket.off('meet_error', handleMeetError)
       socket.off('meet_participants_update', handleParticipantsUpdate)
-      socket.off('peer_joined', handlePeerJoined)
-      socket.off('webrtc_offer', handleWebrtcOffer)
-      socket.off('webrtc_answer', handleWebrtcAnswer)
-      socket.off('webrtc_ice_candidate', handleWebrtcIceCandidate)
-      socket.off('peer_left', handlePeerLeft)
       socket.off('reaction_received', handleReactionReceived)
       socket.off('meet_board_history', handleMeetBoardHistory)
       socket.off('wb_draw_start', handleWbDrawStart)
@@ -719,122 +442,45 @@ export default function MeetRoomPage() {
       socket.off('wb_add_text', handleWbAddText)
       socket.off('wb_remove_action', handleWbRemoveAction)
       socket.off('wb_clear', handleWbClear)
-      socket.off('screen_share_status', handleScreenShareStatus)
+      socket.off('meet_chat_history', handleMeetChatHistory)
+      socket.off('receive_meet_message', handleReceiveMeetMessage)
       socket.off('meet_ended', handleMeetEnded)
-
-      closeAllPeerConnections()
     }
-  }, [meetInfo, upperRoomCode, createPeerConnection, closePeerConnection, closeAllPeerConnections, replayActionHistory, redrawCanvas, navigate])
+  }, [meetInfo, upperRoomCode, replayActionHistory, redrawCanvas, navigate, hangupJitsi, triggerReaction])
 
-  // 6. Media Controls Handlers
-  const toggleAudio = () => {
-    if (!localStream) return
+  // Custom Control Bar Handlers
+  const handleToggleAudio = () => {
+    toggleJitsiAudio()
     const nextState = !audioEnabled
-    localStream.getAudioTracks().forEach((t) => {
-      t.enabled = nextState
-    })
     setAudioEnabled(nextState)
-
     const socket = getSocket()
     if (socket && socket.connected) {
-      socket.emit('toggle_media', {
-        roomCode: upperRoomCode,
-        audioOn: nextState,
-        videoOn: videoEnabled
-      })
+      socket.emit('toggle_media', { roomCode: upperRoomCode, audioOn: nextState, videoOn: videoEnabled })
     }
   }
 
-  const toggleVideo = () => {
-    if (!localStream) return
+  const handleToggleVideo = () => {
+    toggleJitsiVideo()
     const nextState = !videoEnabled
-    localStream.getVideoTracks().forEach((t) => {
-      t.enabled = nextState
-    })
     setVideoEnabled(nextState)
-
     const socket = getSocket()
     if (socket && socket.connected) {
-      socket.emit('toggle_media', {
-        roomCode: upperRoomCode,
-        audioOn: audioEnabled,
-        videoOn: nextState
-      })
+      socket.emit('toggle_media', { roomCode: upperRoomCode, audioOn: audioEnabled, videoOn: nextState })
     }
   }
 
-  // Phase 4 Screen Sharing Handler
-  const handleToggleScreenShare = async () => {
-    if (isSharingScreen) {
-      stopScreenShare()
-      return
-    }
-
-    try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false })
-      const screenTrack = stream.getVideoTracks()[0]
-      if (!screenTrack) return
-
-      localScreenStreamRef.current = stream
-      setIsSharingScreen(true)
-
-      // Swap outgoing video track for all peers
-      Object.values(peerConnectionsRef.current).forEach((pc) => {
-        const videoSender = pc.getSenders().find((s) => s.track && s.track.kind === 'video')
-        if (videoSender) {
-          videoSender.replaceTrack(screenTrack)
-        }
-      })
-
-      const socket = getSocket()
-      if (socket && socket.connected) {
-        socket.emit('screen_share_status', { roomCode: upperRoomCode, sharing: true })
-      }
-
-      // Handle user clicking native browser "Stop sharing" button
-      screenTrack.onended = () => {
-        stopScreenShare()
-      }
-    } catch (err) {
-      // User cancelled picker or error - gracefully stay in call
-      console.log('Screen sharing cancelled or not granted:', err)
-    }
-  }
-
-  const stopScreenShare = () => {
-    if (localScreenStreamRef.current) {
-      localScreenStreamRef.current.getTracks().forEach((t) => t.stop())
-      localScreenStreamRef.current = null
-    }
-    setIsSharingScreen(false)
-
-    // Restore original camera track to all peers
-    const cameraTrack = localStreamRef.current?.getVideoTracks()[0] || null
-    Object.values(peerConnectionsRef.current).forEach((pc) => {
-      const videoSender = pc.getSenders().find((s) => s.track && s.track.kind === 'video')
-      if (videoSender && cameraTrack) {
-        videoSender.replaceTrack(cameraTrack)
-      }
-    })
-
-    const socket = getSocket()
-    if (socket && socket.connected) {
-      socket.emit('screen_share_status', { roomCode: upperRoomCode, sharing: false })
-    }
+  const handleToggleScreenShare = () => {
+    toggleJitsiShareScreen()
+    setIsSharingScreen((prev) => !prev)
   }
 
   const handleLeaveCall = () => {
+    try {
+      hangupJitsi()
+    } catch (_) {}
     const socket = getSocket()
     if (socket && socket.connected) {
       socket.emit('leave_meet', { roomCode: upperRoomCode })
-    }
-
-    closeAllPeerConnections()
-    if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach((t) => t.stop())
-    }
-    if (localScreenStreamRef.current) {
-      localScreenStreamRef.current.getTracks().forEach((t) => t.stop())
     }
     navigate('/meet')
   }
@@ -844,21 +490,19 @@ export default function MeetRoomPage() {
     if (socket && socket.connected) {
       socket.emit('end_meet_for_all', { roomCode: upperRoomCode })
     }
+    try {
+      hangupJitsi()
+    } catch (_) {}
     setConfirmEndModal(false)
     navigate('/meet')
   }
 
-  // Close reactions picker when clicking outside
-  useEffect(() => {
-    if (!showReactionsPicker) return
-    const handleClickOutside = (e) => {
-      if (!e.target.closest('.reaction-picker-container')) {
-        setShowReactionsPicker(false)
-      }
+  const handleSendMeetMessage = (msgText) => {
+    const socket = getSocket()
+    if (socket && socket.connected) {
+      socket.emit('send_meet_message', { roomCode: upperRoomCode, message: msgText })
     }
-    window.addEventListener('pointerdown', handleClickOutside)
-    return () => window.removeEventListener('pointerdown', handleClickOutside)
-  }, [showReactionsPicker])
+  }
 
   const sendReaction = (emoji) => {
     triggerReaction({
@@ -874,7 +518,7 @@ export default function MeetRoomPage() {
     setShowReactionsPicker(false)
   }
 
-  // 7. Whiteboard Canvas Interaction Handlers
+  // Whiteboard Canvas Interaction Handlers
   const getCanvasCoordinates = (e) => {
     const canvas = canvasRef.current
     if (!canvas) return { x: 0, y: 0, nx: 0, ny: 0 }
@@ -967,7 +611,6 @@ export default function MeetRoomPage() {
       }
     } catch (_) {}
 
-    // Push to local user's undo stack
     const action = remoteBoardActionsRef.current.find((s) => s.strokeId === strokeId)
     if (action) {
       undoStackRef.current.push({
@@ -975,7 +618,7 @@ export default function MeetRoomPage() {
         actionType: 'stroke',
         action
       })
-      redoStackRef.current = [] // clear redo stack on new action
+      redoStackRef.current = []
     }
 
     const socket = getSocket()
@@ -1038,105 +681,7 @@ export default function MeetRoomPage() {
     }
   }
 
-  // Phase 2: Undo / Redo Scoped Keyboard Shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (!showWhiteboard) return
-
-      // Don't intercept if user is typing in a form input/textarea
-      const targetTag = document.activeElement?.tagName?.toUpperCase()
-      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(targetTag)) return
-
-      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
-      const isCmdOrCtrl = isMac ? e.metaKey : e.ctrlKey
-
-      if (!isCmdOrCtrl) return
-
-      const key = e.key.toLowerCase()
-
-      // UNDO: Ctrl+Z / Cmd+Z
-      if (key === 'z' && !e.shiftKey) {
-        e.preventDefault()
-        if (undoStackRef.current.length === 0) return
-
-        const lastAction = undoStackRef.current.pop()
-        redoStackRef.current.push(lastAction)
-
-        const socket = getSocket()
-        if (socket && socket.connected) {
-          socket.emit('wb_remove_action', {
-            roomCode: upperRoomCode,
-            actionId: lastAction.actionId,
-            actionType: lastAction.actionType
-          })
-        }
-
-        remoteBoardActionsRef.current = remoteBoardActionsRef.current.filter((item) => {
-          if (item.strokeId) return item.strokeId !== lastAction.actionId
-          if (item.textId) return item.textId !== lastAction.actionId
-          return true
-        })
-        redrawCanvas()
-      }
-
-      // REDO: Ctrl+Y or Ctrl+Shift+Z
-      if (key === 'y' || (key === 'z' && e.shiftKey)) {
-        e.preventDefault()
-        if (redoStackRef.current.length === 0) return
-
-        const redoAction = redoStackRef.current.pop()
-        undoStackRef.current.push(redoAction)
-
-        const socket = getSocket()
-        const { action } = redoAction
-
-        if (action.type === 'stroke') {
-          if (socket && socket.connected) {
-            socket.emit('wb_draw_start', {
-              roomCode: upperRoomCode,
-              strokeId: action.strokeId,
-              tool: action.tool || 'pen',
-              color: action.color,
-              width: action.width,
-              point: action.points[0]
-            })
-            for (let i = 1; i < action.points.length; i++) {
-              socket.emit('wb_draw_point', {
-                roomCode: upperRoomCode,
-                strokeId: action.strokeId,
-                point: action.points[i]
-              })
-            }
-            socket.emit('wb_draw_end', {
-              roomCode: upperRoomCode,
-              strokeId: action.strokeId
-            })
-          }
-        } else if (action.type === 'text') {
-          if (socket && socket.connected) {
-            socket.emit('wb_add_text', {
-              roomCode: upperRoomCode,
-              textId: action.textId,
-              x: action.x,
-              y: action.y,
-              content: action.content,
-              color: action.color
-            })
-          }
-        }
-
-        remoteBoardActionsRef.current.push(action)
-        redrawCanvas()
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [showWhiteboard, upperRoomCode, redrawCanvas])
-
-  // Phase 7: Fetch Study Groups & Share to Group Chat
+  // Fetch Study Groups for Share Modal
   const handleOpenShareGroupModal = async () => {
     setShowShareGroupModal(true)
     setShareSuccessMsg('')
@@ -1166,12 +711,10 @@ export default function MeetRoomPage() {
     const messageBody = `📹 Join our study meet: ${shareableUrl} (Code: ${upperRoomCode})`
 
     try {
-      // Send via HTTP endpoint
       await api.post(`/study-groups/groups/${selectedShareGroupId}/messages`, {
         message: messageBody
       })
 
-      // Also emit via chat socket if connected
       const socket = getSocket()
       if (socket && socket.connected) {
         socket.emit('send_message', {
@@ -1191,7 +734,7 @@ export default function MeetRoomPage() {
     }
   }
 
-  // 8. Render Validation / Error States
+  // Render Validation / Error States
   if (isValidating) {
     return (
       <div className="flex h-screen items-center justify-center bg-[var(--bg-primary)] p-6">
@@ -1225,22 +768,11 @@ export default function MeetRoomPage() {
   const hostUserId = (meetInfo?.createdBy?._id || meetInfo?.createdBy || '').toString()
   const isHost = Boolean(currentUserId && hostUserId && currentUserId === hostUserId)
   const shareableUrl = `${window.location.origin}/meet/room/${upperRoomCode}`
-
-  // Participant counts & Presentation mode condition
   const allParticipantCount = participants.length > 0 ? participants.length : 1
-  const isPresentationMode = showWhiteboard || isSharingScreen || Boolean(screenSharingUser)
-
-  // Responsive Grid Columns density mapping for Phase 1
-  const gridColsClass =
-    allParticipantCount <= 2
-      ? 'grid-cols-1 sm:grid-cols-2'
-      : allParticipantCount <= 4
-      ? 'grid-cols-2 lg:grid-cols-2'
-      : 'grid-cols-2 md:grid-cols-3'
 
   return (
     <div className="flex h-screen w-screen min-h-0 flex-col overflow-hidden bg-[var(--bg-primary)] relative select-none">
-      {/* Floating Animated Reaction Emojis Overlay (Zoom style) */}
+      {/* Floating Animated Reaction Emojis Overlay */}
       <div className="absolute inset-0 z-40 pointer-events-none overflow-hidden">
         {reactions.map((r) => (
           <div
@@ -1261,7 +793,7 @@ export default function MeetRoomPage() {
         ))}
       </div>
 
-      {/* Standalone Minimal Top Header Bar (Phase 6) */}
+      {/* Standalone Minimal Top Header Bar */}
       <header className="flex-none border-b border-[var(--border-main)] bg-[var(--bg-surface)] px-4 py-2.5 shadow-xs z-30">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
@@ -1290,14 +822,7 @@ export default function MeetRoomPage() {
             </div>
           </div>
 
-          {/* Presenting Screen Banner */}
-          {screenSharingUser && (
-            <div className="hidden sm:flex items-center gap-2 bg-amber-500/10 border border-amber-500/30 text-amber-400 px-3 py-1 rounded-full text-xs font-bold animate-pulse">
-              <span>💻 {screenSharingUser.name} is presenting screen</span>
-            </div>
-          )}
-
-          {/* Top Quick Actions (Invite & Header Buttons) */}
+          {/* Top Quick Actions (Invite, Participants, Chat, Whiteboard) */}
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -1309,8 +834,12 @@ export default function MeetRoomPage() {
 
             <button
               type="button"
-              onClick={() => setShowParticipantsList((prev) => !prev)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-[12px] bg-[var(--bg-secondary)] text-[var(--text-primary)] border border-[var(--border-main)] hover:border-[var(--accent-color)] text-xs font-bold transition cursor-pointer"
+              onClick={() => setActiveSidePanel((prev) => (prev === 'participants' ? null : 'participants'))}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-[12px] text-xs font-bold border transition cursor-pointer ${
+                activeSidePanel === 'participants'
+                  ? 'bg-[var(--accent-color)] text-black border-transparent font-extrabold'
+                  : 'bg-[var(--bg-secondary)] border-[var(--border-main)] text-[var(--text-primary)] hover:border-[var(--accent-color)]'
+              }`}
             >
               <span>👥 {allParticipantCount}</span>
             </button>
@@ -1318,389 +847,257 @@ export default function MeetRoomPage() {
         </div>
       </header>
 
-      {/* Media Hardware Error Toast */}
-      {mediaError && (
+      {/* Jitsi Engine Initialization Error Toast */}
+      {jitsiError && (
         <div className="flex-none bg-[var(--error-bg)] border-b border-[var(--error-color)]/30 px-4 py-2 flex items-center justify-between text-xs text-[var(--error-color)] z-30">
-          <span>⚠️ {mediaError}</span>
-          <button
-            type="button"
-            onClick={initLocalMedia}
-            className="font-bold underline hover:opacity-80 cursor-pointer"
-          >
-            Retry Camera/Mic
-          </button>
+          <span>⚠️ {jitsiError}</span>
         </div>
       )}
 
-      {/* MAIN CONTENT WORKSPACE AREA */}
-      <div className="flex-1 min-h-0 flex flex-col overflow-hidden p-3 sm:p-4 gap-3 relative">
-        {/* PRESENTATION MODE LAYOUT (Phase 3 & Phase 4) */}
-        {isPresentationMode ? (
-          <div className="flex-1 min-h-0 flex flex-col gap-3 overflow-hidden">
-            {/* Top Main Presentation Feature Canvas / Video */}
-            <div className="flex-1 min-h-0 rounded-[20px] border border-[var(--border-main)] bg-slate-950 overflow-hidden relative shadow-lg">
-              {showWhiteboard ? (
-                <div className="h-full w-full flex flex-col bg-[var(--bg-surface)] overflow-hidden">
-                  {/* Whiteboard Header Toolbar */}
-                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border-main)] bg-[var(--bg-secondary)] p-2.5">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-[var(--text-primary)]">Tool:</span>
-                      <button
-                        type="button"
-                        onClick={() => setWbTool('pen')}
-                        className={`px-3 py-1 rounded-[8px] text-xs font-bold transition cursor-pointer ${
-                          wbTool === 'pen'
-                            ? 'bg-[var(--accent-color)] text-black'
-                            : 'bg-[var(--bg-primary)] text-[var(--text-secondary)] border border-[var(--border-main)]'
-                        }`}
-                      >
-                        ✏️ Pen
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setWbTool('text')}
-                        className={`px-3 py-1 rounded-[8px] text-xs font-bold transition cursor-pointer ${
-                          wbTool === 'text'
-                            ? 'bg-[var(--accent-color)] text-black'
-                            : 'bg-[var(--bg-primary)] text-[var(--text-secondary)] border border-[var(--border-main)]'
-                        }`}
-                      >
-                        🔤 Text
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setWbTool('eraser')}
-                        className={`px-3 py-1 rounded-[8px] text-xs font-bold transition cursor-pointer ${
-                          wbTool === 'eraser'
-                            ? 'bg-[var(--accent-color)] text-black'
-                            : 'bg-[var(--bg-primary)] text-[var(--text-secondary)] border border-[var(--border-main)]'
-                        }`}
-                      >
-                        🧹 Eraser
-                      </button>
-                    </div>
+      {/* MAIN CONTENT WORKSPACE AREA (Reflow Container) */}
+      <div className="flex-1 min-h-0 flex overflow-hidden p-2 sm:p-3 gap-2 sm:gap-3 relative">
+        {/* LEFT MAIN VIDEO AREA (Reflows Width When Panel Opens) */}
+        <div className="flex-1 min-h-0 flex flex-col rounded-[20px] border border-[var(--border-main)] bg-slate-950 overflow-hidden relative shadow-lg transition-all duration-300 ease-in-out">
+          {/* Jitsi Engine IFrame Mount Node */}
+          <div ref={setJitsiContainerEl} className="w-full h-full relative" />
 
-                    {/* Stroke Width & Color Swatches */}
-                    <div className="flex items-center gap-2">
-                      {wbTool === 'eraser' ? (
-                        <select
-                          value={wbEraserWidth}
-                          onChange={(e) => setWbEraserWidth(Number(e.target.value))}
-                          className="saas-input text-xs py-1 px-2 min-h-[32px] bg-[var(--bg-primary)] cursor-pointer"
-                          title="Eraser Size"
-                        >
-                          <option value={15}>Small Eraser (15px)</option>
-                          <option value={30}>Medium Eraser (30px)</option>
-                          <option value={50}>Large Eraser (50px)</option>
-                        </select>
-                      ) : (
-                        <>
-                          <select
-                            value={wbWidth}
-                            onChange={(e) => setWbWidth(Number(e.target.value))}
-                            className="saas-input text-xs py-1 px-2 min-h-[32px] bg-[var(--bg-primary)] cursor-pointer"
-                            title="Pen Thickness"
-                          >
-                            <option value={2}>Thin (2px)</option>
-                            <option value={4}>Medium (4px)</option>
-                            <option value={8}>Thick (8px)</option>
-                          </select>
-
-                          <div className="flex items-center gap-1">
-                            {COLOR_SWATCHES.map((c) => (
-                              <button
-                                key={c}
-                                type="button"
-                                onClick={() => setWbColor(c)}
-                                style={{ backgroundColor: c }}
-                                className={`h-5 w-5 rounded-full border border-black/30 transition transform hover:scale-110 cursor-pointer ${
-                                  wbColor === c ? 'ring-2 ring-[var(--accent-color)] scale-110' : ''
-                                }`}
-                              />
-                            ))}
-                          </div>
-                        </>
-                      )}
-
-                      <span className="text-[10px] text-[var(--text-muted)] font-semibold hidden md:inline">
-                        (Ctrl+Z Undo / Ctrl+Y Redo)
-                      </span>
-
-                      {isHost && (
-                        <button
-                          type="button"
-                          onClick={handleClearBoard}
-                          className="px-2.5 py-1 rounded-[8px] text-xs font-bold bg-[var(--error-bg)] text-[var(--error-color)] border border-[var(--error-color)]/30 hover:opacity-80 transition cursor-pointer"
-                          title="Clear whiteboard for everyone"
-                        >
-                          Clear Board
-                        </button>
-                      )}
-
-                      <button
-                        type="button"
-                        onClick={() => setShowWhiteboard(false)}
-                        className="px-2.5 py-1 rounded-[8px] text-xs font-bold bg-[var(--bg-primary)] text-[var(--text-secondary)] border border-[var(--border-main)] hover:text-[var(--text-primary)] transition cursor-pointer"
-                      >
-                        ✕ Close
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Canvas Container Workspace */}
-                  <div ref={canvasContainerRef} className="relative flex-1 min-h-0 bg-slate-900 overflow-hidden cursor-crosshair">
-                    <canvas
-                      ref={canvasRef}
-                      onPointerDown={handleCanvasPointerDown}
-                      onPointerMove={handleCanvasPointerMove}
-                      onPointerUp={handleCanvasPointerUp}
-                      onPointerCancel={handleCanvasPointerUp}
-                      onPointerLeave={handleCanvasPointerUp}
-                      className="touch-none w-full h-full block"
-                    />
-
-                    {/* Floating Text Input Box */}
-                    {textInput.open && (
-                      <form
-                        onSubmit={handleSubmitText}
-                        style={{ left: `${textInput.x}px`, top: `${textInput.y}px` }}
-                        className="absolute z-20 flex gap-1 bg-black/80 p-1.5 rounded-[10px] border border-[var(--accent-color)] shadow-xl"
-                      >
-                        <input
-                          type="text"
-                          autoFocus
-                          value={textInput.content}
-                          onChange={(e) => setTextInput((prev) => ({ ...prev, content: e.target.value }))}
-                          placeholder="Type text..."
-                          className="saas-input text-xs min-h-[30px] px-2 py-0.5 text-white"
-                        />
-                        <button type="submit" className="saas-button-primary text-xs min-h-[30px] px-2 font-bold cursor-pointer">
-                          Add
-                        </button>
-                      </form>
-                    )}
-                  </div>
-                </div>
-              ) : isSharingScreen ? (
-                /* Sharer Local Preview */
-                <div className="h-full w-full flex flex-col items-center justify-center bg-black relative">
-                  <video
-                    ref={(node) => attachStream(node, localScreenStreamRef.current)}
-                    autoPlay
-                    playsInline
-                    muted
-                    className="h-full w-full object-contain"
-                  />
-                  <div className="absolute top-4 left-4 bg-black/70 backdrop-blur-md text-white px-3 py-1 rounded-full text-xs font-bold">
-                    💻 You are sharing your screen
-                  </div>
-                </div>
-              ) : screenSharingUser ? (
-                /* Remote Presenter Video Stream */
-                <div className="h-full w-full flex flex-col items-center justify-center bg-black relative">
-                  {remoteStreams[screenSharingUser.userId] ? (
-                    <video
-                      ref={(node) => attachStream(node, remoteStreams[screenSharingUser.userId])}
-                      autoPlay
-                      playsInline
-                      className="h-full w-full object-contain"
-                    />
-                  ) : (
-                    <div className="flex flex-col items-center justify-center gap-2 text-white">
-                      <div className="h-10 w-10 animate-spin rounded-full border-4 border-amber-400 border-t-transparent" />
-                      <p className="text-sm font-bold">{screenSharingUser.name}'s screen feed loading...</p>
-                    </div>
-                  )}
-                  <div className="absolute top-4 left-4 bg-black/70 backdrop-blur-md text-white px-3 py-1 rounded-full text-xs font-bold">
-                    💻 {screenSharingUser.name}'s Screen
-                  </div>
-                </div>
-              ) : null}
+          {/* Jitsi Loading Overlay */}
+          {isJitsiLoading && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/80 backdrop-blur-xs z-10 space-y-3 pointer-events-none transition-opacity duration-300">
+              <div className="h-10 w-10 animate-spin rounded-full border-4 border-[var(--accent-color)] border-t-transparent" />
+              <p className="text-xs font-semibold text-[var(--text-secondary)]">Connecting to video room...</p>
             </div>
+          )}
+        </div>
 
-            {/* Bottom Horizontal Participant Strip (Phase 3) */}
-            <div className="flex-none h-28 flex gap-2.5 overflow-x-auto custom-scrollbar pb-1">
-              {/* Local User Tile */}
-              <div className="relative h-full w-36 shrink-0 rounded-[16px] border border-[var(--border-main)] bg-slate-950 overflow-hidden flex items-center justify-center shadow-md">
-                {getTileReaction(currentUserId, user?.name) && (
-                  <div className="absolute top-1.5 right-1.5 z-30 flex items-center justify-center bg-black/80 backdrop-blur-md px-2 py-0.5 rounded-full border border-amber-400/50 shadow-md animate-bounce text-sm">
-                    {getTileReaction(currentUserId, user?.name)}
+        {/* RIGHT SIDE PANEL AREA (Tabbed Panel Reflows Layout) */}
+        {activeSidePanel && (
+          <div className="w-80 sm:w-[380px] shrink-0 h-full flex flex-col rounded-[20px] border border-[var(--border-main)] bg-[var(--bg-surface)] overflow-hidden shadow-2xl transition-all duration-300 ease-in-out">
+            {/* 1. PARTICIPANTS PANEL */}
+            {activeSidePanel === 'participants' && (
+              <div className="flex flex-col h-full bg-[var(--bg-surface)] overflow-hidden">
+                <div className="flex items-center justify-between p-3.5 border-b border-[var(--border-main)] bg-[var(--bg-secondary)]">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">👥</span>
+                    <h3 className="font-bold text-sm text-[var(--text-primary)]">
+                      Participants ({allParticipantCount})
+                    </h3>
                   </div>
-                )}
-                {localStream ? (
-                  <video
-                    ref={(node) => attachStream(node, localStream)}
-                    autoPlay
-                    playsInline
-                    muted
-                    className={`h-full w-full object-cover transform -scale-x-100 ${!videoEnabled ? 'hidden' : ''}`}
-                  />
-                ) : null}
-
-                {!localStream ? (
                   <button
                     type="button"
-                    onClick={initLocalMedia}
-                    className="flex flex-col items-center justify-center text-center p-2 hover:bg-slate-900 w-full h-full transition cursor-pointer"
+                    onClick={() => setActiveSidePanel(null)}
+                    className="h-7 w-7 rounded-full flex items-center justify-center text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-primary)] transition cursor-pointer"
                   >
-                    <span className="text-base mb-1">📹</span>
-                    <span className="text-[10px] font-bold text-amber-400">Allow Media</span>
+                    ✕
                   </button>
-                ) : !videoEnabled ? (
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--accent-color)] text-black text-sm font-bold shadow-md">
-                    {user?.name?.[0]?.toUpperCase() || 'U'}
-                  </div>
-                ) : null}
-
-                <div className="absolute bottom-1.5 left-1.5 right-1.5 flex items-center justify-between bg-black/70 backdrop-blur-md px-2 py-0.5 rounded-full text-white text-[10px] font-bold truncate">
-                  <span className="truncate">{user?.name || 'You'}</span>
-                  {!audioEnabled && <span className="text-red-400">🔇</span>}
                 </div>
-              </div>
 
-              {/* Remote Participants Horizontal Tiles */}
-              {participants
-                .filter((p) => p.userId !== currentUserId)
-                .map((p) => {
-                  const stream = remoteStreams[p.userId]
-                  return (
-                    <div
-                      key={p.userId}
-                      className="relative h-full w-36 shrink-0 rounded-[16px] border border-[var(--border-main)] bg-slate-950 overflow-hidden flex items-center justify-center shadow-md"
-                    >
-                      {getTileReaction(p.userId, p.name) && (
-                        <div className="absolute top-1.5 right-1.5 z-30 flex items-center justify-center bg-black/80 backdrop-blur-md px-2 py-0.5 rounded-full border border-amber-400/50 shadow-md animate-bounce text-sm">
-                          {getTileReaction(p.userId, p.name)}
-                        </div>
-                      )}
-                      {stream && p.videoOn ? (
-                        <video
-                          ref={(node) => attachStream(node, stream)}
-                          autoPlay
-                          playsInline
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--bg-secondary)] border border-[var(--border-main)] text-[var(--accent-color)] text-sm font-bold shadow-md">
-                          {p.name?.[0]?.toUpperCase() || 'P'}
-                        </div>
-                      )}
-                      <div className="absolute bottom-1.5 left-1.5 right-1.5 flex items-center justify-between bg-black/70 backdrop-blur-md px-2 py-0.5 rounded-full text-white text-[10px] font-bold truncate">
-                        <span className="truncate">{p.name}</span>
-                        {!p.audioOn && <span className="text-red-400">🔇</span>}
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-2">
+                  {/* Local User */}
+                  <div className="flex items-center justify-between p-2.5 rounded-[12px] bg-[var(--bg-secondary)] border border-[var(--border-main)]">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--accent-color)] text-black text-xs font-bold shrink-0">
+                        {user?.name?.[0]?.toUpperCase() || 'U'}
                       </div>
+                      <span className="text-xs font-bold text-[var(--text-primary)] truncate">
+                        {user?.name || 'You'} (You)
+                      </span>
                     </div>
-                  )
-                })}
-            </div>
-          </div>
-        ) : (
-          /* PHASE 1 DEFAULT ZOOM-STYLE GRID LAYOUT */
-          <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
-            <div className={`grid ${gridColsClass} gap-3 auto-rows-fr h-full min-h-[340px]`}>
-              {/* Local User Tile */}
-              <div className="relative rounded-[20px] border border-[var(--border-main)] bg-slate-950 overflow-hidden flex items-center justify-center shadow-md min-h-[200px]">
-                {getTileReaction(currentUserId, user?.name) && (
-                  <div className="absolute top-3 right-3 z-30 flex items-center justify-center bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-amber-400/50 shadow-2xl animate-bounce">
-                    <span className="text-2xl">{getTileReaction(currentUserId, user?.name)}</span>
+                    <div className="flex items-center gap-1.5 text-xs">
+                      {!audioEnabled ? <span>🔇</span> : <span>🎙️</span>}
+                      {!videoEnabled ? <span>📷</span> : <span>📹</span>}
+                    </div>
                   </div>
-                )}
-                {localStream ? (
-                  <video
-                    ref={(node) => attachStream(node, localStream)}
-                    autoPlay
-                    playsInline
-                    muted
-                    className={`h-full w-full object-cover transform -scale-x-100 ${!videoEnabled ? 'hidden' : ''}`}
-                  />
-                ) : null}
 
-                {!localStream ? (
-                  <div className="flex flex-col items-center justify-center gap-3 p-4 text-center">
-                    <div className="flex h-14 w-14 items-center justify-center rounded-full bg-amber-500/20 text-amber-400 text-2xl font-bold animate-pulse">
-                      📹
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-slate-200">Camera & Microphone Access</p>
-                      <p className="text-[10px] text-slate-400 mt-0.5 max-w-[220px]">
-                        Click below to allow browser camera and mic permissions to join call
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={initLocalMedia}
-                      className="saas-button-primary text-xs font-bold px-4 py-2 rounded-xl shadow-md cursor-pointer"
-                    >
-                      Allow Camera & Mic →
-                    </button>
-                  </div>
-                ) : !videoEnabled ? (
-                  <div className="flex flex-col items-center justify-center gap-2">
-                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--accent-color)] text-black text-2xl font-bold shadow-lg">
-                      {user?.name?.[0]?.toUpperCase() || 'U'}
-                    </div>
-                    <p className="text-xs font-bold text-slate-300">Camera Off</p>
-                  </div>
-                ) : null}
-
-                <div className="absolute bottom-3 left-3 flex items-center gap-2 bg-black/70 backdrop-blur-md px-3 py-1 rounded-full text-white text-xs font-bold shadow-sm">
-                  <span>{user?.name || 'You'} (You)</span>
-                  {!audioEnabled && <span className="text-red-400">🔇</span>}
-                </div>
-              </div>
-
-              {/* Remote Participants Tiles */}
-              {participants
-                .filter((p) => p.userId !== currentUserId)
-                .map((p) => {
-                  const stream = remoteStreams[p.userId]
-                  return (
-                    <div
-                      key={p.userId}
-                      className="relative rounded-[20px] border border-[var(--border-main)] bg-slate-950 overflow-hidden flex items-center justify-center shadow-md min-h-[200px]"
-                    >
-                      {getTileReaction(p.userId, p.name) && (
-                        <div className="absolute top-3 right-3 z-30 flex items-center justify-center bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-amber-400/50 shadow-2xl animate-bounce">
-                          <span className="text-2xl">{getTileReaction(p.userId, p.name)}</span>
-                        </div>
-                      )}
-                      {stream && p.videoOn ? (
-                        <video
-                          ref={(node) => attachStream(node, stream)}
-                          autoPlay
-                          playsInline
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <div className="flex flex-col items-center justify-center gap-2">
-                          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[var(--bg-secondary)] border border-[var(--border-main)] text-[var(--accent-color)] text-2xl font-bold shadow-lg">
+                  {/* Remote Participants */}
+                  {participants
+                    .filter((p) => p.userId !== currentUserId)
+                    .map((p) => (
+                      <div
+                        key={p.userId}
+                        className="flex items-center justify-between p-2.5 rounded-[12px] bg-[var(--bg-secondary)] border border-[var(--border-main)]"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--bg-primary)] border border-[var(--border-main)] text-[var(--accent-color)] text-xs font-bold shrink-0">
                             {p.name?.[0]?.toUpperCase() || 'P'}
                           </div>
-                          <p className="text-xs font-bold text-slate-300">
-                            {!p.videoOn ? 'Camera Off' : 'Connecting stream...'}
-                          </p>
+                          <span className="text-xs font-semibold text-[var(--text-primary)] truncate">
+                            {p.name}
+                          </span>
                         </div>
-                      )}
-                      <div className="absolute bottom-3 left-3 flex items-center gap-2 bg-black/70 backdrop-blur-md px-3 py-1 rounded-full text-white text-xs font-bold shadow-sm">
-                        <span>{p.name}</span>
-                        {!p.audioOn && <span className="text-red-400">🔇</span>}
+                        <div className="flex items-center gap-1.5 text-xs">
+                          {!p.audioOn ? <span>🔇</span> : <span>🎙️</span>}
+                          {!p.videoOn ? <span>📷</span> : <span>📹</span>}
+                        </div>
                       </div>
-                    </div>
-                  )
-                })}
-            </div>
+                    ))}
+                </div>
+              </div>
+            )}
+
+            {/* 2. IN-MEETING CHAT PANEL */}
+            {activeSidePanel === 'chat' && (
+              <MeetChatPanel
+                messages={meetMessages}
+                currentUserId={currentUserId}
+                onSendMessage={handleSendMeetMessage}
+                onClose={() => setActiveSidePanel(null)}
+              />
+            )}
+
+            {/* 3. WHITEBOARD PANEL */}
+            {activeSidePanel === 'whiteboard' && (
+              <div className="h-full w-full flex flex-col bg-[var(--bg-surface)] overflow-hidden">
+                {/* Whiteboard Header Toolbar */}
+                <div className="flex flex-wrap items-center justify-between gap-1.5 border-b border-[var(--border-main)] bg-[var(--bg-secondary)] p-2">
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setWbTool('pen')}
+                      className={`px-2.5 py-1 rounded-[8px] text-xs font-bold transition cursor-pointer ${
+                        wbTool === 'pen'
+                          ? 'bg-[var(--accent-color)] text-black'
+                          : 'bg-[var(--bg-primary)] text-[var(--text-secondary)] border border-[var(--border-main)]'
+                      }`}
+                    >
+                      ✏️ Pen
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setWbTool('text')}
+                      className={`px-2.5 py-1 rounded-[8px] text-xs font-bold transition cursor-pointer ${
+                        wbTool === 'text'
+                          ? 'bg-[var(--accent-color)] text-black'
+                          : 'bg-[var(--bg-primary)] text-[var(--text-secondary)] border border-[var(--border-main)]'
+                      }`}
+                    >
+                      🔤 Text
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setWbTool('eraser')}
+                      className={`px-2.5 py-1 rounded-[8px] text-xs font-bold transition cursor-pointer ${
+                        wbTool === 'eraser'
+                          ? 'bg-[var(--accent-color)] text-black'
+                          : 'bg-[var(--bg-primary)] text-[var(--text-secondary)] border border-[var(--border-main)]'
+                      }`}
+                    >
+                      🧹 Eraser
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    {wbTool === 'eraser' ? (
+                      <select
+                        value={wbEraserWidth}
+                        onChange={(e) => setWbEraserWidth(Number(e.target.value))}
+                        className="saas-input text-[11px] py-1 px-1.5 bg-[var(--bg-primary)] cursor-pointer"
+                        title="Eraser Size"
+                      >
+                        <option value={15}>15px</option>
+                        <option value={30}>30px</option>
+                        <option value={50}>50px</option>
+                      </select>
+                    ) : (
+                      <>
+                        <select
+                          value={wbWidth}
+                          onChange={(e) => setWbWidth(Number(e.target.value))}
+                          className="saas-input text-[11px] py-1 px-1.5 bg-[var(--bg-primary)] cursor-pointer"
+                          title="Pen Thickness"
+                        >
+                          <option value={2}>2px</option>
+                          <option value={4}>4px</option>
+                          <option value={8}>8px</option>
+                        </select>
+
+                        <div className="flex items-center gap-0.5">
+                          {COLOR_SWATCHES.slice(0, 5).map((c) => (
+                            <button
+                              key={c}
+                              type="button"
+                              onClick={() => setWbColor(c)}
+                              style={{ backgroundColor: c }}
+                              className={`h-4 w-4 rounded-full border border-black/30 transition transform hover:scale-110 cursor-pointer ${
+                                wbColor === c ? 'ring-2 ring-[var(--accent-color)] scale-110' : ''
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      </>
+                    )}
+
+                    {isHost && (
+                      <button
+                        type="button"
+                        onClick={handleClearBoard}
+                        className="px-2 py-1 rounded-[6px] text-[10px] font-bold bg-[var(--error-bg)] text-[var(--error-color)] border border-[var(--error-color)]/30 hover:opacity-80 transition cursor-pointer"
+                        title="Clear whiteboard for everyone"
+                      >
+                        Clear
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => setActiveSidePanel(null)}
+                      className="h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+
+                {/* Canvas Workspace */}
+                <div ref={canvasContainerRef} className="relative flex-1 min-h-0 bg-slate-900 overflow-hidden cursor-crosshair">
+                  <canvas
+                    ref={canvasRef}
+                    onPointerDown={handleCanvasPointerDown}
+                    onPointerMove={handleCanvasPointerMove}
+                    onPointerUp={handleCanvasPointerUp}
+                    onPointerCancel={handleCanvasPointerUp}
+                    onPointerLeave={handleCanvasPointerUp}
+                    className="touch-none w-full h-full block"
+                  />
+
+                  {/* Floating Text Input Box */}
+                  {textInput.open && (
+                    <form
+                      onSubmit={handleSubmitText}
+                      style={{ left: `${textInput.x}px`, top: `${textInput.y}px` }}
+                      className="absolute z-20 flex gap-1 bg-black/80 p-1.5 rounded-[10px] border border-[var(--accent-color)] shadow-xl"
+                    >
+                      <input
+                        type="text"
+                        autoFocus
+                        value={textInput.content}
+                        onChange={(e) => setTextInput((prev) => ({ ...prev, content: e.target.value }))}
+                        placeholder="Type text..."
+                        className="saas-input text-xs py-1 px-2 bg-slate-900 min-w-[120px]"
+                      />
+                      <button
+                        type="submit"
+                        className="px-2.5 py-1 text-xs font-bold bg-[var(--accent-color)] text-black rounded-[6px]"
+                      >
+                        Add
+                      </button>
+                    </form>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
 
-      {/* PHASE 1 BOTTOM FIXED CONTROL BAR */}
-      <div className="flex-none border-t border-[var(--border-main)] bg-[var(--bg-surface)] px-4 py-3 shadow-2xl z-30">
+      {/* BOTTOM CUSTOM CONTROL BAR */}
+      <div className="flex-none border-t border-[var(--border-main)] bg-[var(--bg-surface)] p-3 z-30">
         <div className="flex items-center justify-between gap-2 max-w-[1280px] mx-auto overflow-x-auto custom-scrollbar">
           {/* Left Media Group: Mic & Camera */}
           <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
-              onClick={toggleAudio}
+              onClick={handleToggleAudio}
               className={`flex items-center gap-2 px-3.5 py-2.5 rounded-[14px] font-bold text-xs shadow-sm transition cursor-pointer ${
                 audioEnabled
                   ? 'bg-[var(--bg-secondary)] border border-[var(--border-main)] text-[var(--text-primary)] hover:border-[var(--accent-color)]'
@@ -1712,7 +1109,7 @@ export default function MeetRoomPage() {
 
             <button
               type="button"
-              onClick={toggleVideo}
+              onClick={handleToggleVideo}
               className={`flex items-center gap-2 px-3.5 py-2.5 rounded-[14px] font-bold text-xs shadow-sm transition cursor-pointer ${
                 videoEnabled
                   ? 'bg-[var(--bg-secondary)] border border-[var(--border-main)] text-[var(--text-primary)] hover:border-[var(--accent-color)]'
@@ -1723,7 +1120,7 @@ export default function MeetRoomPage() {
             </button>
           </div>
 
-          {/* Center Collaboration Tools Group: Invite, Participants, Share Screen, Reactions, Whiteboard */}
+          {/* Center Collaboration Tools Group: Invite, Participants, Chat, Reactions, Whiteboard */}
           <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
@@ -1735,17 +1132,30 @@ export default function MeetRoomPage() {
 
             <button
               type="button"
-              onClick={() => setShowParticipantsList((prev) => !prev)}
+              onClick={() => setActiveSidePanel((prev) => (prev === 'participants' ? null : 'participants'))}
               className={`flex items-center gap-1.5 px-3.5 py-2.5 rounded-[14px] font-bold text-xs border transition cursor-pointer ${
-                showParticipantsList
-                  ? 'bg-[var(--accent-color)] text-black border-transparent'
+                activeSidePanel === 'participants'
+                  ? 'bg-[var(--accent-color)] text-black border-transparent font-extrabold'
                   : 'bg-[var(--bg-secondary)] border-[var(--border-main)] text-[var(--text-primary)] hover:border-[var(--accent-color)]'
               }`}
             >
               <span>👥 Participants ({allParticipantCount})</span>
             </button>
 
-            {/* Share Screen (Phase 4) */}
+            {/* In-Meeting Chat Trigger */}
+            <button
+              type="button"
+              onClick={() => setActiveSidePanel((prev) => (prev === 'chat' ? null : 'chat'))}
+              className={`flex items-center gap-1.5 px-3.5 py-2.5 rounded-[14px] font-bold text-xs border transition cursor-pointer ${
+                activeSidePanel === 'chat'
+                  ? 'bg-[var(--accent-color)] text-black border-transparent font-extrabold'
+                  : 'bg-[var(--bg-secondary)] border-[var(--border-main)] text-[var(--text-primary)] hover:border-[var(--accent-color)]'
+              }`}
+            >
+              <span>💬 Chat</span>
+            </button>
+
+            {/* Share Screen */}
             <button
               type="button"
               onClick={handleToggleScreenShare}
@@ -1772,7 +1182,7 @@ export default function MeetRoomPage() {
                 <span>😊 Reactions</span>
               </button>
 
-              {/* Reactions Emoji Picker Popover (Fixed Overlay prevents overflow clipping) */}
+              {/* Reactions Emoji Picker Popover */}
               {showReactionsPicker && (
                 <div className="fixed bottom-20 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-[var(--bg-surface)] p-2.5 rounded-[20px] border-2 border-[var(--accent-color)] shadow-2xl z-[100] animate-fadeIn">
                   {REACTION_EMOJIS.map((emoji) => (
@@ -1790,12 +1200,12 @@ export default function MeetRoomPage() {
               )}
             </div>
 
-            {/* Whiteboard Toggle (Replaces reference Breakout Rooms slot) */}
+            {/* Whiteboard Toggle */}
             <button
               type="button"
-              onClick={() => setShowWhiteboard((prev) => !prev)}
+              onClick={() => setActiveSidePanel((prev) => (prev === 'whiteboard' ? null : 'whiteboard'))}
               className={`flex items-center gap-1.5 px-3.5 py-2.5 rounded-[14px] font-bold text-xs border transition cursor-pointer ${
-                showWhiteboard
+                activeSidePanel === 'whiteboard'
                   ? 'bg-[var(--accent-color)] text-black border-transparent font-extrabold'
                   : 'bg-[var(--bg-secondary)] border-[var(--border-main)] text-[var(--text-primary)] hover:border-[var(--accent-color)]'
               }`}
@@ -1827,66 +1237,7 @@ export default function MeetRoomPage() {
         </div>
       </div>
 
-      {/* PARTICIPANTS LIST DRAWER / MODAL */}
-      {showParticipantsList && (
-        <div className="fixed inset-y-0 right-0 z-50 w-72 bg-[var(--bg-surface)] border-l border-[var(--border-main)] shadow-2xl p-4 flex flex-col animate-slideLeft">
-          <div className="flex items-center justify-between pb-3 border-b border-[var(--border-main)]">
-            <h3 className="font-bold text-sm text-[var(--text-primary)]">
-              Participants ({allParticipantCount})
-            </h3>
-            <button
-              type="button"
-              onClick={() => setShowParticipantsList(false)}
-              className="text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
-            >
-              ✕
-            </button>
-          </div>
-
-          <div className="flex-1 overflow-y-auto custom-scrollbar py-3 space-y-2">
-            {/* Local User */}
-            <div className="flex items-center justify-between p-2.5 rounded-[12px] bg-[var(--bg-secondary)] border border-[var(--border-main)]">
-              <div className="flex items-center gap-2 min-w-0">
-                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--accent-color)] text-black text-xs font-bold">
-                  {user?.name?.[0]?.toUpperCase() || 'U'}
-                </div>
-                <span className="text-xs font-bold text-[var(--text-primary)] truncate">
-                  {user?.name || 'You'} (You)
-                </span>
-              </div>
-              <div className="flex items-center gap-1 text-xs">
-                {!audioEnabled ? <span>🔇</span> : <span>🎙️</span>}
-                {!videoEnabled ? <span>📷</span> : <span>📹</span>}
-              </div>
-            </div>
-
-            {/* Remote Participants */}
-            {participants
-              .filter((p) => p.userId !== currentUserId)
-              .map((p) => (
-                <div
-                  key={p.userId}
-                  className="flex items-center justify-between p-2.5 rounded-[12px] bg-[var(--bg-secondary)] border border-[var(--border-main)]"
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--bg-primary)] border border-[var(--border-main)] text-[var(--accent-color)] text-xs font-bold">
-                      {p.name?.[0]?.toUpperCase() || 'P'}
-                    </div>
-                    <span className="text-xs font-semibold text-[var(--text-primary)] truncate">
-                      {p.name}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1 text-xs">
-                    {!p.audioOn ? <span>🔇</span> : <span>🎙️</span>}
-                    {!p.videoOn ? <span>📷</span> : <span>📹</span>}
-                  </div>
-                </div>
-              ))}
-          </div>
-        </div>
-      )}
-
-      {/* INVITE MODAL (Phase 7 Integration) */}
+      {/* INVITE MODAL */}
       {showInviteModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4 animate-fadeIn">
           <div className="saas-card max-w-md w-full p-6 space-y-4 border border-[var(--border-main)] shadow-2xl">
@@ -1945,7 +1296,7 @@ export default function MeetRoomPage() {
         </div>
       )}
 
-      {/* PHASE 7: SHARE TO STUDY GROUP MODAL */}
+      {/* SHARE TO STUDY GROUP MODAL */}
       {showShareGroupModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4 animate-fadeIn">
           <div className="saas-card max-w-md w-full p-6 space-y-4 border border-[var(--border-main)] shadow-2xl">

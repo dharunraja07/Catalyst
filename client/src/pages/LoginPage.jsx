@@ -27,6 +27,11 @@ export default function LoginPage() {
     }
   }
 
+  const hasGoogleClientId = Boolean(
+    import.meta.env.VITE_GOOGLE_CLIENT_ID &&
+    !import.meta.env.VITE_GOOGLE_CLIENT_ID.includes('dummy')
+  )
+
   const triggerGoogleLogin = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
       try {
@@ -43,6 +48,14 @@ export default function LoginPage() {
       setMessage('Google authentication was cancelled or failed.')
     }
   })
+
+  const handleGoogleClick = () => {
+    if (!hasGoogleClientId) {
+      setMessage('Google Sign-In is not configured. Please add VITE_GOOGLE_CLIENT_ID to your client/.env file.')
+      return
+    }
+    triggerGoogleLogin()
+  }
 
   return (
     <main className="min-h-[calc(100vh-8rem)] flex items-center justify-center px-4 py-4 sm:px-6">
@@ -123,7 +136,7 @@ export default function LoginPage() {
         {/* Google Authentication Button */}
         <button
           type="button"
-          onClick={() => triggerGoogleLogin()}
+          onClick={handleGoogleClick}
           className="saas-button-secondary w-full flex items-center justify-center gap-3 font-semibold min-h-[46px] text-xs sm:text-sm shadow-sm hover:border-[var(--accent-color)] transition-all cursor-pointer"
         >
           <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24">

@@ -5,6 +5,8 @@ import Meet from '../models/Meet.js'
 const meetPresence = new Map()
 // meetBoards: Map<roomCode, Array<Action>>
 const meetBoards = new Map()
+// meetChats: Map<roomCode, Array<Message>>
+const meetChats = new Map()
 // socketMeetRooms: Map<socketId, Set<roomCode>>
 const socketMeetRooms = new Map()
 
@@ -96,6 +98,10 @@ export function setupMeetSocket(io) {
         const history = meetBoards.get(code) || []
         socket.emit('meet_board_history', history)
 
+        // Replay meet chat history to joining socket
+        const chatHistory = meetChats.get(code) || []
+        socket.emit('meet_chat_history', chatHistory)
+
         // Broadcast updated participants to everyone in room
         broadcastParticipants(io, code)
 
@@ -117,50 +123,27 @@ export function setupMeetSocket(io) {
       removeSocketFromMeetRoom(io, socket, code)
     })
 
-    // 3. WebRTC Signaling Relays
-    socket.on('webrtc_offer', ({ roomCode, toUserId, sdp }) => {
-      if (!roomCode || !toUserId || !sdp) return
+    // 3. Real-Time In-Meeting Chat
+    socket.on('send_meet_message', ({ roomCode, message }) => {
+      if (!roomCode || !message || typeof message !== 'string') return
+      const text = message.trim()
+      if (!text) return
+
       const code = roomCode.trim().toUpperCase()
-      const roomMap = meetPresence.get(code)
-      if (!roomMap) return
-
-      const target = roomMap.get(toUserId.toString())
-      if (target && target.socketId) {
-        io.to(target.socketId).emit('webrtc_offer', {
-          fromUserId: socket.user._id.toString(),
-          sdp
-        })
+      if (!meetChats.has(code)) {
+        meetChats.set(code, [])
       }
-    })
 
-    socket.on('webrtc_answer', ({ roomCode, toUserId, sdp }) => {
-      if (!roomCode || !toUserId || !sdp) return
-      const code = roomCode.trim().toUpperCase()
-      const roomMap = meetPresence.get(code)
-      if (!roomMap) return
-
-      const target = roomMap.get(toUserId.toString())
-      if (target && target.socketId) {
-        io.to(target.socketId).emit('webrtc_answer', {
-          fromUserId: socket.user._id.toString(),
-          sdp
-        })
+      const msgPayload = {
+        id: `msg_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        userId: socket.user._id.toString(),
+        name: socket.user.name,
+        message: text,
+        timestamp: new Date().toISOString()
       }
-    })
 
-    socket.on('webrtc_ice_candidate', ({ roomCode, toUserId, candidate }) => {
-      if (!roomCode || !toUserId || !candidate) return
-      const code = roomCode.trim().toUpperCase()
-      const roomMap = meetPresence.get(code)
-      if (!roomMap) return
-
-      const target = roomMap.get(toUserId.toString())
-      if (target && target.socketId) {
-        io.to(target.socketId).emit('webrtc_ice_candidate', {
-          fromUserId: socket.user._id.toString(),
-          candidate
-        })
-      }
+      meetChats.get(code).push(msgPayload)
+      io.to(code).emit('receive_meet_message', msgPayload)
     })
 
     // 4. Toggle Media (Mic/Camera)
@@ -282,6 +265,7 @@ export function setupMeetSocket(io) {
 
         meetPresence.delete(code)
         meetBoards.delete(code)
+        meetChats.delete(code)
       } catch (err) {
         console.error('Socket end_meet_for_all error:', err)
       }
