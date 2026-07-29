@@ -1,13 +1,15 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { useGoogleLogin } from '@react-oauth/google'
 import { useAuth } from '../context/AuthContext.jsx'
 
 export default function LoginPage() {
   const [form, setForm] = useState({ email: '', password: '' })
   const [message, setMessage] = useState('')
   const [resetSent, setResetSent] = useState(false)
-  const { login } = useAuth()
+  const { login, googleLogin } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
 
   const handleChange = (event) => {
     const { name, value } = event.target
@@ -18,46 +20,66 @@ export default function LoginPage() {
     event.preventDefault()
     try {
       await login({ email: form.email, password: form.password })
-      navigate('/dashboard')
+      const destination = location.state?.from || '/dashboard'
+      navigate(destination)
     } catch (error) {
       setMessage(error.response?.data?.error || error.message || 'Login failed')
     }
   }
 
-  const handleForgotPassword = () => {
-    if (!form.email) {
-      setMessage('Please enter your email address to reset password.')
+  const hasGoogleClientId = Boolean(
+    import.meta.env.VITE_GOOGLE_CLIENT_ID &&
+    !import.meta.env.VITE_GOOGLE_CLIENT_ID.includes('dummy')
+  )
+
+  const triggerGoogleLogin = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      try {
+        setMessage('Authenticating with Google...')
+        await googleLogin(tokenResponse.access_token)
+        const destination = location.state?.from || '/dashboard'
+        navigate(destination)
+      } catch (error) {
+        setMessage(error.message || 'Google authentication failed.')
+      }
+    },
+    onError: (errorResponse) => {
+      console.error('Google Auth Error:', errorResponse)
+      setMessage('Google authentication was cancelled or failed.')
+    }
+  })
+
+  const handleGoogleClick = () => {
+    if (!hasGoogleClientId) {
+      setMessage('Google Sign-In is not configured. Please add VITE_GOOGLE_CLIENT_ID to your client/.env file.')
       return
     }
-    setResetSent(true)
-    setMessage('')
-  }
-
-  const handleGoogleLogin = () => {
-    setMessage('Connecting to Google Authentication...')
-    setTimeout(() => {
-      setMessage('Google authentication service ready.')
-    }, 1000)
+    triggerGoogleLogin()
   }
 
   return (
-    <main className="mx-auto max-w-md px-4 py-4 sm:py-6">
-      <div className="saas-card shadow-glow p-6 sm:p-7">
-        <div className="mb-4 space-y-1 border-b border-[var(--divider-main)] pb-4 text-center sm:text-left">
-          <p className="caption-text uppercase tracking-[0.24em] text-[var(--accent-color)] font-semibold">Account Login</p>
-          <h1 className="page-title text-2xl font-bold">Welcome back</h1>
-          <p className="body-text text-xs text-[var(--text-secondary)]">Enter your credentials to continue your learning journey.</p>
+    <main className="min-h-[calc(100vh-8rem)] flex items-center justify-center px-4 py-4 sm:px-6">
+      <div className="w-full max-w-[460px] saas-card bg-[var(--bg-surface)] border border-[var(--border-main)] rounded-2xl shadow-xl p-6 sm:p-8 space-y-6 relative overflow-hidden">
+        {/* Top Gradient Accent Line */}
+        <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-[var(--accent-color)] via-amber-400 to-[var(--accent-color)]" />
+
+        <div className="space-y-1.5 text-center">
+          <p className="page-label text-xs uppercase tracking-widest text-[var(--accent-color)] font-bold">Account Login</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)]">Welcome back</h1>
+          <p className="text-xs sm:text-sm text-[var(--text-secondary)]">Enter your credentials to access your Catalyst workspace.</p>
         </div>
 
+        <hr className="border-t border-[var(--border-main)] opacity-60" />
+
         {resetSent && (
-          <div className="mb-3 rounded-[12px] bg-[var(--success-bg)] border border-[var(--success-color)]/30 px-3 py-2 text-xs text-[var(--success-color)]">
+          <div className="rounded-xl bg-[var(--success-bg)] border border-[var(--success-color)]/30 p-3.5 text-xs text-[var(--success-color)] font-semibold">
             Reset link sent to <strong>{form.email}</strong>.
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="grid gap-3.5">
-          <label className="space-y-1 small-text font-medium text-xs">
-            <span>Email address</span>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <label className="block space-y-1.5 font-semibold text-xs text-[var(--text-primary)]">
+            <span>Email Address</span>
             <input
               name="email"
               type="email"
@@ -65,16 +87,16 @@ export default function LoginPage() {
               value={form.email}
               onChange={handleChange}
               placeholder="name@example.com"
-              className="saas-input w-full min-h-[42px] px-3 py-2 text-sm"
+              className="saas-input w-full min-h-[46px] px-4 text-sm"
             />
           </label>
 
-          <label className="space-y-1 small-text font-medium text-xs">
+          <label className="block space-y-1.5 font-semibold text-xs text-[var(--text-primary)]">
             <div className="flex items-center justify-between">
               <span>Password</span>
               <Link
                 to="/forgot-password"
-                className="text-[11px] font-medium text-[var(--accent-color)] hover:underline focus:outline-none"
+                className="text-xs font-bold text-[var(--accent-color)] hover:underline focus:outline-none"
               >
                 Forgot Password?
               </Link>
@@ -86,17 +108,17 @@ export default function LoginPage() {
               value={form.password}
               onChange={handleChange}
               placeholder="••••••••"
-              className="saas-input w-full min-h-[42px] px-3 py-2 text-sm"
+              className="saas-input w-full min-h-[46px] px-4 text-sm"
             />
           </label>
 
           {message && (
-            <p className="rounded-[12px] bg-[var(--error-bg)] border border-[var(--error-color)]/30 px-3 py-2 text-xs text-[var(--error-color)]">
+            <p className="rounded-xl bg-[var(--error-bg)] border border-[var(--error-color)]/30 p-3 text-xs text-[var(--error-color)] font-medium">
               {message}
             </p>
           )}
 
-          <button type="submit" className="saas-button-primary mt-1 w-full min-h-[44px] text-sm font-bold">
+          <button type="submit" className="saas-button-primary w-full min-h-[46px] text-sm font-bold shadow-md hover:shadow-lg transition-all">
             Sign in
           </button>
         </form>
@@ -104,9 +126,9 @@ export default function LoginPage() {
         {/* Divider */}
         <div className="relative my-4 text-center">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-[var(--divider-main)]" />
+            <div className="w-full border-t border-[var(--border-main)]" />
           </div>
-          <span className="relative bg-[var(--bg-surface)] px-2.5 text-[11px] uppercase tracking-widest text-[var(--text-muted)] font-semibold">
+          <span className="relative bg-[var(--bg-surface)] px-3 text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-bold">
             Or continue with
           </span>
         </div>
@@ -114,10 +136,10 @@ export default function LoginPage() {
         {/* Google Authentication Button */}
         <button
           type="button"
-          onClick={handleGoogleLogin}
-          className="saas-button-secondary w-full flex items-center justify-center gap-2.5 font-semibold min-h-[44px] text-xs"
+          onClick={handleGoogleClick}
+          className="saas-button-secondary w-full flex items-center justify-center gap-3 font-semibold min-h-[46px] text-xs sm:text-sm shadow-sm hover:border-[var(--accent-color)] transition-all cursor-pointer"
         >
-          <svg className="h-4 w-4" viewBox="0 0 24 24">
+          <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24">
             <path
               fill="#4285F4"
               d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -139,7 +161,7 @@ export default function LoginPage() {
         </button>
 
         {/* Sign up prompt */}
-        <div className="mt-4 border-t border-[var(--divider-main)] pt-3 text-center text-xs text-[var(--text-secondary)]">
+        <div className="pt-3 border-t border-[var(--border-main)] text-center text-xs sm:text-sm text-[var(--text-secondary)]">
           Don't have an account?{' '}
           <Link to="/register" className="font-bold text-[var(--accent-color)] hover:underline">
             Sign up

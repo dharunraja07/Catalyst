@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
-import ReactMarkdown from 'react-markdown'
+import MarkdownRenderer from '../components/MarkdownRenderer.jsx'
 
 export default function QuestionsPage() {
   const { api } = useAuth()
@@ -13,6 +13,10 @@ export default function QuestionsPage() {
   })
   const [aiError, setAiError] = useState('')
   const [visibleAnswers, setVisibleAnswers] = useState({})
+
+  const [selectedProvider, setSelectedProvider] = useState(() => {
+    return localStorage.getItem('ai_provider') || 'gemini'
+  })
 
   const longAnswerLabel = practiceData.counts?.longAnswerMarks === 14 ? '14-mark Questions' : '5-mark Questions'
 
@@ -27,7 +31,8 @@ export default function QuestionsPage() {
     try {
       const response = await api.post('/ai/generate-practice', {
         studentType,
-        syllabus: syllabus.trim()
+        syllabus: syllabus.trim(),
+        provider: selectedProvider
       })
       setPracticeData(response.data)
       setVisibleAnswers({}) // Reset visible answers
@@ -94,11 +99,9 @@ export default function QuestionsPage() {
           {isVisible && (
             <div className="rounded-[14px] bg-[var(--bg-secondary)] p-5 border-l-4 border-[var(--accent-color)]">
               <p className="caption-text uppercase font-semibold mb-2">Expected Answer:</p>
-              <div className="prose prose-invert max-w-none text-sm leading-relaxed text-[var(--text-primary)] space-y-2">
-                <ReactMarkdown>
-                  {question.expectedAnswer}
-                </ReactMarkdown>
-              </div>
+              <MarkdownRenderer>
+                {question.expectedAnswer}
+              </MarkdownRenderer>
             </div>
           )}
         </div>
@@ -107,19 +110,36 @@ export default function QuestionsPage() {
   }
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
-      <div className="saas-card shadow-glow">
-        <div className="mb-8 border-b border-[var(--divider-main)] pb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <p className="caption-text uppercase tracking-[0.24em] text-[var(--accent-color)] font-semibold mb-1">Practice</p>
-            <h1 className="page-title">Adaptive questions</h1>
+    <main className="mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      {/* Page Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="page-label">Practice</p>
+          <h1 className="page-title mb-2">Adaptive Questions</h1>
+          <p className="page-description">Generate personalized practice questions from any syllabus or topic.</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3 shrink-0">
+          <div className="flex items-center gap-2">
+            <label className="small-text font-semibold whitespace-nowrap text-[var(--text-primary)]">AI Model</label>
+            <select
+              value={selectedProvider}
+              onChange={(e) => {
+                const val = e.target.value
+                setSelectedProvider(val)
+                localStorage.setItem('ai_provider', val)
+              }}
+              className="saas-input min-h-[44px] py-2 px-3 text-sm font-medium"
+            >
+              <option value="gemini">Gemini</option>
+              <option value="groq">Groq</option>
+            </select>
           </div>
-          <div className="flex items-center gap-3">
-            <label className="small-text font-medium whitespace-nowrap">Student Type</label>
+          <div className="flex items-center gap-2">
+            <label className="small-text font-semibold whitespace-nowrap text-[var(--text-primary)]">Student Type</label>
             <select
               value={studentType}
               onChange={(event) => setStudentType(event.target.value)}
-              className="saas-input min-h-[44px] py-2"
+              className="saas-input min-h-[44px] py-2 px-3 text-sm font-medium"
             >
               <option value="">Unspecified</option>
               <option>School Student</option>
@@ -127,34 +147,48 @@ export default function QuestionsPage() {
             </select>
           </div>
         </div>
+      </div>
 
-        <div className="mb-8 space-y-4">
-          <textarea
-            value={syllabus}
-            onChange={(event) => setSyllabus(event.target.value)}
-            placeholder="Paste the topic or syllabus you want to practice..."
-            rows="4"
-            className="saas-input w-full min-h-[120px]"
-          />
-          <div className="flex justify-end">
-            <button
-              type="button"
-              onClick={handleGenerateQuestions}
-              disabled={generating}
-              className="saas-button-primary"
-            >
-              {generating ? 'Generating...' : 'Generate Questions'}
-            </button>
-          </div>
+      <hr className="canvas-divider" />
+
+      {/* Interactive Form Section */}
+      <div className="space-y-4">
+        <label className="block text-sm font-semibold text-[var(--text-primary)]">Syllabus / Topics</label>
+        <textarea
+          value={syllabus}
+          onChange={(event) => setSyllabus(event.target.value)}
+          placeholder="Paste the topic or syllabus you want to practice..."
+          rows="4"
+          className="saas-input w-full min-h-[120px] p-4 text-base"
+        />
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={handleGenerateQuestions}
+            disabled={generating}
+            className="saas-button-primary font-bold px-8 shadow-sm"
+          >
+            {generating ? 'Generating...' : 'Generate Questions'}
+          </button>
         </div>
+      </div>
 
-        {aiError && <p className="mb-6 rounded-[14px] bg-[var(--error-bg)] border border-[var(--error-color)]/30 px-4 py-3 text-sm text-[var(--error-color)]">{aiError}</p>}
+      {aiError && (
+        <p className="rounded-[14px] bg-[var(--error-bg)] border border-[var(--error-color)]/30 px-4 py-3 text-sm text-[var(--error-color)]">
+          {aiError}
+        </p>
+      )}
 
-        <div className="grid gap-8">
-          {practiceData.twoMarkQuestions.length > 0 && (
-            <section className="saas-elevated-card space-y-4">
-              <h2 className="section-title">2-mark Questions</h2>
-              <p className="small-text mb-4">Total: {practiceData.twoMarkQuestions.length} questions</p>
+      {/* Questions Output Stream */}
+      <div className="space-y-10">
+        {practiceData.twoMarkQuestions.length > 0 && (
+          <div>
+            <hr className="canvas-divider" />
+            <div className="space-y-4">
+              <div className="flex items-baseline justify-between">
+                <h2 className="section-title">2-mark Questions</h2>
+                <span className="small-text text-[var(--text-muted)] font-medium">Total: {practiceData.twoMarkQuestions.length} questions</span>
+              </div>
               <div className="space-y-4">
                 {practiceData.twoMarkQuestions.map((question, idx) => (
                   <TwoMarkQuestion
@@ -165,13 +199,20 @@ export default function QuestionsPage() {
                   />
                 ))}
               </div>
-            </section>
-          )}
+            </div>
+          </div>
+        )}
 
-          {practiceData.longAnswerQuestions.length > 0 && (
-            <section className="saas-elevated-card space-y-4">
-              <h2 className="section-title">{longAnswerLabel}</h2>
-              <p className="small-text mb-4">Total: {practiceData.longAnswerQuestions.length} questions × {practiceData.counts?.longAnswerMarks} marks</p>
+        {practiceData.longAnswerQuestions.length > 0 && (
+          <div>
+            <hr className="canvas-divider" />
+            <div className="space-y-4">
+              <div className="flex items-baseline justify-between">
+                <h2 className="section-title">{longAnswerLabel}</h2>
+                <span className="small-text text-[var(--text-muted)] font-medium">
+                  Total: {practiceData.longAnswerQuestions.length} questions × {practiceData.counts?.longAnswerMarks} marks
+                </span>
+              </div>
               <div className="space-y-4">
                 {practiceData.longAnswerQuestions.map((question, idx) => (
                   <LongAnswerQuestion
@@ -183,13 +224,18 @@ export default function QuestionsPage() {
                   />
                 ))}
               </div>
-            </section>
-          )}
+            </div>
+          </div>
+        )}
 
-          {!practiceData.twoMarkQuestions.length && !practiceData.longAnswerQuestions.length && (
-            <p className="body-text text-sm text-[var(--text-muted)]">Generate practice questions to begin.</p>
-          )}
-        </div>
+        {!practiceData.twoMarkQuestions.length && !practiceData.longAnswerQuestions.length && (
+          <div>
+            <hr className="canvas-divider" />
+            <p className="body-text text-sm text-[var(--text-muted)] italic">
+              Paste your syllabus above and click "Generate Questions" to begin.
+            </p>
+          </div>
+        )}
       </div>
     </main>
   )

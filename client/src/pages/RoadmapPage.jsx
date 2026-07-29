@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 
 export default function RoadmapPage() {
@@ -19,34 +20,64 @@ export default function RoadmapPage() {
   }, [api])
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
-      <div className="saas-card shadow-glow">
-        <div className="mb-8 border-b border-[var(--divider-main)] pb-6 space-y-2">
-          <p className="caption-text uppercase tracking-[0.24em] text-[var(--accent-color)] font-semibold">Roadmap</p>
-          <h1 className="page-title">Your personalized learning path</h1>
-          <p className="body-text">Complete an assessment to refresh your roadmap anytime.</p>
-        </div>
+    <main className="mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      {/* Page Header */}
+      <div>
+        <p className="page-label">Roadmap</p>
+        <h1 className="page-title mb-3">Your Personalized Learning Path</h1>
+        <p className="page-description">Complete an assessment to refresh your customized step-by-step roadmap anytime.</p>
+      </div>
 
-        {error && <p className="mb-6 rounded-[14px] bg-[var(--error-bg)] border border-[var(--error-color)]/30 px-4 py-3 text-sm text-[var(--error-color)]">{error}</p>}
+      <hr className="canvas-divider" />
 
-        {roadmap.length ? (
-          <div className="grid gap-6">
+      {error && (
+        <p className="rounded-[14px] bg-[var(--error-bg)] border border-[var(--error-color)]/30 px-4 py-3 text-sm text-[var(--error-color)]">
+          {error}
+        </p>
+      )}
+
+      {roadmap.length ? (
+        <div className="space-y-6">
+          <h2 className="section-title mb-4">Milestones & Next Steps</h2>
+          <div className="grid gap-4">
             {roadmap.map((item, idx) => (
-              <div key={`${item}-${idx}`} className="saas-elevated-card">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-4">
-                    <span className="inline-flex h-10 w-10 items-center justify-center rounded-[14px] bg-[var(--accent-light)] text-[var(--accent-color)] font-bold text-base">{idx + 1}</span>
-                    <span className="card-title">{item}</span>
-                  </div>
-                  <span className="caption-text uppercase tracking-[0.2em] px-3 py-1 rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-secondary)]">Step {idx + 1}</span>
+              <div
+                key={`${item}-${idx}`}
+                className="rounded-[18px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-5 flex items-center justify-between gap-4 shadow-sm transition hover:border-[var(--accent-color)]"
+              >
+                <div className="flex items-center gap-4">
+                  <span className="inline-flex h-11 w-11 items-center justify-center rounded-[14px] bg-[var(--accent-light)] text-[var(--accent-color)] font-bold text-lg shrink-0">
+                    {idx + 1}
+                  </span>
+                  <span className="card-title text-base">{item}</span>
                 </div>
+                <span className="caption-text uppercase tracking-widest px-3 py-1.5 rounded-[12px] border border-[var(--border-main)] bg-[var(--bg-primary)] font-semibold shrink-0">
+                  Step {idx + 1}
+                </span>
               </div>
             ))}
           </div>
-        ) : (
-          <p className="body-text text-sm text-[var(--text-muted)]">No roadmap available yet. Complete an assessment to generate one.</p>
-        )}
-      </div>
+        </div>
+      ) : (
+        /* Canvas-First Flat Empty State */
+        <div className="py-12 text-center space-y-4 max-w-md mx-auto">
+          <div className="mx-auto h-20 w-20 rounded-full bg-[var(--accent-light)] flex items-center justify-center text-3xl">
+            🗺️
+          </div>
+          <h2 className="section-title text-xl">No roadmap generated yet</h2>
+          <p className="body-text text-sm text-[var(--text-secondary)]">
+            Take a diagnostic assessment to generate your personalized AI learning path.
+          </p>
+          <div className="pt-2">
+            <Link
+              to="/assessment"
+              className="saas-button-primary inline-flex items-center justify-center min-h-[48px] px-8 text-sm font-bold shadow-md"
+            >
+              Start Assessment
+            </Link>
+          </div>
+        </div>
+      )}
     </main>
   )
 }

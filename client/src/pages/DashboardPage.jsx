@@ -220,205 +220,222 @@ export default function DashboardPage() {
   })
 
   return (
-    <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 space-y-8">
-      <div className="saas-card shadow-glow">
-        <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-[var(--divider-main)] pb-6">
-          <div>
-            <p className="caption-text uppercase tracking-[0.24em] text-[var(--accent-color)] font-semibold mb-1">Dashboard</p>
-            <h1 className="page-title">Student overview</h1>
-          </div>
-          <span className="inline-flex items-center min-h-[44px] rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-secondary)] px-4 py-2 text-sm font-medium text-[var(--text-secondary)]">Welcome back</span>
+    <main className="mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      {/* Page Header */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="page-label">Dashboard</p>
+          <h1 className="page-title mb-2">Student Overview</h1>
+          <p className="page-description">Welcome back! Track your study stats, pomodoro focus, and learning consistency.</p>
         </div>
+        <span className="inline-flex items-center min-h-[40px] rounded-[12px] border border-[var(--border-main)] bg-[var(--bg-secondary)] px-4 py-2 text-sm font-semibold text-[var(--text-secondary)] shadow-sm shrink-0">
+          Academic Workspace
+        </span>
+      </div>
 
-        {error && <p className="mb-6 rounded-[14px] bg-[var(--error-bg)] border border-[var(--error-color)]/30 px-4 py-3 text-sm text-[var(--error-color)]">{error}</p>}
+      <hr className="canvas-divider" />
 
-        {profile ? (
-          <div className="space-y-8">
-            {/* Hero Welcome Banner */}
-            <div className="saas-elevated-card">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-                <div>
-                  <h2 className="section-title">Hello, {profile.name} 👋</h2>
-                  <p className="body-text mt-2 max-w-2xl">Track your learning progress, see your strengths, and stay ahead with personalized recommendations.</p>
+      {error && (
+        <p className="rounded-[14px] bg-[var(--error-bg)] border border-[var(--error-color)]/30 px-4 py-3 text-sm text-[var(--error-color)]">
+          {error}
+        </p>
+      )}
+
+      {profile ? (
+        <div className="space-y-8">
+          {/* Hero Welcome Banner Widget */}
+          <div className="rounded-[20px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-6 sm:p-8 shadow-sm">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+              <div>
+                <h2 className="section-title text-2xl md:text-3xl font-bold">Hello, {profile.name} 👋</h2>
+                <p className="body-text mt-2 max-w-2xl text-[var(--text-secondary)]">
+                  Track your learning progress, stay on top of daily goals, and maintain your study streak.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <div className="rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-primary)] px-4 py-3 min-w-[130px]">
+                  <p className="caption-text uppercase tracking-widest font-semibold">Focus Goal</p>
+                  <p className="card-title mt-1 font-bold">{dailyGoal} min</p>
                 </div>
-                <div className="flex flex-wrap gap-3">
-                  <div className="rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-secondary)] px-4 py-3 min-w-[130px]">
-                    <p className="caption-text uppercase tracking-[0.2em]">Focus goal</p>
-                    <p className="card-title mt-1 font-semibold">{dailyGoal} min</p>
+                <div className="rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-primary)] px-4 py-3 min-w-[130px]">
+                  <p className="caption-text uppercase tracking-widest font-semibold">Today</p>
+                  <p className="card-title mt-1 font-bold text-[var(--accent-color)]">{todayMinutes} min</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Main Dashboard Grid Widgets */}
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
+            {/* Pomodoro Timer Widget */}
+            <div className="xl:col-span-5 flex flex-col">
+              <div className="rounded-[20px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-6 shadow-sm flex-1 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <p className="caption-text uppercase tracking-widest font-semibold">Pomodoro Timer</p>
+                      <h3 className="section-title mt-1 text-xl font-bold">
+                        {mode === 'focus' ? 'Focus Session' : 'Rest Break'}
+                      </h3>
+                    </div>
+                    <span className="rounded-[12px] border border-[var(--border-main)] bg-[var(--bg-primary)] px-3 py-1.5 text-xs font-bold text-[var(--text-secondary)]">
+                      {mode === 'focus' ? '25 min' : '5 min'}
+                    </span>
                   </div>
-                  <div className="rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-secondary)] px-4 py-3 min-w-[130px]">
-                    <p className="caption-text uppercase tracking-[0.2em]">Today</p>
-                    <p className="card-title mt-1 font-semibold">{todayMinutes} min</p>
+
+                  <div className="my-6 rounded-[18px] border border-[var(--border-main)] bg-[var(--bg-primary)] p-8 text-center">
+                    <p className="text-5xl sm:text-6xl font-bold tracking-tight text-[var(--text-primary)] font-mono">
+                      {String(Math.floor(secondsLeft / 60)).padStart(2, '0')}:{String(secondsLeft % 60).padStart(2, '0')}
+                    </p>
                   </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setIsRunning((prev) => !prev)}
+                    className="flex-1 saas-button-primary font-bold shadow-sm"
+                  >
+                    {isRunning ? 'Pause' : 'Start Focus'}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsRunning(false)
+                      setSecondsLeft(mode === 'focus' ? FOCUS_DURATION : BREAK_DURATION)
+                    }}
+                    className="saas-button-secondary font-semibold"
+                  >
+                    Reset
+                  </button>
                 </div>
               </div>
             </div>
 
-            {/* Main Dashboard Grid */}
-            <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
-              {/* Pomodoro Timer */}
-              <div className="xl:col-span-5 flex flex-col gap-6">
-                <div className="saas-elevated-card flex-1 flex flex-col justify-between">
-                  <div>
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <p className="caption-text uppercase tracking-[0.2em]">Pomodoro timer</p>
-                        <h3 className="section-title mt-1">
-                          {mode === 'focus' ? 'Focus Session' : 'Rest Break'}
-                        </h3>
-                      </div>
-                      <span className="rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-secondary)] px-3 py-1.5 text-xs font-semibold text-[var(--text-secondary)]">
-                        {mode === 'focus' ? '25 min' : '5 min'}
-                      </span>
-                    </div>
-
-                    <div className="my-6 rounded-[20px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-8 text-center">
-                      <p className="text-6xl font-bold tracking-tight text-[var(--text-primary)] font-mono">{String(Math.floor(secondsLeft / 60)).padStart(2, '0')}:{String(secondsLeft % 60).padStart(2, '0')}</p>
-                    </div>
+            {/* Study Overview & Goal Widget */}
+            <div className="xl:col-span-7 flex flex-col">
+              <div className="rounded-[20px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-6 shadow-sm space-y-6 flex-1">
+                <div>
+                  <p className="caption-text uppercase tracking-widest font-semibold mb-1">Study Statistics</p>
+                  <div className="flex justify-between text-sm font-semibold text-[var(--text-secondary)] mt-2">
+                    <span>Today's Progress</span>
+                    <span className="text-[var(--text-primary)] font-bold">{todayMinutes} / {dailyGoal} min</span>
                   </div>
-
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => setIsRunning((prev) => !prev)}
-                      className="flex-1 saas-button-primary"
-                    >
-                      {isRunning ? 'Pause' : 'Start Focus'}
-                    </button>
-                    <button
-                      onClick={() => {
-                        setIsRunning(false)
-                        setSecondsLeft(mode === 'focus' ? FOCUS_DURATION : BREAK_DURATION)
-                      }}
-                      className="saas-button-secondary"
-                    >
-                      Reset
-                    </button>
+                  <div className="mt-2 h-3 rounded-full bg-[var(--bg-primary)] overflow-hidden border border-[var(--border-main)]">
+                    <div
+                      className="h-full rounded-full bg-[var(--accent-color)] transition-all duration-300"
+                      style={{ width: `${progressWidth}%` }}
+                    />
                   </div>
                 </div>
-              </div>
 
-              {/* Study Overview & Goal */}
-              <div className="xl:col-span-7 flex flex-col gap-6">
-                <div className="saas-elevated-card space-y-4">
-                  <p className="caption-text uppercase tracking-[0.2em]">Study statistics</p>
-
-                  <div>
-                    <div className="flex justify-between text-sm font-medium text-[var(--text-secondary)]">
-                      <span>Today's Progress</span>
-                      <span>{todayMinutes} / {dailyGoal} min</span>
-                    </div>
-                    <div className="mt-2 h-3 rounded-full bg-[var(--bg-secondary)] overflow-hidden border border-[var(--border-main)]">
-                      <div className="h-full rounded-full bg-[var(--accent-color)] transition-all duration-300" style={{ width: `${progressWidth}%` }} />
-                    </div>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-primary)] p-3 text-center">
+                    <p className="caption-text uppercase font-semibold">Current Streak</p>
+                    <p className="text-xl font-bold mt-1 text-[var(--text-primary)]">{currentStreak} days</p>
                   </div>
-
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-3 text-center">
-                      <p className="caption-text uppercase">Current streak</p>
-                      <p className="text-xl font-bold mt-1 text-[var(--text-primary)]">{currentStreak}</p>
-                    </div>
-                    <div className="rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-3 text-center">
-                      <p className="caption-text uppercase">Best streak</p>
-                      <p className="text-xl font-bold mt-1 text-[var(--text-primary)]">{longestStreak}</p>
-                    </div>
-                    <div className="rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-3 text-center">
-                      <p className="caption-text uppercase">Study days</p>
-                      <p className="text-xl font-bold mt-1 text-[var(--text-primary)]">{totalCompletedDays}</p>
-                    </div>
+                  <div className="rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-primary)] p-3 text-center">
+                    <p className="caption-text uppercase font-semibold">Best Streak</p>
+                    <p className="text-xl font-bold mt-1 text-[var(--text-primary)]">{longestStreak} days</p>
                   </div>
+                  <div className="rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-primary)] p-3 text-center">
+                    <p className="caption-text uppercase font-semibold">Study Days</p>
+                    <p className="text-xl font-bold mt-1 text-[var(--text-primary)]">{totalCompletedDays}</p>
+                  </div>
+                </div>
 
-                  <div className="rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-4">
-                    <label className="caption-text uppercase">Daily goal</label>
-                    <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
-                      <div>
-                        <label className="text-[10px] uppercase text-[var(--text-muted)]">Hours</label>
-                        <input
-                          type="number"
-                          min="0"
-                          value={hoursInput}
-                          onChange={(e) => setHoursInput(e.target.value)}
-                          className="saas-input w-full mt-1 min-h-[44px]"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[10px] uppercase text-[var(--text-muted)]">Minutes</label>
-                        <input
-                          type="number"
-                          min="0"
-                          max="59"
-                          value={minutesInput}
-                          onChange={(e) => setMinutesInput(e.target.value)}
-                          className="saas-input w-full mt-1 min-h-[44px]"
-                        />
-                      </div>
-                      <button
-                        onClick={saveDailyGoal}
-                        disabled={savingGoal}
-                        className="saas-button-primary min-h-[44px] w-full"
-                      >
-                        {savingGoal ? 'Saving' : 'Save Goal'}
-                      </button>
+                <div className="rounded-[16px] border border-[var(--border-main)] bg-[var(--bg-primary)] p-4 space-y-2">
+                  <label className="caption-text uppercase font-semibold text-[var(--text-muted)]">Set Daily Goal</label>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end pt-1">
+                    <div>
+                      <label className="text-[11px] uppercase font-semibold text-[var(--text-muted)]">Hours</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={hoursInput}
+                        onChange={(e) => setHoursInput(e.target.value)}
+                        className="saas-input w-full mt-1 min-h-[44px] text-sm"
+                      />
                     </div>
+                    <div>
+                      <label className="text-[11px] uppercase font-semibold text-[var(--text-muted)]">Minutes</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="59"
+                        value={minutesInput}
+                        onChange={(e) => setMinutesInput(e.target.value)}
+                        className="saas-input w-full mt-1 min-h-[44px] text-sm"
+                      />
+                    </div>
+                    <button
+                      onClick={saveDailyGoal}
+                      disabled={savingGoal}
+                      className="saas-button-primary min-h-[44px] w-full font-bold shadow-sm"
+                    >
+                      {savingGoal ? 'Saving' : 'Save Goal'}
+                    </button>
                   </div>
                 </div>
               </div>
             </div>
+          </div>
 
-            {/* Bottom Row: 12-Month Calendar Grid */}
-            <div className="saas-elevated-card">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-6">
-                <div>
-                  <p className="caption-text uppercase tracking-[0.2em]">Yearly streak</p>
-                  <h3 className="section-title mt-1">{thisYear} study calendar</h3>
-                </div>
-                <span className="inline-flex items-center rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-secondary)] px-4 py-2 text-xs font-semibold text-[var(--text-secondary)]">{totalCompletedDays} completed days</span>
+          {/* Bottom Row: 12-Month Calendar Grid Widget */}
+          <div className="rounded-[20px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-6 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-6">
+              <div>
+                <p className="caption-text uppercase tracking-widest font-semibold">Yearly Activity</p>
+                <h3 className="section-title text-xl font-bold mt-1">{thisYear} Study Calendar</h3>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                {yearMonthData.map((month) => {
-                  const completedDays = new Set(
-                    normalizedSessions
-                      .filter((entry) => entry.minutes >= dailyGoal)
-                      .map((entry) => entry.date)
-                  )
+              <span className="inline-flex items-center rounded-[12px] border border-[var(--border-main)] bg-[var(--bg-primary)] px-4 py-2 text-xs font-bold text-[var(--text-secondary)]">
+                {totalCompletedDays} total active days
+              </span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {yearMonthData.map((month) => {
+                const completedDays = new Set(
+                  normalizedSessions
+                    .filter((entry) => entry.minutes >= dailyGoal)
+                    .map((entry) => entry.date)
+                )
 
-                  return (
-                    <div key={month.name} className="rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-3">
-                      <p className="mb-2 text-xs font-semibold text-[var(--text-primary)]">{month.name}</p>
-                      <div className="grid grid-cols-7 gap-1">
-                        {month.dayCells.map((day, index) => {
-                          const cellDate = day
-                            ? `${thisYear}-${String(month.monthIndex + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
-                            : ''
-                          const isCompleted = day && completedDays.has(cellDate)
-                          const isToday = day && cellDate === todayKey
+                return (
+                  <div key={month.name} className="rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-primary)] p-3.5">
+                    <p className="mb-2.5 text-xs font-bold text-[var(--text-primary)]">{month.name}</p>
+                    <div className="grid grid-cols-7 gap-1">
+                      {month.dayCells.map((day, index) => {
+                        const cellDate = day
+                          ? `${thisYear}-${String(month.monthIndex + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+                          : ''
+                        const isCompleted = day && completedDays.has(cellDate)
+                        const isToday = day && cellDate === todayKey
 
-                          return (
-                            <div
-                              key={`${month.name}-${index}`}
-                              className={`flex aspect-square items-center justify-center rounded-[4px] text-[9px] ${day
+                        return (
+                          <div
+                            key={`${month.name}-${index}`}
+                            className={`flex aspect-square items-center justify-center rounded-[4px] text-[9px] ${
+                              day
                                 ? isCompleted
                                   ? 'bg-[var(--accent-color)] text-[var(--accent-contrast-text)] font-bold'
                                   : isToday
                                     ? 'bg-[var(--bg-elevated)] border border-[var(--border-main)] text-[var(--text-primary)] font-semibold'
-                                    : 'bg-[var(--bg-surface)] text-[var(--text-muted)]'
+                                    : 'bg-[var(--bg-secondary)] text-[var(--text-muted)]'
                                 : 'bg-transparent'
-                                }`}
-                            >
-                              {day || ''}
-                            </div>
-                          )
-                        })}
-                      </div>
+                            }`}
+                          >
+                            {day || ''}
+                          </div>
+                        )
+                      })}
                     </div>
-                  )
-                })}
-              </div>
+                  </div>
+                )
+              })}
             </div>
           </div>
-        ) : (
-          <p className="body-text">Loading profile...</p>
-        )}
-      </div>
+        </div>
+      ) : (
+        <p className="body-text text-[var(--text-muted)]">Loading profile...</p>
+      )}
     </main>
   )
 }

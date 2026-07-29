@@ -108,8 +108,8 @@ export default function MobileDrawer({ isOpen, onClose, onOpenProfile }) {
         className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity duration-300"
       />
 
-      {/* 300px Mobile Drawer */}
-      <div className="relative z-50 w-[300px] max-w-[85vw] h-full bg-[var(--bg-surface)] border-r border-[var(--border-main)] rounded-r-[24px] p-6 shadow-2xl flex flex-col justify-between overflow-y-auto transform transition-transform duration-300 ease-in-out animate-in slide-in-from-left">
+      {/* 280px Off-canvas Mobile Drawer */}
+      <div className="relative z-50 w-[280px] max-w-[85vw] h-full bg-[var(--bg-surface)] border-r border-[var(--border-main)] rounded-r-[24px] p-5 shadow-2xl flex flex-col justify-between overflow-y-auto transform transition-transform duration-300 ease-in-out animate-in slide-in-from-left">
         <div className="space-y-6">
           {/* Header */}
           <div className="flex items-center justify-between border-b border-[var(--divider-main)] pb-4">
@@ -127,14 +127,14 @@ export default function MobileDrawer({ isOpen, onClose, onOpenProfile }) {
             <button
               type="button"
               onClick={onClose}
-              className="p-2 rounded-[12px] border border-[var(--border-main)] bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+              className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-[12px] border border-[var(--border-main)] bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
             >
               ✕
             </button>
           </div>
 
           {/* Navigation Items */}
-          <nav className="space-y-1.5">
+          <nav className="space-y-1">
             {drawerNavItems.map((item) => {
               const active = location.pathname === item.href
               return (
@@ -142,7 +142,7 @@ export default function MobileDrawer({ isOpen, onClose, onOpenProfile }) {
                   key={item.href}
                   to={item.href}
                   onClick={onClose}
-                  className={`flex items-center gap-3.5 px-4 py-3 rounded-[14px] text-sm font-semibold transition-colors ${
+                  className={`flex items-center gap-3.5 px-4 py-3 min-h-[44px] rounded-[14px] text-sm font-semibold transition-colors ${
                     active
                       ? 'bg-[var(--accent-color)] text-black font-bold shadow-md'
                       : 'text-[var(--text-primary)] hover:bg-[var(--bg-secondary)]'

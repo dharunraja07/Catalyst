@@ -9,7 +9,8 @@ export async function protect(req, res, next) {
       return res.status(401).json({ error: 'Not authorized, token missing' })
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET)
+    const secret = (process.env.JWT_SECRET || 'supersecretjwtkey').trim()
+    const decoded = jwt.verify(token, secret)
     const user = await User.findById(decoded.id).select('-password')
     if (!user) {
       return res.status(401).json({ error: 'Invalid token' })

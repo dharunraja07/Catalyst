@@ -30,9 +30,9 @@ export default function AppLayout({ children }) {
   // Logged Out Layout: Render top header without side navigation
   if (!user) {
     return (
-      <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)] transition-colors duration-200">
+      <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)] transition-colors duration-200 pt-16">
         <NavBar onOpenProfile={() => setIsProfileOpen(true)} />
-        <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 pb-16">
+        <main className="mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-8 py-4 sm:py-6 pb-16">
           {children}
         </main>
         <ProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
@@ -41,31 +41,33 @@ export default function AppLayout({ children }) {
     )
   }
 
-  // Logged In Layout: Render Collapsible Left Sidebar + Top Utility Bar
+  // Logged In Layout: Persistent AppShell (Fixed Sidebar + Top Utility Bar + Scrollable Main Workspace)
   return (
-    <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)] flex transition-colors duration-200">
-      {/* Left Collapsible Sidebar (Hidden on Mobile <768px, visible on Tablet/Desktop >=768px) */}
-      <div className="hidden md:block shrink-0">
+    <div className="h-screen w-screen overflow-hidden bg-[var(--bg-primary)] text-[var(--text-primary)] flex transition-colors duration-200">
+      {/* Left Collapsible Sidebar (Fixed 100vh, hidden on Mobile <768px) */}
+      <div className="hidden md:block shrink-0 h-full">
         <SidebarNav isCollapsed={isCollapsed} toggleCollapse={toggleCollapse} />
       </div>
 
-      {/* Main Workspace Container */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Top Utility Bar */}
-        <TopUtilityBar
-          onOpenMobileDrawer={() => setIsMobileDrawerOpen(true)}
-          onOpenProfile={() => setIsProfileOpen(true)}
-          isCollapsed={isCollapsed}
-          toggleCollapse={toggleCollapse}
-        />
+      {/* Main Workspace Column */}
+      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
+        {/* Sticky Top Utility Bar */}
+        <div className="flex-none z-20">
+          <TopUtilityBar
+            onOpenMobileDrawer={() => setIsMobileDrawerOpen(true)}
+            onOpenProfile={() => setIsProfileOpen(true)}
+            isCollapsed={isCollapsed}
+            toggleCollapse={toggleCollapse}
+          />
+        </div>
 
-        {/* Main Content Area */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto pb-16">
+        {/* Scrollable Main Content Workspace Area */}
+        <main className="flex-1 overflow-y-auto min-h-0 custom-scrollbar px-4 sm:px-6 lg:px-8 py-4 sm:py-6 max-w-[1280px] w-full mx-auto pb-12">
           {children}
         </main>
       </div>
 
-      {/* Mobile Drawer (<768px) */}
+      {/* Off-canvas Mobile Drawer (<768px) */}
       <MobileDrawer
         isOpen={isMobileDrawerOpen}
         onClose={() => setIsMobileDrawerOpen(false)}

@@ -26,7 +26,19 @@ export function AuthProvider({ children }) {
       }
       return config
     })
-    return () => api.interceptors.request.eject(requestInterceptor)
+    const responseInterceptor = api.interceptors.response.use(
+      (res) => res,
+      (err) => {
+        if (err.response?.status === 401) {
+          logout()
+        }
+        return Promise.reject(err)
+      }
+    )
+    return () => {
+      api.interceptors.request.eject(requestInterceptor)
+      api.interceptors.response.eject(responseInterceptor)
+    }
   }, [token])
 
   useEffect(() => {
@@ -85,11 +97,31 @@ export function AuthProvider({ children }) {
     }
   }
 
+  const googleLogin = async (credentialToken) => {
+    setLoading(true)
+    setError(null)
+    try {
+      const response = await api.post('/auth/google', { token: credentialToken })
+      const nextToken = response.data.token
+      const nextUser = response.data.user
+      api.defaults.headers.common.Authorization = `Bearer ${nextToken}`
+      setUser(nextUser)
+      setToken(nextToken)
+      return nextUser
+    } catch (err) {
+      const errMsg = err.response?.data?.error || err.message || 'Google login failed'
+      setError(errMsg)
+      throw new Error(errMsg)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const updateUser = (nextUser) => {
     setUser((prevUser) => (prevUser ? { ...prevUser, ...nextUser } : nextUser))
   }
 
-  const logout = () => {
+  function logout() {
     delete api.defaults.headers.common.Authorization
     setUser(null)
     setToken('')
@@ -97,11 +129,17 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('ai_learning_user')
   }
 
+  const contextValue = useMemo(
+    () => ({ user, token, loading, error, login, register, googleLogin, logout, updateUser, api }),
+    [user, token, loading, error]
+  )
+
   return (
-    <AuthContext.Provider value={{ user, token, loading, error, login, register, logout, updateUser, api }}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   )
 }
 
 export const useAuth = () => useContext(AuthContext)
+

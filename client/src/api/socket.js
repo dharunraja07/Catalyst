@@ -4,7 +4,7 @@ let socket = null
 
 export function getSocketUrl() {
   const apiUrl = import.meta.env.VITE_API_URL
-  if (apiUrl) {
+  if (apiUrl && /^https?:\/\//i.test(apiUrl)) {
     return apiUrl.replace(/\/api\/?$/, '')
   }
   if (typeof window !== 'undefined') {
@@ -17,6 +17,12 @@ export function getSocketUrl() {
 
 export function getSocket() {
   const token = localStorage.getItem('ai_learning_token')
+  if (!token) {
+    if (socket && socket.connected) {
+      socket.disconnect()
+    }
+    return null
+  }
 
   if (!socket) {
     const socketUrl = getSocketUrl()

@@ -1,0 +1,1405 @@
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext.jsx'
+import getSocket from '../api/socket.js'
+import CopyButton from '../components/CopyButton.jsx'
+import { useJitsiMeet } from '../hooks/useJitsiMeet.js'
+import MeetChatPanel from '../components/MeetChatPanel.jsx'
+
+const REACTION_EMOJIS = ['👍', '❤️', '😂', '👏', '🎉', '🤔', '✋', '🔥']
+const COLOR_SWATCHES = ['#F59E0B', '#EF4444', '#10B981', '#3B82F6', '#8B5CF6', '#FFFFFF', '#1E293B']
+
+export default function MeetRoomPage() {
+  const { roomCode } = useParams()
+  const { api, user } = useAuth()
+  const navigate = useNavigate()
+
+  const upperRoomCode = (roomCode || '').toUpperCase()
+  const currentUserId = (user?.id || user?._id || '').toString()
+
+  // Room state
+  const [meetInfo, setMeetInfo] = useState(null)
+  const [isValidating, setIsValidating] = useState(true)
+  const [roomError, setRoomError] = useState('')
+
+  // Media state
+  const [audioEnabled, setAudioEnabled] = useState(true)
+  const [videoEnabled, setVideoEnabled] = useState(true)
+  const [participants, setParticipants] = useState([]) // array of { userId, name, audioOn, videoOn }
+
+  // Side Panel State ('participants' | 'chat' | 'whiteboard' | null)
+  const [activeSidePanel, setActiveSidePanel] = useState(null)
+
+  // In-Meeting Real-Time Chat State
+  const [meetMessages, setMeetMessages] = useState([])
+
+  // Floating UI Modals State
+  const [showInviteModal, setShowInviteModal] = useState(false)
+  const [showReactionsPicker, setShowReactionsPicker] = useState(false)
+  const [confirmEndModal, setConfirmEndModal] = useState(false)
+  const [reactions, setReactions] = useState([]) // array of { id, name, emoji, xPercent }
+  const [activeTileReactions, setActiveTileReactions] = useState({}) // userId -> { emoji, id }
+
+  // Screen Sharing State
+  const [isSharingScreen, setIsSharingScreen] = useState(false)
+
+  // Share to Group Modal State
+  const [showShareGroupModal, setShowShareGroupModal] = useState(false)
+  const [userGroups, setUserGroups] = useState([])
+  const [loadingGroups, setLoadingGroups] = useState(false)
+  const [selectedShareGroupId, setSelectedShareGroupId] = useState('')
+  const [shareSuccessMsg, setShareSuccessMsg] = useState('')
+  const [sharingGroup, setSharingGroup] = useState(false)
+
+  // Whiteboard State
+  const [wbColor, setWbColor] = useState('#F59E0B')
+  const [wbWidth, setWbWidth] = useState(3)
+  const [wbEraserWidth, setWbEraserWidth] = useState(30)
+  const [wbTool, setWbTool] = useState('pen') // 'pen' | 'text' | 'eraser'
+  const [textInput, setTextInput] = useState({ open: false, x: 0, y: 0, nx: 0, ny: 0, content: '' })
+
+  // Jitsi Container Node State
+  const [jitsiContainerEl, setJitsiContainerEl] = useState(null)
+
+  // Jitsi Engine Custom Hook
+  const {
+    isJoined: isJitsiJoined,
+    isLoading: isJitsiLoading,
+    error: jitsiError,
+    toggleAudio: toggleJitsiAudio,
+    toggleVideo: toggleJitsiVideo,
+    toggleShareScreen: toggleJitsiShareScreen,
+    hangup: hangupJitsi
+  } = useJitsiMeet({
+    roomName: upperRoomCode,
+    containerEl: jitsiContainerEl,
+    displayName: user?.name,
+    onLeave: () => {
+      handleLeaveCall()
+    }
+  })
+
+  // Whiteboard Canvas Refs
+  const canvasRef = useRef(null)
+  const canvasContainerRef = useRef(null)
+  const currentStrokeIdRef = useRef(null)
+  const isDrawingRef = useRef(false)
+  const remoteBoardActionsRef = useRef([])
+  const undoStackRef = useRef([])
+  const redoStackRef = useRef([])
+
+  // Helper to trigger floating reaction
+  const triggerReaction = useCallback(({ userId, name, emoji }) => {
+    const id = `${Date.now()}_${Math.random()}`
+
+    if (userId || name) {
+      setActiveTileReactions((prev) => {
+        const next = { ...prev }
+        if (userId) next[userId] = { emoji, id }
+        if (name) next[name] = { emoji, id }
+        return next
+      })
+
+      setTimeout(() => {
+        setActiveTileReactions((prev) => {
+          const next = { ...prev }
+          if (userId && next[userId]?.id === id) delete next[userId]
+          if (name && next[name]?.id === id) delete next[name]
+          return next
+        })
+      }, 3500)
+    }
+
+    const newParticles = [0, 1, 2].map((idx) => ({
+      id: `${id}_${idx}`,
+      name: name || 'Peer',
+      emoji,
+      xPercent: Math.floor(Math.random() * 65) + 15,
+      delayMs: idx * 180
+    }))
+
+    setReactions((prev) => [...prev, ...newParticles])
+
+    setTimeout(() => {
+      setReactions((prev) => prev.filter((r) => !r.id.startsWith(id)))
+    }, 2800)
+  }, [])
+
+  // 1. Initial Room Validation on Mount
+  useEffect(() => {
+    if (!user) {
+      navigate('/login')
+      return
+    }
+    async function validateRoom() {
+      setIsValidating(true)
+      setRoomError('')
+      try {
+        const res = await api.get(`/meets/${upperRoomCode}`)
+        setMeetInfo(res.data)
+      } catch (err) {
+        if (err.response?.status === 401) {
+          navigate('/login')
+          return
+        }
+        setRoomError(err.response?.data?.error || "This meet doesn't exist or has ended")
+      } finally {
+        setIsValidating(false)
+      }
+    }
+    validateRoom()
+  }, [api, upperRoomCode, user, navigate])
+
+  // 2. Whiteboard Canvas Rendering & Redraw Logic
+  const drawStrokeOnCanvas = useCallback((ctx, stroke) => {
+    if (!ctx || !stroke) return
+    const { tool, color, width, points } = stroke
+    if (!points || points.length === 0) return
+
+    const canvas = canvasRef.current
+    const dpr = window.devicePixelRatio || 1
+    const cWidth = canvas ? canvas.width / dpr : 800
+    const cHeight = canvas ? canvas.height / dpr : 600
+
+    ctx.save()
+    if (tool === 'eraser') {
+      ctx.globalCompositeOperation = 'destination-out'
+      ctx.lineWidth = width || 30
+    } else {
+      ctx.globalCompositeOperation = 'source-over'
+      ctx.strokeStyle = color || '#F59E0B'
+      ctx.lineWidth = width || 3
+    }
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+
+    const getPt = (pt) => ({
+      x: pt.nx !== undefined ? pt.nx * cWidth : pt.x,
+      y: pt.ny !== undefined ? pt.ny * cHeight : pt.y
+    })
+
+    ctx.beginPath()
+    const startPt = getPt(points[0])
+    ctx.moveTo(startPt.x, startPt.y)
+
+    if (points.length === 1) {
+      ctx.lineTo(startPt.x, startPt.y)
+    } else {
+      for (let i = 1; i < points.length; i++) {
+        const pt = getPt(points[i])
+        ctx.lineTo(pt.x, pt.y)
+      }
+    }
+    ctx.stroke()
+    ctx.restore()
+  }, [])
+
+  const renderTextOnCanvas = useCallback((ctx, textItem) => {
+    if (!ctx || !textItem) return
+    const { x, y, nx, ny, content, color } = textItem
+    if (!content) return
+
+    const canvas = canvasRef.current
+    const dpr = window.devicePixelRatio || 1
+    const cWidth = canvas ? canvas.width / dpr : 800
+    const cHeight = canvas ? canvas.height / dpr : 600
+
+    const tx = nx !== undefined ? nx * cWidth : x
+    const ty = ny !== undefined ? ny * cHeight : y
+
+    ctx.save()
+    ctx.globalCompositeOperation = 'source-over'
+    ctx.fillStyle = color || '#F59E0B'
+    ctx.font = 'bold 16px sans-serif'
+    ctx.fillText(content, tx, ty)
+    ctx.restore()
+  }, [])
+
+  const redrawCanvas = useCallback(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+
+    const dpr = window.devicePixelRatio || 1
+    ctx.clearRect(0, 0, canvas.width / dpr, canvas.height / dpr)
+
+    remoteBoardActionsRef.current.forEach((item) => {
+      if (item.type === 'stroke') {
+        drawStrokeOnCanvas(ctx, item)
+      } else if (item.type === 'text') {
+        renderTextOnCanvas(ctx, item)
+      }
+    })
+  }, [drawStrokeOnCanvas, renderTextOnCanvas])
+
+  const replayActionHistory = useCallback(
+    (actions) => {
+      remoteBoardActionsRef.current = []
+      let currentStrokesMap = {}
+
+      actions.forEach(({ event, payload }) => {
+        if (!payload) return
+        if (event === 'wb_draw_start') {
+          currentStrokesMap[payload.strokeId] = {
+            type: 'stroke',
+            strokeId: payload.strokeId,
+            tool: payload.tool || 'pen',
+            color: payload.color,
+            width: payload.width,
+            points: [payload.point]
+          }
+        } else if (event === 'wb_draw_point') {
+          if (currentStrokesMap[payload.strokeId]) {
+            currentStrokesMap[payload.strokeId].points.push(payload.point)
+          }
+        } else if (event === 'wb_draw_end') {
+          if (currentStrokesMap[payload.strokeId]) {
+            remoteBoardActionsRef.current.push(currentStrokesMap[payload.strokeId])
+            delete currentStrokesMap[payload.strokeId]
+          }
+        } else if (event === 'wb_add_text') {
+          remoteBoardActionsRef.current.push({
+            type: 'text',
+            textId: payload.textId,
+            x: payload.x,
+            y: payload.y,
+            nx: payload.nx,
+            ny: payload.ny,
+            content: payload.content,
+            color: payload.color
+          })
+        } else if (event === 'wb_clear') {
+          remoteBoardActionsRef.current = []
+          currentStrokesMap = {}
+        }
+      })
+
+      redrawCanvas()
+    },
+    [redrawCanvas]
+  )
+
+  // ResizeObserver for Whiteboard Canvas
+  useEffect(() => {
+    if (activeSidePanel !== 'whiteboard') return
+
+    const container = canvasContainerRef.current
+    const canvas = canvasRef.current
+    if (!container || !canvas) return
+
+    const resizeCanvas = () => {
+      const dpr = window.devicePixelRatio || 1
+      const clientWidth = container.clientWidth
+      const clientHeight = container.clientHeight
+
+      if (clientWidth === 0 || clientHeight === 0) return
+
+      canvas.width = clientWidth * dpr
+      canvas.height = clientHeight * dpr
+      canvas.style.width = `${clientWidth}px`
+      canvas.style.height = `${clientHeight}px`
+
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        ctx.scale(dpr, dpr)
+      }
+      redrawCanvas()
+    }
+
+    const observer = new ResizeObserver(() => {
+      resizeCanvas()
+    })
+
+    observer.observe(container)
+    resizeCanvas()
+
+    return () => {
+      observer.disconnect()
+    }
+  }, [redrawCanvas, activeSidePanel])
+
+  // 3. Socket.IO Event Handlers Lifecycle
+  useEffect(() => {
+    if (!meetInfo) return
+
+    const socket = getSocket()
+    if (!socket) return
+
+    if (!socket.connected) {
+      socket.connect()
+    }
+
+    socket.emit('join_meet', { roomCode: upperRoomCode })
+
+    const handleMeetError = ({ error }) => {
+      setRoomError(error || 'Meet room error')
+    }
+
+    const handleParticipantsUpdate = (list) => {
+      setParticipants(list || [])
+    }
+
+    const handleReactionReceived = ({ userId, name, emoji }) => {
+      triggerReaction({ userId, name, emoji })
+    }
+
+    const handleMeetBoardHistory = (actions) => {
+      replayActionHistory(actions)
+    }
+
+    const handleWbDrawStart = (payload) => {
+      remoteBoardActionsRef.current.push({
+        type: 'stroke',
+        strokeId: payload.strokeId,
+        tool: payload.tool || 'pen',
+        color: payload.color,
+        width: payload.width,
+        points: [payload.point]
+      })
+      redrawCanvas()
+    }
+
+    const handleWbDrawPoint = (payload) => {
+      const stroke = remoteBoardActionsRef.current.find((s) => s.strokeId === payload.strokeId)
+      if (stroke) {
+        stroke.points.push(payload.point)
+        redrawCanvas()
+      }
+    }
+
+    const handleWbDrawEnd = () => {
+      redrawCanvas()
+    }
+
+    const handleWbAddText = (payload) => {
+      remoteBoardActionsRef.current.push({
+        type: 'text',
+        textId: payload.textId,
+        x: payload.x,
+        y: payload.y,
+        nx: payload.nx,
+        ny: payload.ny,
+        content: payload.content,
+        color: payload.color
+      })
+      redrawCanvas()
+    }
+
+    const handleWbRemoveAction = ({ actionId }) => {
+      remoteBoardActionsRef.current = remoteBoardActionsRef.current.filter((item) => {
+        if (item.strokeId) return item.strokeId !== actionId
+        if (item.textId) return item.textId !== actionId
+        return true
+      })
+      redrawCanvas()
+    }
+
+    const handleWbClear = () => {
+      remoteBoardActionsRef.current = []
+      undoStackRef.current = []
+      redoStackRef.current = []
+      redrawCanvas()
+    }
+
+    const handleMeetChatHistory = (history) => {
+      setMeetMessages(history || [])
+    }
+
+    const handleReceiveMeetMessage = (msg) => {
+      setMeetMessages((prev) => [...prev, msg])
+    }
+
+    const handleMeetEnded = () => {
+      try {
+        hangupJitsi()
+      } catch (_) {}
+      navigate('/meet')
+    }
+
+    socket.on('meet_error', handleMeetError)
+    socket.on('meet_participants_update', handleParticipantsUpdate)
+    socket.on('reaction_received', handleReactionReceived)
+    socket.on('meet_board_history', handleMeetBoardHistory)
+    socket.on('wb_draw_start', handleWbDrawStart)
+    socket.on('wb_draw_point', handleWbDrawPoint)
+    socket.on('wb_draw_end', handleWbDrawEnd)
+    socket.on('wb_add_text', handleWbAddText)
+    socket.on('wb_remove_action', handleWbRemoveAction)
+    socket.on('wb_clear', handleWbClear)
+    socket.on('meet_chat_history', handleMeetChatHistory)
+    socket.on('receive_meet_message', handleReceiveMeetMessage)
+    socket.on('meet_ended', handleMeetEnded)
+
+    return () => {
+      socket.off('meet_error', handleMeetError)
+      socket.off('meet_participants_update', handleParticipantsUpdate)
+      socket.off('reaction_received', handleReactionReceived)
+      socket.off('meet_board_history', handleMeetBoardHistory)
+      socket.off('wb_draw_start', handleWbDrawStart)
+      socket.off('wb_draw_point', handleWbDrawPoint)
+      socket.off('wb_draw_end', handleWbDrawEnd)
+      socket.off('wb_add_text', handleWbAddText)
+      socket.off('wb_remove_action', handleWbRemoveAction)
+      socket.off('wb_clear', handleWbClear)
+      socket.off('meet_chat_history', handleMeetChatHistory)
+      socket.off('receive_meet_message', handleReceiveMeetMessage)
+      socket.off('meet_ended', handleMeetEnded)
+    }
+  }, [meetInfo, upperRoomCode, replayActionHistory, redrawCanvas, navigate, hangupJitsi, triggerReaction])
+
+  // Custom Control Bar Handlers
+  const handleToggleAudio = () => {
+    toggleJitsiAudio()
+    const nextState = !audioEnabled
+    setAudioEnabled(nextState)
+    const socket = getSocket()
+    if (socket && socket.connected) {
+      socket.emit('toggle_media', { roomCode: upperRoomCode, audioOn: nextState, videoOn: videoEnabled })
+    }
+  }
+
+  const handleToggleVideo = () => {
+    toggleJitsiVideo()
+    const nextState = !videoEnabled
+    setVideoEnabled(nextState)
+    const socket = getSocket()
+    if (socket && socket.connected) {
+      socket.emit('toggle_media', { roomCode: upperRoomCode, audioOn: audioEnabled, videoOn: nextState })
+    }
+  }
+
+  const handleToggleScreenShare = () => {
+    toggleJitsiShareScreen()
+    setIsSharingScreen((prev) => !prev)
+  }
+
+  const handleLeaveCall = () => {
+    try {
+      hangupJitsi()
+    } catch (_) {}
+    const socket = getSocket()
+    if (socket && socket.connected) {
+      socket.emit('leave_meet', { roomCode: upperRoomCode })
+    }
+    navigate('/meet')
+  }
+
+  const handleEndMeetForEveryone = () => {
+    const socket = getSocket()
+    if (socket && socket.connected) {
+      socket.emit('end_meet_for_all', { roomCode: upperRoomCode })
+    }
+    try {
+      hangupJitsi()
+    } catch (_) {}
+    setConfirmEndModal(false)
+    navigate('/meet')
+  }
+
+  const handleSendMeetMessage = (msgText) => {
+    const socket = getSocket()
+    if (socket && socket.connected) {
+      socket.emit('send_meet_message', { roomCode: upperRoomCode, message: msgText })
+    }
+  }
+
+  const sendReaction = (emoji) => {
+    triggerReaction({
+      userId: currentUserId,
+      name: user?.name || 'You',
+      emoji
+    })
+
+    const socket = getSocket()
+    if (socket && socket.connected) {
+      socket.emit('send_reaction', { roomCode: upperRoomCode, emoji })
+    }
+    setShowReactionsPicker(false)
+  }
+
+  // Whiteboard Canvas Interaction Handlers
+  const getCanvasCoordinates = (e) => {
+    const canvas = canvasRef.current
+    if (!canvas) return { x: 0, y: 0, nx: 0, ny: 0 }
+    const rect = canvas.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
+    const w = rect.width || 1
+    const h = rect.height || 1
+    return {
+      x,
+      y,
+      nx: Math.max(0, Math.min(1, x / w)),
+      ny: Math.max(0, Math.min(1, y / h))
+    }
+  }
+
+  const handleCanvasPointerDown = (e) => {
+    const point = getCanvasCoordinates(e)
+
+    if (wbTool === 'text') {
+      setTextInput({ open: true, x: point.x, y: point.y, nx: point.nx, ny: point.ny, content: '' })
+      return
+    }
+
+    try {
+      e.target?.setPointerCapture?.(e.pointerId)
+    } catch (_) {}
+
+    const strokeId = `stroke_${Date.now()}_${Math.random()}`
+    currentStrokeIdRef.current = strokeId
+    isDrawingRef.current = true
+
+    const effectiveWidth = wbTool === 'eraser' ? wbEraserWidth : wbWidth
+
+    const socket = getSocket()
+    if (socket && socket.connected) {
+      socket.emit('wb_draw_start', {
+        roomCode: upperRoomCode,
+        strokeId,
+        tool: wbTool,
+        color: wbColor,
+        width: effectiveWidth,
+        point
+      })
+    }
+
+    const newStroke = {
+      type: 'stroke',
+      strokeId,
+      tool: wbTool,
+      color: wbColor,
+      width: effectiveWidth,
+      points: [point]
+    }
+
+    remoteBoardActionsRef.current.push(newStroke)
+    redrawCanvas()
+  }
+
+  const handleCanvasPointerMove = (e) => {
+    if (!isDrawingRef.current || !currentStrokeIdRef.current) return
+    const point = getCanvasCoordinates(e)
+    const strokeId = currentStrokeIdRef.current
+
+    const socket = getSocket()
+    if (socket && socket.connected) {
+      socket.emit('wb_draw_point', {
+        roomCode: upperRoomCode,
+        strokeId,
+        point
+      })
+    }
+
+    const stroke = remoteBoardActionsRef.current.find((s) => s.strokeId === strokeId)
+    if (stroke) {
+      stroke.points.push(point)
+      redrawCanvas()
+    }
+  }
+
+  const handleCanvasPointerUp = (e) => {
+    if (!isDrawingRef.current || !currentStrokeIdRef.current) return
+    const strokeId = currentStrokeIdRef.current
+    isDrawingRef.current = false
+    currentStrokeIdRef.current = null
+
+    try {
+      if (e?.target?.releasePointerCapture && e?.pointerId) {
+        e.target.releasePointerCapture(e.pointerId)
+      }
+    } catch (_) {}
+
+    const action = remoteBoardActionsRef.current.find((s) => s.strokeId === strokeId)
+    if (action) {
+      undoStackRef.current.push({
+        actionId: strokeId,
+        actionType: 'stroke',
+        action
+      })
+      redoStackRef.current = []
+    }
+
+    const socket = getSocket()
+    if (socket && socket.connected) {
+      socket.emit('wb_draw_end', {
+        roomCode: upperRoomCode,
+        strokeId
+      })
+    }
+    redrawCanvas()
+  }
+
+  const handleSubmitText = (e) => {
+    e.preventDefault()
+    if (!textInput.content.trim()) {
+      setTextInput({ open: false, x: 0, y: 0, nx: 0, ny: 0, content: '' })
+      return
+    }
+
+    const textId = `text_${Date.now()}_${Math.random()}`
+    const payload = {
+      textId,
+      x: textInput.x,
+      y: textInput.y,
+      nx: textInput.nx !== undefined ? textInput.nx : 0,
+      ny: textInput.ny !== undefined ? textInput.ny : 0,
+      content: textInput.content.trim(),
+      color: wbColor
+    }
+
+    const socket = getSocket()
+    if (socket && socket.connected) {
+      socket.emit('wb_add_text', {
+        roomCode: upperRoomCode,
+        ...payload
+      })
+    }
+
+    const textItem = {
+      type: 'text',
+      ...payload
+    }
+
+    remoteBoardActionsRef.current.push(textItem)
+    undoStackRef.current.push({
+      actionId: textId,
+      actionType: 'text',
+      action: textItem
+    })
+    redoStackRef.current = []
+
+    redrawCanvas()
+    setTextInput({ open: false, x: 0, y: 0, nx: 0, ny: 0, content: '' })
+  }
+
+  const handleClearBoard = () => {
+    const socket = getSocket()
+    if (socket && socket.connected) {
+      socket.emit('wb_clear', { roomCode: upperRoomCode })
+    }
+  }
+
+  // Fetch Study Groups for Share Modal
+  const handleOpenShareGroupModal = async () => {
+    setShowShareGroupModal(true)
+    setShareSuccessMsg('')
+    setLoadingGroups(true)
+    try {
+      const res = await api.get('/study-groups/groups')
+      const groups = res.data || []
+      setUserGroups(groups)
+      if (groups.length > 0) {
+        setSelectedShareGroupId(groups[0]._id)
+      }
+    } catch (err) {
+      console.error('Failed to load study groups:', err)
+    } finally {
+      setLoadingGroups(false)
+    }
+  }
+
+  const handleSendInviteToGroup = async (e) => {
+    e.preventDefault()
+    if (!selectedShareGroupId) return
+
+    setSharingGroup(true)
+    setShareSuccessMsg('')
+
+    const shareableUrl = `${window.location.origin}/meet/room/${upperRoomCode}`
+    const messageBody = `📹 Join our study meet: ${shareableUrl} (Code: ${upperRoomCode})`
+
+    try {
+      await api.post(`/study-groups/groups/${selectedShareGroupId}/messages`, {
+        message: messageBody
+      })
+
+      const socket = getSocket()
+      if (socket && socket.connected) {
+        socket.emit('send_message', {
+          groupId: selectedShareGroupId,
+          message: messageBody
+        })
+      }
+
+      setShareSuccessMsg('Invite shared successfully into group chat!')
+      setTimeout(() => {
+        setShowShareGroupModal(false)
+      }, 1800)
+    } catch (err) {
+      console.error('Failed to share invite to group:', err)
+    } finally {
+      setSharingGroup(false)
+    }
+  }
+
+  // Render Validation / Error States
+  if (isValidating) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-[var(--bg-primary)] p-6">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-[var(--accent-color)] border-t-transparent" />
+          <p className="text-sm font-semibold text-[var(--text-secondary)]">Validating meeting room...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (roomError) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-[var(--bg-primary)] p-6">
+        <div className="saas-card max-w-md w-full text-center space-y-4 border border-[var(--border-main)] p-8">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[var(--error-bg)] text-2xl mx-auto">
+            🚫
+          </div>
+          <h2 className="section-title text-xl font-bold">{roomError}</h2>
+          <p className="caption-text text-sm">
+            This study meet may have expired, been ended by the host, or the room code is invalid.
+          </p>
+          <Link to="/meet" className="saas-button-primary inline-flex font-bold px-6 py-2.5">
+            Return to Meet Lobby
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
+  const hostUserId = (meetInfo?.createdBy?._id || meetInfo?.createdBy || '').toString()
+  const isHost = Boolean(currentUserId && hostUserId && currentUserId === hostUserId)
+  const shareableUrl = `${window.location.origin}/meet/room/${upperRoomCode}`
+  const allParticipantCount = participants.length > 0 ? participants.length : 1
+
+  return (
+    <div className="flex h-screen w-screen min-h-0 flex-col overflow-hidden bg-[var(--bg-primary)] relative select-none">
+      {/* Floating Animated Reaction Emojis Overlay */}
+      <div className="absolute inset-0 z-40 pointer-events-none overflow-hidden">
+        {reactions.map((r) => (
+          <div
+            key={r.id}
+            style={{
+              left: `${r.xPercent}%`,
+              animationDelay: `${r.delayMs || 0}ms`
+            }}
+            className="absolute bottom-20 flex flex-col items-center animate-zoomFloat"
+          >
+            <span className="text-5xl drop-shadow-2xl filter transform hover:scale-125 transition">
+              {r.emoji}
+            </span>
+            <span className="rounded-full bg-black/85 border border-white/20 px-2.5 py-0.5 text-[10px] font-bold text-white shadow-xl mt-1">
+              {r.name}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* Standalone Minimal Top Header Bar */}
+      <header className="flex-none border-b border-[var(--border-main)] bg-[var(--bg-surface)] px-4 py-2.5 shadow-xs z-30">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <Link
+              to="/meet"
+              className="flex h-9 w-9 items-center justify-center rounded-[12px] border border-[var(--border-main)] bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition shrink-0"
+              title="Back to Meet Lobby"
+            >
+              ←
+            </Link>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h1 className="text-base font-extrabold text-[var(--text-primary)] truncate">
+                  {meetInfo?.title || 'Study Meet'}
+                </h1>
+                <span className="rounded-full bg-[var(--accent-color)]/10 text-[var(--accent-color)] border border-[var(--accent-color)]/30 px-2.5 py-0.5 text-[10px] font-mono font-bold shrink-0">
+                  {upperRoomCode}
+                </span>
+                {isHost && (
+                  <span className="rounded-full bg-amber-500 text-black px-2 py-0.5 text-[10px] font-extrabold shrink-0">
+                    👑 Host
+                  </span>
+                )}
+              </div>
+              <p className="caption-text text-xs truncate">Host: {meetInfo?.createdBy?.name || 'Peer'}</p>
+            </div>
+          </div>
+
+          {/* Top Quick Actions (Invite, Participants, Chat, Whiteboard) */}
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowInviteModal(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-[12px] bg-[var(--bg-secondary)] text-[var(--text-primary)] border border-[var(--border-main)] hover:border-[var(--accent-color)] text-xs font-bold transition cursor-pointer"
+            >
+              <span>🔗 Invite</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveSidePanel((prev) => (prev === 'participants' ? null : 'participants'))}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-[12px] text-xs font-bold border transition cursor-pointer ${
+                activeSidePanel === 'participants'
+                  ? 'bg-[var(--accent-color)] text-black border-transparent font-extrabold'
+                  : 'bg-[var(--bg-secondary)] border-[var(--border-main)] text-[var(--text-primary)] hover:border-[var(--accent-color)]'
+              }`}
+            >
+              <span>👥 {allParticipantCount}</span>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Jitsi Engine Initialization Error Toast */}
+      {jitsiError && (
+        <div className="flex-none bg-[var(--error-bg)] border-b border-[var(--error-color)]/30 px-4 py-2 flex items-center justify-between text-xs text-[var(--error-color)] z-30">
+          <span>⚠️ {jitsiError}</span>
+        </div>
+      )}
+
+      {/* MAIN CONTENT WORKSPACE AREA (Reflow Container) */}
+      <div className="flex-1 min-h-0 flex overflow-hidden p-2 sm:p-3 gap-2 sm:gap-3 relative">
+        {/* LEFT MAIN VIDEO AREA (Reflows Width When Panel Opens) */}
+        <div className="flex-1 min-h-0 flex flex-col rounded-[20px] border border-[var(--border-main)] bg-slate-950 overflow-hidden relative shadow-lg transition-all duration-300 ease-in-out">
+          {/* Jitsi Engine IFrame Mount Node */}
+          <div ref={setJitsiContainerEl} className="w-full h-full relative" />
+
+          {/* Jitsi Loading Overlay */}
+          {isJitsiLoading && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950/80 backdrop-blur-xs z-10 space-y-3 pointer-events-none transition-opacity duration-300">
+              <div className="h-10 w-10 animate-spin rounded-full border-4 border-[var(--accent-color)] border-t-transparent" />
+              <p className="text-xs font-semibold text-[var(--text-secondary)]">Connecting to video room...</p>
+            </div>
+          )}
+        </div>
+
+        {/* RIGHT SIDE PANEL AREA (Tabbed Panel Reflows Layout) */}
+        {activeSidePanel && (
+          <div className="w-80 sm:w-[380px] shrink-0 h-full flex flex-col rounded-[20px] border border-[var(--border-main)] bg-[var(--bg-surface)] overflow-hidden shadow-2xl transition-all duration-300 ease-in-out">
+            {/* 1. PARTICIPANTS PANEL */}
+            {activeSidePanel === 'participants' && (
+              <div className="flex flex-col h-full bg-[var(--bg-surface)] overflow-hidden">
+                <div className="flex items-center justify-between p-3.5 border-b border-[var(--border-main)] bg-[var(--bg-secondary)]">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base">👥</span>
+                    <h3 className="font-bold text-sm text-[var(--text-primary)]">
+                      Participants ({allParticipantCount})
+                    </h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveSidePanel(null)}
+                    className="h-7 w-7 rounded-full flex items-center justify-center text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-primary)] transition cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-2">
+                  {/* Local User */}
+                  <div className="flex items-center justify-between p-2.5 rounded-[12px] bg-[var(--bg-secondary)] border border-[var(--border-main)]">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--accent-color)] text-black text-xs font-bold shrink-0">
+                        {user?.name?.[0]?.toUpperCase() || 'U'}
+                      </div>
+                      <span className="text-xs font-bold text-[var(--text-primary)] truncate">
+                        {user?.name || 'You'} (You)
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-xs">
+                      {!audioEnabled ? <span>🔇</span> : <span>🎙️</span>}
+                      {!videoEnabled ? <span>📷</span> : <span>📹</span>}
+                    </div>
+                  </div>
+
+                  {/* Remote Participants */}
+                  {participants
+                    .filter((p) => p.userId !== currentUserId)
+                    .map((p) => (
+                      <div
+                        key={p.userId}
+                        className="flex items-center justify-between p-2.5 rounded-[12px] bg-[var(--bg-secondary)] border border-[var(--border-main)]"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--bg-primary)] border border-[var(--border-main)] text-[var(--accent-color)] text-xs font-bold shrink-0">
+                            {p.name?.[0]?.toUpperCase() || 'P'}
+                          </div>
+                          <span className="text-xs font-semibold text-[var(--text-primary)] truncate">
+                            {p.name}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-xs">
+                          {!p.audioOn ? <span>🔇</span> : <span>🎙️</span>}
+                          {!p.videoOn ? <span>📷</span> : <span>📹</span>}
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
+
+            {/* 2. IN-MEETING CHAT PANEL */}
+            {activeSidePanel === 'chat' && (
+              <MeetChatPanel
+                messages={meetMessages}
+                currentUserId={currentUserId}
+                onSendMessage={handleSendMeetMessage}
+                onClose={() => setActiveSidePanel(null)}
+              />
+            )}
+
+            {/* 3. WHITEBOARD PANEL */}
+            {activeSidePanel === 'whiteboard' && (
+              <div className="h-full w-full flex flex-col bg-[var(--bg-surface)] overflow-hidden">
+                {/* Whiteboard Header Toolbar */}
+                <div className="flex flex-wrap items-center justify-between gap-1.5 border-b border-[var(--border-main)] bg-[var(--bg-secondary)] p-2">
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setWbTool('pen')}
+                      className={`px-2.5 py-1 rounded-[8px] text-xs font-bold transition cursor-pointer ${
+                        wbTool === 'pen'
+                          ? 'bg-[var(--accent-color)] text-black'
+                          : 'bg-[var(--bg-primary)] text-[var(--text-secondary)] border border-[var(--border-main)]'
+                      }`}
+                    >
+                      ✏️ Pen
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setWbTool('text')}
+                      className={`px-2.5 py-1 rounded-[8px] text-xs font-bold transition cursor-pointer ${
+                        wbTool === 'text'
+                          ? 'bg-[var(--accent-color)] text-black'
+                          : 'bg-[var(--bg-primary)] text-[var(--text-secondary)] border border-[var(--border-main)]'
+                      }`}
+                    >
+                      🔤 Text
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setWbTool('eraser')}
+                      className={`px-2.5 py-1 rounded-[8px] text-xs font-bold transition cursor-pointer ${
+                        wbTool === 'eraser'
+                          ? 'bg-[var(--accent-color)] text-black'
+                          : 'bg-[var(--bg-primary)] text-[var(--text-secondary)] border border-[var(--border-main)]'
+                      }`}
+                    >
+                      🧹 Eraser
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    {wbTool === 'eraser' ? (
+                      <select
+                        value={wbEraserWidth}
+                        onChange={(e) => setWbEraserWidth(Number(e.target.value))}
+                        className="saas-input text-[11px] py-1 px-1.5 bg-[var(--bg-primary)] cursor-pointer"
+                        title="Eraser Size"
+                      >
+                        <option value={15}>15px</option>
+                        <option value={30}>30px</option>
+                        <option value={50}>50px</option>
+                      </select>
+                    ) : (
+                      <>
+                        <select
+                          value={wbWidth}
+                          onChange={(e) => setWbWidth(Number(e.target.value))}
+                          className="saas-input text-[11px] py-1 px-1.5 bg-[var(--bg-primary)] cursor-pointer"
+                          title="Pen Thickness"
+                        >
+                          <option value={2}>2px</option>
+                          <option value={4}>4px</option>
+                          <option value={8}>8px</option>
+                        </select>
+
+                        <div className="flex items-center gap-0.5">
+                          {COLOR_SWATCHES.slice(0, 5).map((c) => (
+                            <button
+                              key={c}
+                              type="button"
+                              onClick={() => setWbColor(c)}
+                              style={{ backgroundColor: c }}
+                              className={`h-4 w-4 rounded-full border border-black/30 transition transform hover:scale-110 cursor-pointer ${
+                                wbColor === c ? 'ring-2 ring-[var(--accent-color)] scale-110' : ''
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      </>
+                    )}
+
+                    {isHost && (
+                      <button
+                        type="button"
+                        onClick={handleClearBoard}
+                        className="px-2 py-1 rounded-[6px] text-[10px] font-bold bg-[var(--error-bg)] text-[var(--error-color)] border border-[var(--error-color)]/30 hover:opacity-80 transition cursor-pointer"
+                        title="Clear whiteboard for everyone"
+                      >
+                        Clear
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => setActiveSidePanel(null)}
+                      className="h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                </div>
+
+                {/* Canvas Workspace */}
+                <div ref={canvasContainerRef} className="relative flex-1 min-h-0 bg-slate-900 overflow-hidden cursor-crosshair">
+                  <canvas
+                    ref={canvasRef}
+                    onPointerDown={handleCanvasPointerDown}
+                    onPointerMove={handleCanvasPointerMove}
+                    onPointerUp={handleCanvasPointerUp}
+                    onPointerCancel={handleCanvasPointerUp}
+                    onPointerLeave={handleCanvasPointerUp}
+                    className="touch-none w-full h-full block"
+                  />
+
+                  {/* Floating Text Input Box */}
+                  {textInput.open && (
+                    <form
+                      onSubmit={handleSubmitText}
+                      style={{ left: `${textInput.x}px`, top: `${textInput.y}px` }}
+                      className="absolute z-20 flex gap-1 bg-black/80 p-1.5 rounded-[10px] border border-[var(--accent-color)] shadow-xl"
+                    >
+                      <input
+                        type="text"
+                        autoFocus
+                        value={textInput.content}
+                        onChange={(e) => setTextInput((prev) => ({ ...prev, content: e.target.value }))}
+                        placeholder="Type text..."
+                        className="saas-input text-xs py-1 px-2 bg-slate-900 min-w-[120px]"
+                      />
+                      <button
+                        type="submit"
+                        className="px-2.5 py-1 text-xs font-bold bg-[var(--accent-color)] text-black rounded-[6px]"
+                      >
+                        Add
+                      </button>
+                    </form>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* BOTTOM CUSTOM CONTROL BAR */}
+      <div className="flex-none border-t border-[var(--border-main)] bg-[var(--bg-surface)] p-3 z-30">
+        <div className="flex items-center justify-between gap-2 max-w-[1280px] mx-auto overflow-x-auto custom-scrollbar">
+          {/* Left Media Group: Mic & Camera */}
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={handleToggleAudio}
+              className={`flex items-center gap-2 px-3.5 py-2.5 rounded-[14px] font-bold text-xs shadow-sm transition cursor-pointer ${
+                audioEnabled
+                  ? 'bg-[var(--bg-secondary)] border border-[var(--border-main)] text-[var(--text-primary)] hover:border-[var(--accent-color)]'
+                  : 'bg-[var(--error-color)] text-white'
+              }`}
+            >
+              <span>{audioEnabled ? '🎙️ Mute' : '🔇 Unmute'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleToggleVideo}
+              className={`flex items-center gap-2 px-3.5 py-2.5 rounded-[14px] font-bold text-xs shadow-sm transition cursor-pointer ${
+                videoEnabled
+                  ? 'bg-[var(--bg-secondary)] border border-[var(--border-main)] text-[var(--text-primary)] hover:border-[var(--accent-color)]'
+                  : 'bg-[var(--error-color)] text-white'
+              }`}
+            >
+              <span>{videoEnabled ? '📹 Stop Video' : '📷 Start Video'}</span>
+            </button>
+          </div>
+
+          {/* Center Collaboration Tools Group: Invite, Participants, Chat, Reactions, Whiteboard */}
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => setShowInviteModal(true)}
+              className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-[14px] font-bold text-xs bg-[var(--bg-secondary)] border border-[var(--border-main)] text-[var(--text-primary)] hover:border-[var(--accent-color)] transition cursor-pointer"
+            >
+              <span>🔗 Invite</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveSidePanel((prev) => (prev === 'participants' ? null : 'participants'))}
+              className={`flex items-center gap-1.5 px-3.5 py-2.5 rounded-[14px] font-bold text-xs border transition cursor-pointer ${
+                activeSidePanel === 'participants'
+                  ? 'bg-[var(--accent-color)] text-black border-transparent font-extrabold'
+                  : 'bg-[var(--bg-secondary)] border-[var(--border-main)] text-[var(--text-primary)] hover:border-[var(--accent-color)]'
+              }`}
+            >
+              <span>👥 Participants ({allParticipantCount})</span>
+            </button>
+
+            {/* In-Meeting Chat Trigger */}
+            <button
+              type="button"
+              onClick={() => setActiveSidePanel((prev) => (prev === 'chat' ? null : 'chat'))}
+              className={`flex items-center gap-1.5 px-3.5 py-2.5 rounded-[14px] font-bold text-xs border transition cursor-pointer ${
+                activeSidePanel === 'chat'
+                  ? 'bg-[var(--accent-color)] text-black border-transparent font-extrabold'
+                  : 'bg-[var(--bg-secondary)] border-[var(--border-main)] text-[var(--text-primary)] hover:border-[var(--accent-color)]'
+              }`}
+            >
+              <span>💬 Chat</span>
+            </button>
+
+            {/* Share Screen */}
+            <button
+              type="button"
+              onClick={handleToggleScreenShare}
+              className={`flex items-center gap-1.5 px-3.5 py-2.5 rounded-[14px] font-bold text-xs border transition cursor-pointer ${
+                isSharingScreen
+                  ? 'bg-amber-500 text-black border-transparent font-extrabold'
+                  : 'bg-[var(--bg-secondary)] border-[var(--border-main)] text-[var(--text-primary)] hover:border-[var(--accent-color)]'
+              }`}
+            >
+              <span>{isSharingScreen ? '🛑 Stop Share' : '💻 Share Screen'}</span>
+            </button>
+
+            {/* Reactions Trigger Button */}
+            <div className="relative reaction-picker-container">
+              <button
+                type="button"
+                onClick={() => setShowReactionsPicker((prev) => !prev)}
+                className={`flex items-center gap-1.5 px-3.5 py-2.5 rounded-[14px] font-bold text-xs border transition cursor-pointer ${
+                  showReactionsPicker
+                    ? 'bg-[var(--accent-color)] text-black border-transparent font-extrabold shadow-md scale-105'
+                    : 'bg-[var(--bg-secondary)] border-[var(--border-main)] text-[var(--text-primary)] hover:border-[var(--accent-color)]'
+                }`}
+              >
+                <span>😊 Reactions</span>
+              </button>
+
+              {/* Reactions Emoji Picker Popover */}
+              {showReactionsPicker && (
+                <div className="fixed bottom-20 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-[var(--bg-surface)] p-2.5 rounded-[20px] border-2 border-[var(--accent-color)] shadow-2xl z-[100] animate-fadeIn">
+                  {REACTION_EMOJIS.map((emoji) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      onClick={() => sendReaction(emoji)}
+                      className="p-2.5 hover:bg-[var(--bg-secondary)] hover:scale-125 rounded-[12px] text-2xl transition transform active:scale-150 cursor-pointer"
+                      title={`Send ${emoji}`}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Whiteboard Toggle */}
+            <button
+              type="button"
+              onClick={() => setActiveSidePanel((prev) => (prev === 'whiteboard' ? null : 'whiteboard'))}
+              className={`flex items-center gap-1.5 px-3.5 py-2.5 rounded-[14px] font-bold text-xs border transition cursor-pointer ${
+                activeSidePanel === 'whiteboard'
+                  ? 'bg-[var(--accent-color)] text-black border-transparent font-extrabold'
+                  : 'bg-[var(--bg-secondary)] border-[var(--border-main)] text-[var(--text-primary)] hover:border-[var(--accent-color)]'
+              }`}
+            >
+              <span>🎨 Whiteboard</span>
+            </button>
+          </div>
+
+          {/* Right Edge: Red End / Leave Button */}
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={handleLeaveCall}
+              className="px-4 py-2.5 rounded-[14px] font-bold text-xs bg-[var(--error-bg)] text-[var(--error-color)] border border-[var(--error-color)]/30 hover:opacity-90 transition cursor-pointer shadow-sm"
+            >
+              Leave
+            </button>
+
+            {isHost && (
+              <button
+                type="button"
+                onClick={() => setConfirmEndModal(true)}
+                className="px-4 py-2.5 rounded-[14px] font-extrabold text-xs bg-[var(--error-color)] text-white hover:opacity-90 transition cursor-pointer shadow-md"
+              >
+                End Meeting
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* INVITE MODAL */}
+      {showInviteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4 animate-fadeIn">
+          <div className="saas-card max-w-md w-full p-6 space-y-4 border border-[var(--border-main)] shadow-2xl">
+            <div className="flex items-center justify-between">
+              <h3 className="section-title text-lg font-bold">Invite Peers</h3>
+              <button
+                type="button"
+                onClick={() => setShowInviteModal(false)}
+                className="text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              <label className="block text-xs font-semibold text-[var(--text-secondary)]">
+                Shareable Meeting URL:
+              </label>
+              <div className="flex items-center gap-2 bg-[var(--bg-secondary)] p-2.5 rounded-[12px] border border-[var(--border-main)]">
+                <span className="font-mono text-xs text-[var(--accent-color)] font-bold truncate flex-1">
+                  {shareableUrl}
+                </span>
+                <CopyButton text={shareableUrl} />
+              </div>
+            </div>
+
+            <div className="space-y-2 pt-2 border-t border-[var(--border-main)]">
+              <label className="block text-xs font-semibold text-[var(--text-secondary)]">
+                Room Code:
+              </label>
+              <div className="flex items-center justify-between bg-[var(--bg-secondary)] p-2.5 rounded-[12px] border border-[var(--border-main)]">
+                <span className="font-mono text-sm font-bold text-[var(--text-primary)]">
+                  {upperRoomCode}
+                </span>
+                <CopyButton text={upperRoomCode} />
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-[var(--border-main)] flex justify-between gap-3">
+              <button
+                type="button"
+                onClick={handleOpenShareGroupModal}
+                className="saas-button-primary flex-1 font-bold text-xs min-h-[38px] cursor-pointer"
+              >
+                📢 Share to Group Chat
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowInviteModal(false)}
+                className="saas-button-secondary font-semibold text-xs min-h-[38px] px-4 cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SHARE TO STUDY GROUP MODAL */}
+      {showShareGroupModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4 animate-fadeIn">
+          <div className="saas-card max-w-md w-full p-6 space-y-4 border border-[var(--border-main)] shadow-2xl">
+            <div className="flex items-center justify-between">
+              <h3 className="section-title text-lg font-bold">Share to Study Group</h3>
+              <button
+                type="button"
+                onClick={() => setShowShareGroupModal(false)}
+                className="text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {shareSuccessMsg ? (
+              <p className="rounded-[12px] bg-[var(--success-bg)] border border-[var(--success-color)]/30 p-3 text-xs text-[var(--success-color)] font-bold">
+                {shareSuccessMsg}
+              </p>
+            ) : loadingGroups ? (
+              <p className="caption-text text-xs italic">Loading your study groups...</p>
+            ) : userGroups.length === 0 ? (
+              <p className="body-text text-xs text-[var(--text-muted)] italic">
+                You haven't joined any study groups yet.
+              </p>
+            ) : (
+              <form onSubmit={handleSendInviteToGroup} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-[var(--text-secondary)] mb-1">
+                    Select Study Group:
+                  </label>
+                  <select
+                    value={selectedShareGroupId}
+                    onChange={(e) => setSelectedShareGroupId(e.target.value)}
+                    className="saas-input w-full text-xs min-h-[42px]"
+                  >
+                    {userGroups.map((g) => (
+                      <option key={g._id} value={g._id}>
+                        {g.groupName || g.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="p-3 rounded-[12px] bg-[var(--bg-secondary)] border border-[var(--border-main)] text-xs text-[var(--text-secondary)] space-y-1">
+                  <p className="font-bold text-[var(--text-primary)]">Message Preview:</p>
+                  <p className="font-mono text-[11px]">
+                    📹 Join our study meet: {shareableUrl} (Code: {upperRoomCode})
+                  </p>
+                </div>
+
+                <div className="flex justify-end gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowShareGroupModal(false)}
+                    className="saas-button-secondary text-xs min-h-[38px] px-4 cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={sharingGroup}
+                    className="saas-button-primary font-bold text-xs min-h-[38px] px-5 cursor-pointer disabled:opacity-50"
+                  >
+                    {sharingGroup ? 'Sending...' : 'Send to Group'}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Host End Meeting Confirmation Modal */}
+      {confirmEndModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4 animate-fadeIn">
+          <div className="saas-card max-w-md w-full p-6 space-y-4 border-2 border-[var(--error-color)]/40 shadow-2xl">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">⚠️</span>
+              <div>
+                <h3 className="section-title text-lg font-bold">End Meeting for Everyone?</h3>
+                <p className="caption-text text-xs">This will disconnect all participants and end this session.</p>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-3 border-t border-[var(--border-main)]">
+              <button
+                type="button"
+                onClick={() => setConfirmEndModal(false)}
+                className="saas-button-secondary font-semibold text-xs min-h-[38px] px-4 cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleEndMeetForEveryone}
+                className="saas-button-primary bg-[var(--error-color)] text-white hover:bg-[var(--error-color)]/90 font-bold text-xs min-h-[38px] px-5 cursor-pointer"
+              >
+                End Meeting Now
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}

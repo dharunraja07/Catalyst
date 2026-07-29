@@ -1,129 +1,109 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import AIChatSurface from './AIChatSurface.jsx'
 
-function makeConversationTitle(message) {
-  const text = (message || '').trim()
-  if (!text) return 'New chat'
-  return text.length > 30 ? `${text.slice(0, 27)}...` : text
-}
-
-function createConversation(firstMessage) {
-  return {
-    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    title: makeConversationTitle(firstMessage),
-    messages: [
-      {
-        role: 'assistant',
-        content: 'Hi! I can help you with notes, study plans, summaries, or questions across the app.'
-      }
-    ],
-    updatedAt: Date.now()
-  }
-}
-
 export default function FloatingAIAssistant() {
-  const { api } = useAuth()
+  const { user, api } = useAuth()
+  const location = useLocation()
   const [isOpen, setIsOpen] = useState(false)
   const [conversations, setConversations] = useState([])
   const [activeConversationId, setActiveConversationId] = useState(null)
-  const [showHistoryMobile, setShowHistoryMobile] = useState(false)
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true)
   const [editingId, setEditingId] = useState(null)
   const [renameDraft, setRenameDraft] = useState('')
+  const [deleteConfirmId, setDeleteConfirmId] = useState(null)
+
+  const authPaths = ['/login', '/register', '/forgot-password']
+  const isAuthPage = authPaths.includes(location.pathname) || location.pathname.startsWith('/reset-password')
+  const shouldHide = !user || isAuthPage
 
   useEffect(() => {
-    if (typeof window === 'undefined') return
-    try {
-      const saved = window.localStorage.getItem('catalyst_ai_conversations')
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setConversations(parsed)
-          setActiveConversationId(parsed[0].id)
-          return
+    if (shouldHide) return
+    async function loadConversations() {
+      try {
+        const response = await api.get('/ai/conversations')
+        const list = response.data || []
+        setConversations(list)
+        if (list.length > 0) {
+          setActiveConversationId(list[0]._id)
         }
+      } catch {
+        // Fallback for storage
       }
-    } catch {
-      // ignore invalid storage
     }
-
-    const firstConversation = createConversation('')
-    setConversations([firstConversation])
-    setActiveConversationId(firstConversation.id)
-  }, [])
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    try {
-      window.localStorage.setItem('catalyst_ai_conversations', JSON.stringify(conversations))
-    } catch {
-      // ignore storage errors
-    }
-  }, [conversations])
+    loadConversations()
+  }, [api, shouldHide])
 
   const activeConversation = useMemo(() => {
-    return conversations.find((conversation) => conversation.id === activeConversationId) || conversations[0] || null
+    return conversations.find((conversation) => conversation._id === activeConversationId) || conversations[0] || null
   }, [activeConversationId, conversations])
 
-  const startNewConversation = () => {
-    const nextConversation = createConversation('')
-    setConversations((prev) => [nextConversation, ...prev])
-    setActiveConversationId(nextConversation.id)
-    setShowHistoryMobile(false)
+  if (shouldHide) {
+    return null
+  }
+
+  const startNewConversation = async () => {
+    try {
+      const response = await api.post('/ai/conversations', { title: 'New Chat' })
+      const newConv = response.data
+      setConversations((prev) => [newConv, ...prev])
+      setActiveConversationId(newConv._id)
+    } catch {
+      // ignore
+    }
   }
 
   const selectConversation = (id) => {
     setActiveConversationId(id)
-    setShowHistoryMobile(false)
   }
 
-  const deleteConversation = (id, event) => {
+  const deleteConversation = async (id, event) => {
     if (event) event.stopPropagation()
-    setConversations((prev) => {
-      const filtered = prev.filter((c) => c.id !== id)
-      if (filtered.length === 0) {
-        const brandNew = createConversation('')
-        setActiveConversationId(brandNew.id)
-        return [brandNew]
-      }
-      if (activeConversationId === id) {
-        setActiveConversationId(filtered[0].id)
-      }
-      return filtered
-    })
+    try {
+      await api.delete(`/ai/conversations/${id}`)
+      setConversations((prev) => {
+        const filtered = prev.filter((c) => c._id !== id)
+        if (activeConversationId === id && filtered.length > 0) {
+          setActiveConversationId(filtered[0]._id)
+        }
+        return filtered
+      })
+    } catch {
+      // ignore
+    }
   }
 
   const startRenaming = (conversation, event) => {
     if (event) event.stopPropagation()
-    setEditingId(conversation.id)
-    setRenameDraft(conversation.title || 'New chat')
+    setEditingId(conversation._id)
+    setRenameDraft(conversation.title || 'New Chat')
   }
 
-  const saveRename = (id) => {
+  const saveRename = async (id) => {
     if (!renameDraft.trim()) {
       setEditingId(null)
       return
     }
-    setConversations((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, title: renameDraft.trim(), updatedAt: Date.now() } : c))
-    )
-    setEditingId(null)
+    try {
+      const response = await api.patch(`/ai/conversations/${id}`, { title: renameDraft.trim() })
+      setConversations((prev) => prev.map((c) => (c._id === id ? response.data : c)))
+      setEditingId(null)
+    } catch {
+      setEditingId(null)
+    }
   }
 
-  const handleMessagesChange = (messages) => {
-    if (!activeConversationId) return
-    setConversations((prev) => prev.map((conversation) => {
-      if (conversation.id !== activeConversationId) return conversation
-      const nextTitle = conversation.title === 'New chat' || conversation.title === 'Untitled conversation'
-        ? makeConversationTitle(messages.find((message) => message.role === 'user')?.content || '')
-        : conversation.title
-      return {
-        ...conversation,
-        messages,
-        title: nextTitle || 'New chat',
-        updatedAt: Date.now()
+  const handleConversationUpdate = (updatedConv) => {
+    setConversations((prev) => {
+      const idx = prev.findIndex((c) => c._id === updatedConv._id)
+      if (idx !== -1) {
+        const next = [...prev]
+        next[idx] = updatedConv
+        return next
       }
-    }))
+      return [updatedConv, ...prev]
+    })
   }
 
   if (!isOpen) {
@@ -131,7 +111,11 @@ export default function FloatingAIAssistant() {
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-4 right-4 z-[60] flex h-14 w-14 items-center justify-center rounded-full border border-[var(--border-main)] bg-[var(--accent-color)] text-xl text-[var(--accent-contrast-text)] shadow-glow transition hover:scale-105 sm:bottom-6 sm:right-6"
+        style={{
+          bottom: 'max(20px, env(safe-area-inset-bottom))',
+          right: 'max(16px, env(safe-area-inset-right))'
+        }}
+        className="fixed z-[60] flex h-14 w-14 min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-amber-400/40 bg-[var(--accent-color)] text-xl text-black font-bold shadow-2xl transition hover:scale-105 active:scale-95 cursor-pointer"
         aria-label="Open AI assistant"
       >
         ✦
@@ -140,169 +124,243 @@ export default function FloatingAIAssistant() {
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-end bg-black/20 p-3 sm:inset-auto sm:bottom-6 sm:right-6 sm:p-0">
-      <div className="flex h-[88vh] w-full max-w-6xl flex-col overflow-hidden rounded-[24px] border border-[var(--border-main)] bg-[var(--bg-surface)] shadow-2xl sm:h-[78vh] sm:w-[min(92vw,980px)]">
-        <div className="flex items-center justify-between border-b border-[var(--divider-main)] bg-[var(--bg-secondary)] px-4 py-3 sm:px-5">
-          <div>
-            <p className="caption-text uppercase tracking-[0.24em] text-[var(--accent-color)] font-semibold">AI assistant</p>
-            <h2 className="section-title">Claude-style companion</h2>
-          </div>
-          <button type="button" onClick={() => setIsOpen(false)} className="saas-button-secondary min-h-[40px] px-3 text-xs">
-            Close
-          </button>
-        </div>
-
-        <div className="flex flex-1 flex-col overflow-hidden md:flex-row">
-          <aside className={`${showHistoryMobile ? 'flex' : 'hidden'} w-full flex-col border-b border-[var(--divider-main)] bg-[var(--bg-secondary)] md:flex md:w-72 md:border-b-0 md:border-r`}>
-            <div className="flex items-center justify-between border-b border-[var(--divider-main)] px-4 py-3">
-              <p className="text-sm font-semibold text-[var(--text-primary)]">History</p>
-              <button type="button" onClick={startNewConversation} className="saas-button-primary min-h-[36px] px-3 text-xs">
-                + New chat
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-2 sm:p-4">
+      {/* Delete Confirmation Modal Overlay */}
+      {deleteConfirmId && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-fadeIn">
+          <div className="w-full max-w-sm rounded-2xl border border-[var(--border-main)] bg-[var(--bg-secondary)] p-5 shadow-2xl text-[var(--text-primary)]">
+            <h3 className="text-base font-bold text-[var(--text-primary)] mb-1.5 flex items-center gap-2">
+              <span className="text-red-500 text-lg">⚠️</span> Delete Conversation?
+            </h3>
+            <p className="text-xs text-[var(--text-secondary)] mb-5 leading-relaxed">
+              This conversation will be permanently deleted.
+            </p>
+            <div className="flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmId(null)}
+                className="px-3.5 py-1.5 rounded-xl border border-[var(--border-main)] bg-[var(--bg-surface)] text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--bg-elevated)] transition cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  deleteConversation(deleteConfirmId)
+                  setDeleteConfirmId(null)
+                }}
+                className="px-3.5 py-1.5 rounded-xl border border-red-500/30 bg-red-500/10 text-xs font-bold text-red-500 hover:bg-red-500 hover:text-white transition cursor-pointer shadow-xs"
+              >
+                Delete
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto p-3 custom-scrollbar">
-              <div className="flex items-center justify-between gap-2 md:hidden">
-                <p className="text-sm font-semibold text-[var(--text-primary)]">Conversations</p>
-                <button type="button" onClick={() => setShowHistoryMobile(false)} className="saas-button-secondary min-h-[36px] px-3 text-xs">
-                  Hide
-                </button>
-              </div>
-              <div className="mt-3 space-y-2">
-                {conversations.slice().sort((a, b) => b.updatedAt - a.updatedAt).map((conversation) => (
-                  <div
-                    key={conversation.id}
-                    onClick={() => selectConversation(conversation.id)}
-                    className={`group relative flex items-center justify-between rounded-[14px] border px-3 py-3 text-left text-sm cursor-pointer transition ${activeConversationId === conversation.id ? 'border-[var(--accent-color)] bg-[var(--bg-elevated)]' : 'border-[var(--border-main)] bg-[var(--bg-surface)] hover:border-[var(--accent-color)]/50'}`}
-                  >
-                    <div className="flex-1 min-w-0 pr-2">
-                      {editingId === conversation.id ? (
-                        <input
-                          value={renameDraft}
-                          onChange={(e) => setRenameDraft(e.target.value)}
-                          onClick={(e) => e.stopPropagation()}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') saveRename(conversation.id)
-                            if (e.key === 'Escape') setEditingId(null)
-                          }}
-                          className="saas-input min-h-[30px] px-2 py-0.5 text-xs w-full"
-                          autoFocus
-                        />
-                      ) : (
-                        <>
-                          <p className="font-semibold text-[var(--text-primary)] truncate">{conversation.title || 'New chat'}</p>
-                          <p className="caption-text mt-0.5 text-[11px]">{new Date(conversation.updatedAt).toLocaleDateString()}</p>
-                        </>
-                      )}
-                    </div>
+          </div>
+        </div>
+      )}
 
-                    <div className="flex items-center gap-1 opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity">
-                      {editingId === conversation.id ? (
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); saveRename(conversation.id) }}
-                          className="text-xs text-[var(--success-color)] font-bold px-1"
-                        >
-                          ✓
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={(e) => startRenaming(conversation, e)}
-                          className="text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] p-1"
-                          title="Rename chat"
-                        >
-                          ✎
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={(e) => deleteConversation(conversation.id, e)}
-                        className="text-xs text-[var(--text-secondary)] hover:text-[var(--error-color)] p-1"
-                        title="Delete chat"
-                      >
-                        🗑️
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </aside>
+      <div
+        style={{
+          paddingBottom: 'env(safe-area-inset-bottom)'
+        }}
+        className="flex h-[92vh] sm:h-[86vh] w-full max-w-6xl flex-col overflow-hidden rounded-[24px] border border-[var(--ai-bubble-border)] bg-[var(--ai-card-bg)] shadow-2xl text-[var(--ai-text-primary)]"
+      >
+        {/* ChatGPT Style Compact Header Bar */}
+        <div className="flex items-center justify-between border-b border-[var(--ai-bubble-border)] bg-[var(--bg-secondary)] px-3 py-2.5 sm:px-5 select-none">
+          <div className="flex items-center gap-3 min-w-0">
+            {/* Sidebar Toggle Button */}
+            <button
+              type="button"
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className="inline-flex items-center justify-center h-9 w-9 rounded-xl border border-[var(--ai-bubble-border)] bg-[var(--bg-surface)] text-[var(--ai-text-primary)] hover:border-amber-400/60 transition active:scale-95 cursor-pointer text-base font-bold shadow-xs"
+              title={isSidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+            >
+              ☰
+            </button>
 
-          <div className="flex flex-1 flex-col min-w-0">
-            <div className="flex items-center justify-between border-b border-[var(--divider-main)] px-4 py-3">
-              <div className="min-w-0 flex-1 pr-3">
-                {editingId === activeConversation?.id ? (
-                  <div className="flex items-center gap-2">
-                    <input
-                      value={renameDraft}
-                      onChange={(e) => setRenameDraft(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') saveRename(activeConversation.id)
-                        if (e.key === 'Escape') setEditingId(null)
-                      }}
-                      className="saas-input min-h-[34px] px-2.5 py-1 text-sm max-w-[220px]"
-                      autoFocus
-                    />
-                    <button type="button" onClick={() => saveRename(activeConversation.id)} className="saas-button-primary min-h-[34px] px-3 text-xs">
-                      Save
-                    </button>
-                    <button type="button" onClick={() => setEditingId(null)} className="saas-button-secondary min-h-[34px] px-2 text-xs">
-                      ✕
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2 min-w-0">
-                    <p className="text-sm font-semibold text-[var(--text-primary)] truncate">{activeConversation?.title || 'New chat'}</p>
-                    {activeConversation && (
-                      <button
-                        type="button"
-                        onClick={(e) => startRenaming(activeConversation, e)}
-                        className="text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-                        title="Rename chat"
-                      >
-                        ✎
-                      </button>
-                    )}
-                  </div>
-                )}
-                <p className="caption-text text-xs mt-0.5">Ask anything and keep the conversation going.</p>
-              </div>
-
-              <div className="flex items-center gap-2 flex-none">
-                {activeConversation && (
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="text-amber-500 dark:text-amber-400 font-extrabold text-base sm:text-lg">✦</span>
+              {editingId === activeConversation?._id ? (
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <input
+                    value={renameDraft}
+                    onChange={(e) => setRenameDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') saveRename(activeConversation._id)
+                      if (e.key === 'Escape') setEditingId(null)
+                    }}
+                    className="saas-input min-h-[32px] px-2.5 py-0.5 text-xs w-36 sm:w-48 bg-[var(--bg-input)] border-[var(--border-main)] text-[var(--text-primary)]"
+                    autoFocus
+                  />
                   <button
                     type="button"
-                    onClick={(e) => deleteConversation(activeConversation.id, e)}
-                    className="saas-button-secondary min-h-[36px] px-3 text-xs hover:border-[var(--error-color)] hover:text-[var(--error-color)]"
-                    title="Delete current chat"
+                    onClick={() => saveRename(activeConversation._id)}
+                    className="text-xs text-emerald-500 font-bold px-2 py-1 hover:bg-[var(--bg-elevated)] rounded"
                   >
-                    🗑️ Delete
+                    ✓
                   </button>
-                )}
-                <button type="button" onClick={() => setShowHistoryMobile(true)} className="saas-button-secondary min-h-[36px] px-3 text-xs md:hidden">
-                  History
-                </button>
-                <button type="button" onClick={startNewConversation} className="saas-button-primary min-h-[36px] px-3 text-xs">
-                  + New chat
-                </button>
-              </div>
-            </div>
-            <div className="flex-1 min-h-0 p-3 sm:p-4">
-              {activeConversation && (
-                <AIChatSurface
-                  api={api}
-                  messages={activeConversation.messages}
-                  setMessages={(messages) => handleMessagesChange(messages)}
-                  welcomeMessage="Hi! I can help you with notes, study plans, summaries, or questions across the app."
-                  title="AI assistant"
-                  subtitle="Study companion"
-                  placeholder="Ask for help with your studies..."
-                  className="h-full"
-                  showHeader={false}
-                />
+                  <button
+                    type="button"
+                    onClick={() => setEditingId(null)}
+                    className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] px-1.5 py-1"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-sm sm:text-base font-bold text-[var(--ai-bold-text)] truncate max-w-[140px] sm:max-w-[280px]">
+                    {activeConversation?.title || 'Catalyst AI'}
+                  </span>
+                  {activeConversation && (
+                    <button
+                      type="button"
+                      onClick={(e) => startRenaming(activeConversation, e)}
+                      className="text-xs text-[var(--ai-text-secondary)] hover:text-amber-400 p-1 cursor-pointer transition text-sm"
+                      title="Rename conversation"
+                    >
+                      ✏
+                    </button>
+                  )}
+                </div>
               )}
             </div>
+          </div>
+
+          {/* Action Icons Bar */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            {activeConversation && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setDeleteConfirmId(activeConversation._id)
+                }}
+                className="inline-flex items-center justify-center gap-1.5 h-9 px-3 rounded-xl border border-[var(--ai-bubble-border)] bg-[var(--bg-surface)] text-xs font-semibold text-[var(--ai-text-primary)] hover:border-red-500/50 hover:text-red-500 transition cursor-pointer shadow-xs active:scale-95"
+                title="Delete current conversation"
+              >
+                <span className="text-sm">🗑</span>
+                <span className="hidden sm:inline">Delete</span>
+              </button>
+            )}
+
+            {/* Monochromatic New Chat Button */}
+            <button
+              type="button"
+              onClick={startNewConversation}
+              className="inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-xl border border-[var(--border-main)] bg-[var(--bg-surface)] text-xs font-semibold text-[var(--text-primary)] hover:border-amber-400/50 hover:text-amber-500 dark:hover:text-amber-400 transition cursor-pointer shadow-xs active:scale-95"
+              title="Start new conversation"
+            >
+              <svg className="w-3.5 h-3.5 shrink-0 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" />
+              </svg>
+              <span className="hidden sm:inline">New Chat</span>
+            </button>
+
+            {/* Separator spacing before Close button */}
+            <button
+              type="button"
+              onClick={() => setIsOpen(false)}
+              className="inline-flex items-center justify-center h-9 w-9 rounded-xl border border-[var(--ai-bubble-border)] bg-[var(--bg-surface)] text-[var(--ai-text-secondary)] hover:text-[var(--ai-text-primary)] hover:border-amber-400/50 transition cursor-pointer text-base active:scale-95 shadow-xs ml-1 sm:ml-2"
+              title="Close modal"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+
+        {/* Workspace Body: Collapsible Sidebar + Expanded Conversation Container */}
+        <div className="flex flex-1 overflow-hidden relative">
+          {/* ChatGPT Style Collapsible History Sidebar */}
+          {isSidebarOpen && (
+            <aside className="w-full sm:w-64 md:w-72 flex-col border-r border-[var(--ai-bubble-border)] bg-[var(--ai-sidebar-bg)] flex shrink-0 transition-all duration-200">
+              <div className="flex items-center justify-between border-b border-[var(--ai-bubble-border)] px-4 py-2.5">
+                <span className="text-xs font-bold uppercase tracking-wider text-[var(--ai-text-secondary)]">History</span>
+                <button
+                  type="button"
+                  onClick={startNewConversation}
+                  className="text-xs font-bold text-amber-600 dark:text-amber-400 hover:underline cursor-pointer"
+                >
+                  + New
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-2.5 custom-scrollbar space-y-1">
+                {conversations
+                  .slice()
+                  .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
+                  .map((conversation) => {
+                    const isActive = activeConversationId === conversation._id
+                    return (
+                      <div
+                        key={conversation._id}
+                        onClick={() => selectConversation(conversation._id)}
+                        className={`group relative flex items-center justify-between rounded-xl px-3 py-2.5 text-xs font-medium cursor-pointer transition ${
+                          isActive
+                            ? 'bg-[var(--bg-elevated)] text-amber-600 dark:text-amber-400 border border-amber-400/40 shadow-xs font-semibold'
+                            : 'text-[var(--ai-text-primary)] hover:bg-[var(--bg-surface)] border border-transparent'
+                        }`}
+                      >
+                        <div className="flex-1 min-w-0 pr-2">
+                          <p className="truncate font-semibold">{conversation.title || 'New Chat'}</p>
+                          <p className="text-[10px] text-[var(--ai-text-secondary)] mt-0.5">
+                            {new Date(conversation.updatedAt).toLocaleDateString()}
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-1 opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            type="button"
+                            onClick={(e) => startRenaming(conversation, e)}
+                            className="p-1.5 rounded-lg text-[var(--ai-text-secondary)] hover:text-amber-500 dark:hover:text-amber-400 hover:bg-[var(--bg-elevated)] text-sm transition cursor-pointer"
+                            title="Rename chat"
+                          >
+                            ✏
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setDeleteConfirmId(conversation._id)
+                            }}
+                            className="p-1.5 rounded-lg text-[var(--ai-text-secondary)] hover:text-red-500 hover:bg-red-500/10 text-sm transition cursor-pointer"
+                            title="Delete chat"
+                          >
+                            🗑
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })}
+              </div>
+            </aside>
+          )}
+
+          {/* Conversation Surface (Expands to 100% when sidebar is collapsed) */}
+          <div className="flex-1 flex flex-col min-w-0 bg-[var(--ai-chat-bg)] p-2 sm:p-4">
+            {activeConversation ? (
+              <AIChatSurface
+                api={api}
+                conversationId={activeConversation._id}
+                onConversationUpdate={handleConversationUpdate}
+                welcomeMessage="Hi! I can help you with notes, study plans, summaries, or questions across the app."
+                title="AI assistant"
+                subtitle="Study companion"
+                placeholder="Ask for help with your studies..."
+                className="h-full"
+                showHeader={false}
+              />
+            ) : (
+              <div className="flex h-full flex-col items-center justify-center text-[var(--ai-text-secondary)] text-sm gap-3">
+                <p>No active conversation.</p>
+                <button
+                  type="button"
+                  onClick={startNewConversation}
+                  className="saas-button-primary min-h-[38px] px-4 text-xs font-bold shadow-sm"
+                >
+                  + Start New Chat
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -1,10 +1,25 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
-import ReactMarkdown from 'react-markdown'
+import MarkdownRenderer from '../components/MarkdownRenderer.jsx'
+import CopyButton from '../components/CopyButton.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
+import { useNotifications } from '../context/NotificationContext.jsx'
 import AIChatSurface from '../components/AIChatSurface.jsx'
 import getSocket from '../api/socket.js'
 
-const MAX_MEMBERS = 15
+const MAX_MEMBERS = 70
+
+function getUniqueMembers(members = []) {
+  if (!Array.isArray(members)) return []
+  const map = new Map()
+  for (const m of members) {
+    if (!m) continue
+    const id = (m._id || m).toString()
+    if (!map.has(id)) {
+      map.set(id, m)
+    }
+  }
+  return Array.from(map.values())
+}
 
 function GroupChatAI({ groupId, api, onShareToGroup }) {
   const [messages, setMessages] = useState(() => {
@@ -65,6 +80,7 @@ function GroupChatAI({ groupId, api, onShareToGroup }) {
 
 export default function StudyGroupPage() {
   const { api, user } = useAuth()
+  const { sendInvite, subscribeGroupJoined } = useNotifications()
   const [query, setQuery] = useState('')
   const [searchResults, setSearchResults] = useState([])
   const [incomingRequests, setIncomingRequests] = useState([])
@@ -87,29 +103,112 @@ export default function StudyGroupPage() {
   const [isRenaming, setIsRenaming] = useState(false)
   const [isEditingGroupName, setIsEditingGroupName] = useState(false)
   const [showSettingsPopover, setShowSettingsPopover] = useState(false)
+  const [copiedToast, setCopiedToast] = useState(false)
   const [isAiProcessing, setIsAiProcessing] = useState(false)
+  const [hasMoreMessages, setHasMoreMessages] = useState(true)
+  const [loadingOlder, setLoadingOlder] = useState(false)
+  const [hasUnreadNew, setHasUnreadNew] = useState(false)
+  const [confirmModal, setConfirmModal] = useState({ open: false, type: null, groupId: null, groupName: '' })
 
   const messagesEndRef = useRef(null)
+  const scrollContainerRef = useRef(null)
   const typingTimeoutRef = useRef(null)
+
+  const executeConfirmAction = async () => {
+    if (!confirmModal.groupId) return
+    const { type, groupId, groupName } = confirmModal
+    setStatus('')
+    setError('')
+
+    try {
+      if (type === 'delete') {
+        await api.delete(`/study-groups/groups/${groupId}`)
+        setStatus(`Study group "${groupName || 'Group'}" deleted successfully.`)
+      } else {
+        await api.post(`/study-groups/groups/${groupId}/leave`)
+        setStatus(`Left study group "${groupName || 'Group'}" successfully.`)
+      }
+      setGroups((prev) => prev.filter((g) => g._id !== groupId))
+      if (selectedGroupId === groupId) {
+        setSelectedGroupId(null)
+      }
+      clearTransientMessage()
+    } catch (err) {
+      setError(err.response?.data?.error || `Failed to ${type} group`)
+    } finally {
+      setConfirmModal({ open: false, type: null, groupId: null, groupName: '' })
+    }
+  }
 
   const selectedGroup = useMemo(
     () => groups.find((group) => group._id === selectedGroupId) || null,
     [groups, selectedGroupId]
   )
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
+  const uniqueGroupMembers = useMemo(
+    () => getUniqueMembers(selectedGroup?.members),
+    [selectedGroup?.members]
+  )
+
+  const currentUserId = (user?.id || user?._id || '').toString()
+  const hostUserId = (selectedGroup?.createdBy?._id || selectedGroup?.createdBy || '').toString()
+  const isCurrentHost = Boolean(currentUserId && hostUserId && currentUserId === hostUserId)
+
+  const handleTransferHost = async (targetMemberId, targetMemberName) => {
+    if (!selectedGroupId || !targetMemberId) return
+    setStatus('')
+    setError('')
+    try {
+      const res = await api.post(`/study-groups/groups/${selectedGroupId}/transfer-host`, { newHostId: targetMemberId })
+      setStatus(`👑 Host role transferred to ${targetMemberName}!`)
+      if (res.data?.group) {
+        setGroups((prev) => prev.map((g) => (g._id === selectedGroupId ? res.data.group : g)))
+      }
+      clearTransientMessage()
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to transfer Host role')
+    }
+  }
+
+  const handleRemoveMember = async (targetMemberId, targetMemberName) => {
+    if (!selectedGroupId || !targetMemberId) return
+    setStatus('')
+    setError('')
+    try {
+      const res = await api.post(`/study-groups/groups/${selectedGroupId}/remove-member`, { userId: targetMemberId })
+      setStatus(`🚫 Removed ${targetMemberName} from group.`)
+      if (res.data?.group) {
+        setGroups((prev) => prev.map((g) => (g._id === selectedGroupId ? res.data.group : g)))
+      }
+      clearTransientMessage()
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to remove member')
+    }
+  }
+
+  const scrollToBottom = (behavior = 'smooth') => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTo({
+        top: scrollContainerRef.current.scrollHeight,
+        behavior
+      })
+    } else {
+      messagesEndRef.current?.scrollIntoView({ behavior })
+    }
+  }
+
+  const isNearBottom = () => {
+    const container = scrollContainerRef.current
+    if (!container) return true
+    const threshold = 120
+    return container.scrollHeight - container.scrollTop - container.clientHeight <= threshold
+  }
 
   useEffect(() => {
     async function loadInitialData() {
       try {
-        const [groupsResp, requestsResp] = await Promise.all([
-          api.get('/study-groups/groups'),
-          api.get('/study-groups/requests/incoming')
-        ])
+        const groupsResp = await api.get('/study-groups/groups')
         setGroups(groupsResp.data)
-        setIncomingRequests(requestsResp.data)
       } catch (err) {
         setError('Unable to load study group dashboard')
       }
@@ -117,20 +216,127 @@ export default function StudyGroupPage() {
     loadInitialData()
   }, [api])
 
+  useEffect(() => {
+    if (!subscribeGroupJoined) return
+    const unsubscribe = subscribeGroupJoined((newGroup) => {
+      if (newGroup?._id) {
+        setGroups((prev) => {
+          if (prev.some((g) => g._id === newGroup._id)) {
+            return prev.map((g) => (g._id === newGroup._id ? newGroup : g))
+          }
+          return [...prev, newGroup]
+        })
+        setStatus(`Joined "${newGroup.groupName || 'Study Group'}"!`)
+        clearTransientMessage()
+      } else {
+        api.get('/study-groups/groups').then((res) => setGroups(res.data)).catch(() => {})
+      }
+    })
+    return () => unsubscribe()
+  }, [subscribeGroupJoined, api])
+
+  useEffect(() => {
+    const unsubscribe = subscribeGroupJoined((newGroup) => {
+      if (!newGroup) return
+      setGroups((prev) => {
+        if (prev.some((g) => g._id === newGroup._id)) {
+          return prev.map((g) => (g._id === newGroup._id ? newGroup : g))
+        }
+        return [...prev, newGroup]
+      })
+      setSelectedGroupId((prev) => prev || newGroup._id)
+    })
+    return unsubscribe
+  }, [subscribeGroupJoined])
+
+  const loadOlderMessages = async () => {
+    if (loadingOlder || !hasMoreMessages || !selectedGroupId || messages.length === 0) return
+
+    const container = scrollContainerRef.current
+    if (!container) return
+
+    const oldestMsg = messages[0]
+    if (!oldestMsg || !oldestMsg._id) return
+
+    setLoadingOlder(true)
+    const oldScrollHeight = container.scrollHeight
+    const oldScrollTop = container.scrollTop
+
+    try {
+      const response = await api.get(`/study-groups/groups/${selectedGroupId}/messages`, {
+        params: { limit: 30, before: oldestMsg._id }
+      })
+      const older = response.data || []
+      if (older.length < 30) {
+        setHasMoreMessages(false)
+      }
+
+      if (older.length > 0) {
+        setMessages((prev) => {
+          const prevIds = new Set(prev.map((m) => m._id))
+          const filteredNew = older.filter((m) => !prevIds.has(m._id))
+          return [...filteredNew, ...prev]
+        })
+
+        // Preserve scroll position without jumping
+        requestAnimationFrame(() => {
+          if (container) {
+            const newScrollHeight = container.scrollHeight
+            container.scrollTop = oldScrollTop + (newScrollHeight - oldScrollHeight)
+          }
+        })
+      }
+    } catch {
+      // Keep UI intact on transient network error
+    } finally {
+      setLoadingOlder(false)
+    }
+  }
+
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false)
+
+  const handleScroll = () => {
+    const container = scrollContainerRef.current
+    if (!container) return
+
+    if (container.scrollTop <= 60 && hasMoreMessages && !loadingOlder) {
+      loadOlderMessages()
+    }
+
+    if (isNearBottom()) {
+      setHasUnreadNew(false)
+      setShowScrollToBottom(false)
+    } else {
+      setShowScrollToBottom(true)
+    }
+  }
+
   // Socket & Group Messages Lifecycle
   useEffect(() => {
     if (!selectedGroupId) {
       setMessages([])
       setOnlineMembers([])
       setTypingUsers([])
+      setHasMoreMessages(true)
+      setHasUnreadNew(false)
       return
     }
 
-    // 1. Fetch initial message history via REST once
+    // 1. Fetch initial message history (latest 35 messages) via REST
     async function loadMessages() {
       try {
-        const response = await api.get(`/study-groups/groups/${selectedGroupId}/messages`)
-        setMessages(response.data)
+        const response = await api.get(`/study-groups/groups/${selectedGroupId}/messages`, {
+          params: { limit: 35 }
+        })
+        const initialMsgs = response.data || []
+        setMessages(initialMsgs)
+        setHasMoreMessages(initialMsgs.length >= 35)
+        setHasUnreadNew(false)
+        requestAnimationFrame(() => {
+          if (scrollContainerRef.current) {
+            scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight
+          }
+        })
       } catch (err) {
         setError('Unable to load group messages')
       }
@@ -152,19 +358,82 @@ export default function StudyGroupPage() {
       socket.emit('join_group', { groupId: selectedGroupId })
     }
 
-    // Single source of message updates - dedupe by _id
+    // Single source of message updates - dedupe & resolve optimistic messages
     const handleReceiveMessage = (newMessage) => {
+      const senderId = newMessage.sender?._id || newMessage.sender
+      const currentId = (user?.id || user?._id || '').toString()
+      const isSelf = senderId?.toString() === currentId
+
       setMessages((prev) => {
-        if (prev.some((msg) => msg._id === newMessage._id)) {
-          return prev
+        const matchIndex = prev.findIndex((m) => m._id === newMessage._id || (m.isOptimistic && m.message === newMessage.message))
+        if (matchIndex !== -1) {
+          const updated = [...prev]
+          updated[matchIndex] = newMessage
+          return updated
         }
         return [...prev, newMessage]
       })
+
+      if (isSelf || isNearBottom()) {
+        requestAnimationFrame(() => {
+          scrollToBottom('smooth')
+          setHasUnreadNew(false)
+        })
+      } else {
+        setHasUnreadNew(true)
+      }
     }
 
     // Presence update
     const handlePresenceUpdate = (users) => {
       setOnlineMembers(users || [])
+    }
+
+    const handleMemberJoined = ({ groupId }) => {
+      api.get('/study-groups/groups').then((res) => {
+        setGroups(res.data)
+      }).catch(() => {})
+    }
+
+    const handleMemberLeft = ({ groupId }) => {
+      api.get('/study-groups/groups').then((res) => {
+        setGroups(res.data)
+      }).catch(() => {})
+    }
+
+    const handleGroupUpdated = (updatedGroup) => {
+      if (!updatedGroup?._id) return
+      setGroups((prev) => {
+        if (prev.some((g) => g._id === updatedGroup._id)) {
+          return prev.map((g) => (g._id === updatedGroup._id ? updatedGroup : g))
+        }
+        return [...prev, updatedGroup]
+      })
+    }
+
+    const handleHostChanged = ({ groupId, newHostName }) => {
+      api.get('/study-groups/groups').then((res) => {
+        setGroups(res.data)
+      }).catch(() => {})
+    }
+
+    const handleMemberRemoved = ({ userId, groupId }) => {
+      const currentId = (user?.id || user?._id || '').toString()
+      if (userId === currentId && groupId === selectedGroupId) {
+        setSelectedGroupId(null)
+        setStatus('You were removed from the study group by the Host.')
+      }
+      api.get('/study-groups/groups').then((res) => {
+        setGroups(res.data)
+      }).catch(() => {})
+    }
+
+    const handleGroupDeleted = ({ groupId }) => {
+      if (groupId === selectedGroupId) {
+        setSelectedGroupId(null)
+        setStatus('The study group was deleted by the Host.')
+      }
+      setGroups((prev) => prev.filter((g) => g._id !== groupId))
     }
 
     // Typing indicators
@@ -182,6 +451,12 @@ export default function StudyGroupPage() {
     socket.on('connect', handleConnect)
     socket.on('receive_message', handleReceiveMessage)
     socket.on('presence_update', handlePresenceUpdate)
+    socket.on('member_joined', handleMemberJoined)
+    socket.on('member_left', handleMemberLeft)
+    socket.on('group_updated', handleGroupUpdated)
+    socket.on('host_changed', handleHostChanged)
+    socket.on('member_removed', handleMemberRemoved)
+    socket.on('group_deleted', handleGroupDeleted)
     socket.on('user_typing', handleUserTyping)
     socket.on('user_stop_typing', handleUserStopTyping)
 
@@ -191,10 +466,16 @@ export default function StudyGroupPage() {
       socket.off('connect', handleConnect)
       socket.off('receive_message', handleReceiveMessage)
       socket.off('presence_update', handlePresenceUpdate)
+      socket.off('member_joined', handleMemberJoined)
+      socket.off('member_left', handleMemberLeft)
+      socket.off('group_updated', handleGroupUpdated)
+      socket.off('host_changed', handleHostChanged)
+      socket.off('member_removed', handleMemberRemoved)
+      socket.off('group_deleted', handleGroupDeleted)
       socket.off('user_typing', handleUserTyping)
       socket.off('user_stop_typing', handleUserStopTyping)
     }
-  }, [api, selectedGroupId])
+  }, [api, selectedGroupId, user])
 
   const refreshDashboard = async () => {
     try {
@@ -255,46 +536,52 @@ export default function StudyGroupPage() {
     }
   }
 
-  const sendMessage = async () => {
-    const trimmed = messageText.trim()
-    if (!trimmed || !selectedGroupId) return
+  const [groupSelectedProvider, setGroupSelectedProvider] = useState(() => {
+    return localStorage.getItem('ai_provider') || 'gemini'
+  })
 
+  const sendMessage = () => {
+    if (!messageText.trim() || !selectedGroupId) return
+
+    const trimmed = messageText.trim()
+    const tempId = `temp_${Date.now()}_${Math.random()}`
+
+    // 1. Instant Optimistic Local Update (0ms latency response)
+    const optimisticMsg = {
+      _id: tempId,
+      groupId: selectedGroupId,
+      sender: { _id: user?.id || user?._id, name: user?.name || 'You', email: user?.email },
+      message: trimmed,
+      createdAt: new Date().toISOString(),
+      isOptimistic: true
+    }
+
+    setMessages((prev) => [...prev, optimisticMsg])
+    setMessageText('')
+
+    requestAnimationFrame(() => {
+      scrollToBottom('smooth')
+      setHasUnreadNew(false)
+    })
+
+    // Show AI loading indicator if user triggered @ai
+    if (trimmed.toLowerCase().includes('@ai')) {
+      setIsAiProcessing(true)
+      setTimeout(() => setIsAiProcessing(false), 8000)
+    }
+
+    // 2. Emit over WebSocket in background
     const socket = getSocket()
     if (socket && socket.connected) {
       socket.emit('send_message', {
         groupId: selectedGroupId,
-        message: trimmed
+        message: trimmed,
+        provider: groupSelectedProvider
       })
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current)
       }
       socket.emit('stop_typing', { groupId: selectedGroupId })
-    }
-    setMessageText('')
-
-    // Support trigger for @ai in group chat so AI responds directly in group chat stream
-    if (trimmed.toLowerCase().startsWith('@ai')) {
-      const aiPrompt = trimmed.replace(/^@ai\s*/i, '').trim()
-      if (aiPrompt) {
-        setIsAiProcessing(true)
-        try {
-          const aiRes = await api.post('/ai/chat', {
-            message: aiPrompt,
-            history: []
-          })
-          const reply = aiRes.data?.response || aiRes.data?.reply
-          if (reply && socket && socket.connected) {
-            socket.emit('send_message', {
-              groupId: selectedGroupId,
-              message: `🤖 [AI Response to "@ai ${aiPrompt}"]\n${reply}`
-            })
-          }
-        } catch {
-          // ignore silent AI errors in chat stream
-        } finally {
-          setIsAiProcessing(false)
-        }
-      }
     }
   }
 
@@ -336,8 +623,8 @@ export default function StudyGroupPage() {
     setError('')
 
     try {
-      await api.post(`/study-groups/groups/${selectedGroupId}/invite`, { userId })
-      setStatus('Invite sent. The user can accept or reject it from their requests list.')
+      await sendInvite({ groupId: selectedGroupId, targetUserId: userId })
+      setStatus('Invite sent! The member will receive it instantly in their notification bell.')
       clearTransientMessage()
       setInviteResults((prev) => prev.filter((u) => u._id !== userId))
     } catch (err) {
@@ -386,18 +673,15 @@ export default function StudyGroupPage() {
     }
   }
 
-  const hostUserId = selectedGroup?.createdBy?._id || selectedGroup?.createdBy
-  const currentUserId = user?.id || user?._id
-
   return (
-    <main className="h-[calc(100vh-80px)] min-h-0 bg-[var(--bg-primary)] text-[var(--text-primary)] overflow-hidden flex flex-col">
+    <main className="h-[calc(100vh-90px)] min-h-0 bg-[var(--bg-primary)] text-[var(--text-primary)] overflow-hidden flex flex-col">
       {selectedGroupId && selectedGroup ? (
-        <div className="mx-auto flex h-full max-w-6xl w-full flex-col gap-3 p-3 sm:p-5 min-h-0 overflow-hidden">
-          {/* Group Header Card */}
-          <div className="saas-card shadow-glow flex-none py-3 px-4 sm:px-6">
+        <div className="mx-auto flex h-full max-w-[1280px] w-full flex-col p-2 sm:p-4 min-h-0 overflow-hidden space-y-3">
+          {/* Compressed Study Group Workspace Header (Target height 80-100px) */}
+          <div className="flex-none py-2.5 px-3 sm:px-4 rounded-[18px] border border-[var(--border-main)] bg-[var(--bg-surface)] shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center gap-2">
                   {isEditingGroupName && hostUserId === currentUserId ? (
                     <input
                       value={renameDraft}
@@ -412,11 +696,11 @@ export default function StudyGroupPage() {
                           setRenameDraft(selectedGroup.groupName || '')
                         }
                       }}
-                      className="saas-input max-w-[220px] min-h-[36px] py-1 text-sm"
+                      className="saas-input max-w-[240px] min-h-[38px] py-1 text-sm font-bold"
                       autoFocus
                     />
                   ) : (
-                    <h1 className="section-title text-xl font-bold break-words">{selectedGroup.groupName || 'Study Group'}</h1>
+                    <h1 className="text-lg sm:text-xl font-extrabold text-[var(--text-primary)] truncate">{selectedGroup.groupName || 'Study Group'}</h1>
                   )}
                   {hostUserId === currentUserId && !isEditingGroupName && (
                     <button
@@ -425,53 +709,55 @@ export default function StudyGroupPage() {
                         setRenameDraft(selectedGroup.groupName || '')
                         setIsEditingGroupName(true)
                       }}
-                      className="rounded-full border border-[var(--border-main)] bg-[var(--bg-secondary)] p-1.5 text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                      className="rounded-full border border-[var(--border-main)] bg-[var(--bg-secondary)] p-1 text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] shrink-0"
                       aria-label="Rename group"
                     >
                       ✎
                     </button>
                   )}
                   {isEditingGroupName && hostUserId === currentUserId && (
-                    <div className="flex gap-2">
-                      <button type="button" onClick={renameGroup} disabled={isRenaming} className="saas-button-primary min-h-[36px] px-3 text-xs">
+                    <div className="flex gap-1.5 shrink-0">
+                      <button type="button" onClick={renameGroup} disabled={isRenaming} className="saas-button-primary min-h-[34px] px-2.5 text-xs font-bold">
                         {isRenaming ? 'Saving...' : 'Save'}
                       </button>
-                      <button type="button" onClick={() => { setIsEditingGroupName(false); setRenameDraft(selectedGroup.groupName || '') }} className="saas-button-secondary min-h-[36px] px-3 text-xs">
+                      <button type="button" onClick={() => { setIsEditingGroupName(false); setRenameDraft(selectedGroup.groupName || '') }} className="saas-button-secondary min-h-[34px] px-2.5 text-xs font-semibold">
                         Cancel
                       </button>
                     </div>
                   )}
                 </div>
-                <div className="flex flex-wrap items-center gap-3 mt-1">
-                  <p className="small-text text-xs">
-                    {selectedGroup.members?.length || 0}/{selectedGroup.maxMembers || MAX_MEMBERS} members
-                  </p>
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--success-bg)] px-2.5 py-0.5 text-[11px] font-medium text-[var(--success-color)]">
+                <div className="flex flex-wrap items-center gap-2 mt-1 text-xs font-medium text-[var(--text-secondary)]">
+                  <span>{uniqueGroupMembers?.length || selectedGroup.members?.length || 0}/{!selectedGroup.maxMembers || selectedGroup.maxMembers <= 15 ? 70 : selectedGroup.maxMembers} Members</span>
+                  <span>•</span>
+                  <span className="inline-flex items-center gap-1 font-bold text-[var(--success-color)]">
                     <span className="h-1.5 w-1.5 rounded-full bg-[var(--success-color)] animate-pulse" />
-                    {onlineMembers.length} online
+                    {onlineMembers.length} Online
                   </span>
                   {hostUserId === currentUserId && (
-                    <span className="inline-flex items-center rounded-full bg-[var(--accent-light)] px-2.5 py-0.5 text-[11px] font-semibold text-[var(--accent-color)] border border-[var(--accent-color)]/30">
-                      Host
-                    </span>
+                    <>
+                      <span>•</span>
+                      <span className="font-bold text-[var(--accent-color)]">Host</span>
+                    </>
                   )}
                 </div>
               </div>
 
-              {/* Action Buttons Header */}
-              <div className="flex flex-wrap items-center gap-2">
+              {/* Action Buttons Header Row */}
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
                 <button
                   type="button"
                   onClick={() => setShowAiModal(true)}
-                  className="saas-button-primary min-h-[36px] px-3.5 text-xs font-bold flex items-center gap-1.5 shadow-sm"
+                  className="saas-button-primary min-h-[38px] px-3.5 text-xs font-bold flex items-center gap-1.5 shadow-sm"
                 >
-                  <span className="text-sm">✨</span>
+                  <svg className="w-4 h-4 text-black shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                  </svg>
                   <span>AI Companion</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowInviteModal(true)}
-                  className="saas-button-primary min-h-[36px] px-3.5 text-xs"
+                  className="saas-button-primary min-h-[38px] px-3.5 text-xs font-bold"
                   disabled={(selectedGroup.members?.length || 0) >= (selectedGroup.maxMembers || MAX_MEMBERS)}
                 >
                   Invite
@@ -479,16 +765,49 @@ export default function StudyGroupPage() {
                 <button
                   type="button"
                   onClick={() => setShowMembersModal(true)}
-                  className="saas-button-secondary min-h-[36px] px-3.5 text-xs"
+                  className="saas-button-secondary min-h-[38px] px-3.5 text-xs font-semibold"
                 >
                   Members
                 </button>
                 <button
                   type="button"
-                  onClick={() => setSelectedGroupId(null)}
-                  className="saas-button-secondary min-h-[36px] px-3.5 text-xs"
+                  onClick={() => setShowSettingsPopover((prev) => !prev)}
+                  className="saas-button-secondary min-h-[38px] px-3.5 text-xs font-bold flex items-center gap-1.5"
                 >
-                  Close
+                  <svg className="w-4 h-4 text-[var(--text-secondary)] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                  </svg>
+                  <span>Join Code</span>
+                </button>
+                {hostUserId === currentUserId ? (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmModal({ open: true, type: 'delete', groupId: selectedGroup._id, groupName: selectedGroup.groupName })}
+                    className="saas-button-secondary min-h-[38px] px-3 text-xs font-semibold text-[var(--error-color)] border-[var(--error-color)]/30 hover:bg-[var(--error-bg)] flex items-center gap-1.5"
+                  >
+                    <svg className="w-4 h-4 text-[var(--error-color)] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    <span>Delete Group</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmModal({ open: true, type: 'leave', groupId: selectedGroup._id, groupName: selectedGroup.groupName })}
+                    className="saas-button-secondary min-h-[38px] px-3 text-xs font-semibold hover:text-[var(--error-color)] hover:border-[var(--error-color)] flex items-center gap-1.5"
+                  >
+                    <svg className="w-4 h-4 text-[var(--text-secondary)] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                    <span>Leave Group</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setSelectedGroupId(null)}
+                  className="saas-button-secondary min-h-[38px] px-3 text-xs font-semibold"
+                >
+                  ✕ Exit
                 </button>
               </div>
             </div>
@@ -557,9 +876,9 @@ export default function StudyGroupPage() {
                     <p className="small-text mt-1">Everyone currently in this study group.</p>
                   </div>
                   <div className="space-y-3 max-h-80 overflow-y-auto custom-scrollbar">
-                    {selectedGroup.members?.map((member) => {
-                      const memberId = member._id || member
-                      const isOnline = onlineMembers.some((u) => u.userId === memberId)
+                    {uniqueGroupMembers.map((member) => {
+                      const memberId = (member._id || member).toString()
+                      const isOnline = onlineMembers.some((u) => (u.userId || u._id || u).toString() === memberId)
                       const isHost = hostUserId === memberId
 
                       return (
@@ -583,9 +902,32 @@ export default function StudyGroupPage() {
                               <p className="caption-text">{member.email}</p>
                             </div>
                           </div>
-                          {isHost && (
-                            <span className="rounded-full bg-[var(--accent-color)] px-3 py-1 text-xs font-semibold text-black">Host</span>
-                          )}
+                          <div className="flex items-center gap-2 shrink-0">
+                            {isHost ? (
+                              <span className="rounded-full bg-[var(--accent-color)] px-2.5 py-1 text-[11px] font-bold text-black flex items-center gap-1 shadow-sm shrink-0">
+                                👑 Host
+                              </span>
+                            ) : isCurrentHost ? (
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => handleTransferHost(memberId, member.name)}
+                                  className="rounded-[10px] border border-[var(--border-main)] bg-[var(--bg-primary)] px-2.5 py-1 text-[11px] font-bold text-[var(--text-primary)] whitespace-nowrap hover:border-[var(--accent-color)] hover:text-[var(--accent-color)] transition-colors shadow-xs"
+                                  title="Transfer Host privileges to this member"
+                                >
+                                  👑 Make Host
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveMember(memberId, member.name)}
+                                  className="rounded-[10px] border border-[var(--error-color)]/30 bg-[var(--bg-primary)] px-2.5 py-1 text-[11px] font-bold text-[var(--error-color)] whitespace-nowrap hover:bg-[var(--error-bg)] transition-colors shadow-xs"
+                                  title="Remove member from group"
+                                >
+                                  ✕ Remove
+                                </button>
+                              </div>
+                            ) : null}
+                          </div>
                         </div>
                       )
                     })}
@@ -640,113 +982,188 @@ export default function StudyGroupPage() {
               </div>
             )}
 
-          {/* Unified Single Chat Box: Header + Scrollable Messages Stream + Pinned Bottom Input */}
-          <div className="saas-card shadow-glow flex-1 min-h-0 flex flex-col p-3 sm:p-5 overflow-hidden">
-            {/* Stream Header */}
-            <div className="flex-none mb-2 flex items-center justify-between border-b border-[var(--divider-main)] pb-2.5">
-              <div>
-                <p className="caption-text uppercase tracking-[0.24em] text-[var(--accent-color)] font-semibold">Live Stream</p>
-                <h2 className="section-title text-lg">Group Chat</h2>
+          {/* Study Group Collaboration Workspace Chat Area (Occupies 75-80% of Viewport) */}
+          <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+            {/* Floating Toast Notification Popup */}
+            {copiedToast && (
+              <div className="fixed top-6 right-6 z-[100] rounded-[16px] bg-[var(--accent-color)] text-black font-extrabold px-5 py-3 shadow-2xl flex items-center gap-2.5 animate-fadeIn border border-black/20 text-sm">
+                <span className="text-base">✓</span>
+                <span>Join code copied to clipboard!</span>
               </div>
-              <button
-                type="button"
-                onClick={() => setShowSettingsPopover((prev) => !prev)}
-                className="rounded-full border border-[var(--border-main)] bg-[var(--bg-secondary)] px-3 py-1 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-              >
-                Settings
-              </button>
-            </div>
+            )}
 
             {showSettingsPopover && (
-              <div className="flex-none mb-2 rounded-[16px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-3">
+              <div className="flex-none mb-2 rounded-[16px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-3.5 shadow-sm">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-sm font-semibold text-[var(--text-primary)]">Join code</p>
-                    <p className="caption-text">{selectedGroup.joinCode || '—'}</p>
+                    <p className="text-xs font-bold text-[var(--text-primary)]">Group Join Code</p>
+                    <p className="caption-text font-mono text-sm tracking-wider text-[var(--accent-color)] font-bold">{selectedGroup.joinCode || '—'}</p>
                   </div>
                   <button
                     type="button"
-                    onClick={() => navigator.clipboard?.writeText(selectedGroup.joinCode || '')}
-                    className="saas-button-secondary min-h-[36px] px-3 text-xs"
+                    onClick={() => {
+                      if (selectedGroup?.joinCode) {
+                        navigator.clipboard?.writeText(selectedGroup.joinCode)
+                      }
+                      setShowSettingsPopover(false)
+                      setStatus('Join code copied to clipboard!')
+                      setCopiedToast(true)
+                      clearTransientMessage()
+                      setTimeout(() => setCopiedToast(false), 3000)
+                    }}
+                    className="saas-button-primary min-h-[34px] px-4 text-xs font-bold shadow-sm"
                   >
-                    Copy
+                    Copy Code
                   </button>
                 </div>
               </div>
             )}
 
-            {/* Scrollable Messages Stream with Rich Markdown Support */}
-            <div className="flex-1 min-h-0 overflow-y-auto rounded-[18px] border border-[var(--border-main)] bg-[var(--bg-secondary)]/50 p-3 sm:p-4 custom-scrollbar">
-              <div className="space-y-3">
-                {messages.length > 0 ? (
-                  messages.map((msg) => {
-                    const senderId = msg.sender?._id || msg.sender
-                    const isSelf = senderId === currentUserId
-                    const isAiMsg = msg.message?.startsWith('🤖') || senderId === 'ai'
-                    const formattedTime = new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            {/* Scrollable Messages Stream (Reverse Infinite Scroll, 75-80% height) */}
+            <div
+              ref={scrollContainerRef}
+              onScroll={handleScroll}
+              className="relative flex-1 min-h-0 overflow-y-auto py-2 px-1 custom-scrollbar space-y-3"
+            >
+              {loadingOlder && (
+                <div className="flex justify-center py-2 text-xs text-[var(--accent-color)] font-semibold items-center gap-2 animate-fadeIn">
+                  <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  <span>Loading older messages...</span>
+                </div>
+              )}
 
-                    if (isAiMsg) {
-                      return (
-                        <div key={msg._id} className="w-full flex justify-center my-2.5 animate-fadeIn">
-                          <div className="max-w-[92%] sm:max-w-[82%] rounded-2xl bg-gradient-to-r from-[var(--bg-surface)] to-[var(--bg-elevated)] border-2 border-[var(--accent-color)]/40 p-4 shadow-md text-[var(--text-primary)]">
-                            <div className="flex items-center justify-between gap-4 mb-2 border-b border-[var(--accent-color)]/20 pb-1.5">
-                              <span className="text-xs font-bold text-[var(--accent-color)] flex items-center gap-1.5">
-                                <span className="text-base">🤖</span> Catalyst AI Companion
-                              </span>
-                              <span className="text-[10px] text-[var(--text-muted)]">{formattedTime}</span>
-                            </div>
-                            <div className="prose prose-invert max-w-none text-sm leading-relaxed break-words">
-                              <ReactMarkdown>{msg.message}</ReactMarkdown>
-                            </div>
-                          </div>
-                        </div>
-                      )
-                    }
+              {messages.length > 0 ? (
+                messages.map((msg) => {
+                  const senderId = msg.sender?._id || msg.sender
+                  const isSelf = senderId === currentUserId
+                  const isAiMsg = msg.message?.startsWith('🤖') || senderId === 'ai'
+                  const isSystemMsg = msg.isSystem || msg.systemEventType || msg.message?.startsWith('🟢') || msg.message?.startsWith('🔴')
+                  const formattedTime = new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 
-                    if (isSelf) {
-                      return (
-                        <div key={msg._id} className="w-full flex justify-end my-1.5">
-                          <div className="max-w-[85%] sm:max-w-[72%] rounded-2xl rounded-tr-none bg-[var(--accent-light)] border border-[var(--accent-color)]/30 p-3.5 shadow-sm text-[var(--text-primary)]">
-                            <div className="flex items-center justify-between gap-4 mb-1 border-b border-[var(--accent-color)]/20 pb-1">
-                              <span className="text-xs font-bold text-[var(--accent-color)]">You</span>
-                              <span className="text-[10px] text-[var(--text-muted)]">{formattedTime}</span>
-                            </div>
-                            <div className="prose prose-invert max-w-none text-sm leading-relaxed break-words">
-                              <ReactMarkdown>{msg.message}</ReactMarkdown>
-                            </div>
-                          </div>
-                        </div>
-                      )
-                    }
-
+                  if (isSystemMsg) {
                     return (
-                      <div key={msg._id} className="w-full flex justify-start my-1.5">
-                        <div className="max-w-[85%] sm:max-w-[72%] rounded-2xl rounded-tl-none bg-[var(--bg-surface)] border border-[var(--border-main)] p-3.5 shadow-sm text-[var(--text-primary)]">
-                          <div className="flex items-center justify-between gap-4 mb-1 border-b border-[var(--border-main)] pb-1">
-                            <span className="text-xs font-bold text-[var(--accent-color)]">{msg.sender?.name || 'Member'}</span>
-                            <span className="text-[10px] text-[var(--text-muted)]">{formattedTime}</span>
-                          </div>
-                          <div className="prose prose-invert max-w-none text-sm leading-relaxed break-words">
-                            <ReactMarkdown>{msg.message}</ReactMarkdown>
-                          </div>
+                      <div key={msg._id} className="w-full flex justify-center my-3 animate-fadeIn">
+                        <div className="inline-flex items-center gap-2 rounded-full border border-[var(--border-main)] bg-[var(--bg-secondary)]/90 px-4 py-1.5 text-xs font-semibold text-[var(--text-muted)] shadow-sm">
+                          <span>{msg.message}</span>
+                          <span className="text-[10px] text-[var(--text-muted)] opacity-80 border-l border-[var(--border-main)] pl-2">
+                            {formattedTime}
+                          </span>
                         </div>
                       </div>
                     )
-                  })
-                ) : (
-                  <p className="text-center body-text text-sm text-[var(--text-muted)] py-12">No messages yet. Start the conversation!</p>
-                )}
-                <div ref={messagesEndRef} />
-              </div>
+                  }
+
+                  if (isAiMsg) {
+                    return (
+                      <div key={msg._id} className="w-full flex justify-center my-3 animate-fadeIn min-w-0">
+                        <div
+                          style={{
+                            boxShadow: 'var(--ai-bubble-shadow, 0 4px 16px rgba(15,23,42,0.06))'
+                          }}
+                          className="w-fit max-w-[92%] sm:max-w-[85%] md:max-w-[80%] lg:max-w-[75%] rounded-2xl bg-[var(--ai-bubble-bg)] border border-[var(--ai-bubble-border)] p-4 text-[var(--ai-text-primary)] min-w-0 overflow-hidden"
+                        >
+                          <div className="flex items-center justify-between gap-4 mb-2 border-b border-[var(--ai-bubble-border)] pb-1.5">
+                            <span className="text-xs font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+                              <svg className="w-4 h-4 text-amber-500 dark:text-amber-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                              </svg>
+                              <span>Catalyst AI Companion</span>
+                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] text-[var(--ai-text-secondary)]">{formattedTime}</span>
+                              <CopyButton text={msg.message} />
+                            </div>
+                          </div>
+                          <MarkdownRenderer>{msg.message}</MarkdownRenderer>
+                        </div>
+                      </div>
+                    )
+                  }
+
+                  if (isSelf) {
+                    return (
+                      <div key={msg._id} className="w-full flex justify-end my-1.5 min-w-0">
+                        <div
+                          style={{
+                            boxShadow: 'var(--ai-user-shadow, 0 4px 14px rgba(0,0,0,0.05))'
+                          }}
+                          className="w-fit max-w-[85%] sm:max-w-[75%] md:max-w-[68%] lg:max-w-[62%] min-w-0 rounded-2xl rounded-tr-none bg-[var(--ai-user-bubble-bg)] border border-[var(--ai-user-bubble-border)] p-3.5 text-[var(--ai-user-text)] overflow-hidden"
+                        >
+                          <div className="flex items-center justify-between gap-3 mb-1 border-b border-[var(--ai-user-bubble-border)] pb-1">
+                            <span className="text-xs font-bold text-amber-600 dark:text-amber-400">You</span>
+                            <span className="text-[10px] text-[var(--text-muted)]">{formattedTime}</span>
+                          </div>
+                          <MarkdownRenderer>{msg.message}</MarkdownRenderer>
+                        </div>
+                      </div>
+                    )
+                  }
+
+                  return (
+                    <div key={msg._id} className="w-full flex justify-start my-1 min-w-0">
+                      <div className="w-fit max-w-[85%] sm:max-w-[75%] md:max-w-[68%] lg:max-w-[62%] min-w-0 rounded-2xl rounded-tl-none bg-[var(--bg-secondary)] border border-[var(--border-main)] p-3 shadow-sm text-[var(--text-primary)]">
+                        <div className="flex items-center justify-between gap-3 mb-1 border-b border-[var(--border-main)] pb-1">
+                          <span className="text-xs font-bold text-[var(--accent-color)]">{msg.sender?.name || 'Member'}</span>
+                          <span className="text-[10px] text-[var(--text-muted)]">{formattedTime}</span>
+                        </div>
+                        <MarkdownRenderer>{msg.message}</MarkdownRenderer>
+                      </div>
+                    </div>
+                  )
+                })
+              ) : (
+                <div className="flex h-full items-center justify-center">
+                  <p className="text-center body-text text-sm text-[var(--text-muted)] italic">
+                    No messages yet. Send a message or start with @ai to chat with the companion!
+                  </p>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+
+              {/* Floating "↓ Scroll to Latest" Button */}
+              {showScrollToBottom && !hasUnreadNew && (
+                <div className="sticky bottom-3 right-3 flex justify-end z-30 pointer-events-none">
+                  <button
+                    type="button"
+                    onClick={() => scrollToBottom('smooth')}
+                    className="pointer-events-auto rounded-full border border-zinc-300 dark:border-zinc-700/80 bg-white text-zinc-900 hover:bg-zinc-100 dark:bg-[#1F2937] dark:text-[#F9FAFB] dark:hover:bg-[#374151] dark:hover:text-[#FFFFFF] px-3.5 py-1.5 text-xs font-bold shadow-xl backdrop-blur-md transition active:scale-95 flex items-center gap-1.5 animate-fadeIn cursor-pointer"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                    </svg>
+                    <span>Scroll to Latest</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Floating "↓ New Messages" Pill Button */}
+              {hasUnreadNew && (
+                <div className="sticky bottom-3 left-0 right-0 flex justify-center z-30 pointer-events-none">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      scrollToBottom('smooth')
+                      setHasUnreadNew(false)
+                    }}
+                    className="pointer-events-auto rounded-full border border-[var(--accent-color)]/50 bg-[var(--accent-color)] text-black px-4 py-2 text-xs font-extrabold shadow-2xl hover:scale-105 transition-transform flex items-center gap-1.5 animate-bounce cursor-pointer"
+                  >
+                    <span>↓</span>
+                    <span>New Messages</span>
+                  </button>
+                </div>
+              )}
             </div>
 
-            {error && <p className="flex-none my-2 rounded-[14px] bg-[var(--error-bg)] border border-[var(--error-color)]/30 px-4 py-2 text-xs text-[var(--error-color)]">{error}</p>}
-            {status && <p className="flex-none my-2 rounded-[14px] bg-[var(--success-bg)] border border-[var(--success-color)]/30 px-4 py-2 text-xs text-[var(--success-color)]">{status}</p>}
+            {error && <p className="flex-none my-1.5 rounded-[14px] bg-[var(--error-bg)] border border-[var(--error-color)]/30 px-3 py-1.5 text-xs text-[var(--error-color)]">{error}</p>}
+            {status && <p className="flex-none my-1.5 rounded-[14px] bg-[var(--success-bg)] border border-[var(--success-color)]/30 px-3 py-1.5 text-xs text-[var(--success-color)]">{status}</p>}
 
-            {/* Pinned Bottom Input Bar */}
-            <div className="flex-none pt-2.5 border-t border-[var(--divider-main)]">
+            {/* Anchored Bottom Message Composer */}
+            <div className="flex-none pt-2.5 border-t border-[var(--border-main)]">
               {typingUsers.length > 0 && (
-                <div className="mb-2 flex items-center gap-2 text-xs text-[var(--text-secondary)] italic animate-pulse">
+                <div className="mb-1.5 flex items-center gap-2 text-xs text-[var(--text-secondary)] italic animate-pulse">
                   <span className="h-2 w-2 rounded-full bg-[var(--accent-color)]" />
                   <span>
                     {typingUsers.map((u) => u.name).join(', ')} {typingUsers.length === 1 ? 'is' : 'are'} typing...
@@ -754,12 +1171,12 @@ export default function StudyGroupPage() {
                 </div>
               )}
               {isAiProcessing && (
-                <div className="mb-2 flex items-center gap-2 text-xs text-[var(--accent-color)] font-medium animate-pulse">
+                <div className="mb-1.5 flex items-center gap-2 text-xs text-[var(--accent-color)] font-semibold animate-pulse">
                   <span className="text-sm">🤖</span>
-                  <span>AI Companion is generating a response for the group...</span>
+                  <span>AI Companion is generating a response...</span>
                 </div>
               )}
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center pr-14 sm:pr-16">
                 <textarea
                   value={messageText}
                   onChange={handleInputChange}
@@ -769,149 +1186,218 @@ export default function StudyGroupPage() {
                       sendMessage()
                     }
                   }}
-                  placeholder="Type your message... (Tip: start with @ai to ask the AI in group chat)"
+                  placeholder="Type your message... (Tip: start with @ai to ask AI in group chat)"
                   rows="2"
-                  className="saas-input w-full min-h-[48px] max-h-24 resize-none"
+                  className="saas-input w-full min-h-[46px] max-h-24 resize-none p-3 text-sm font-medium flex-1"
                 />
-                <button
-                  type="button"
-                  onClick={sendMessage}
-                  className="saas-button-primary min-h-[48px] px-6 sm:self-center font-bold"
-                >
-                  Send
-                </button>
+                <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                  <select
+                    value={groupSelectedProvider}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      setGroupSelectedProvider(val)
+                      localStorage.setItem('ai_provider', val)
+                    }}
+                    className="saas-input text-xs font-semibold px-2.5 min-h-[46px] cursor-pointer bg-[var(--bg-secondary)] border-[var(--border-main)] rounded-[12px] text-[var(--text-primary)]"
+                    title="Select AI Model Provider for @ai group chat"
+                  >
+                    <option value="gemini">Gemini</option>
+                    <option value="groq">Groq</option>
+                  </select>
+                  <button
+                    type="button"
+                    onClick={sendMessage}
+                    className="saas-button-primary min-h-[46px] px-6 font-bold shadow-sm"
+                  >
+                    Send
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         </div>
       ) : (
-        <div className="overflow-y-auto px-4 py-8 sm:px-6 lg:h-full custom-scrollbar">
-          <div className="mx-auto max-w-6xl space-y-8">
-            <section className="saas-card shadow-glow">
-              <div className="mb-8 border-b border-[var(--divider-main)] pb-6 space-y-2">
-                <p className="caption-text uppercase tracking-[0.24em] text-[var(--accent-color)] font-semibold">Study groups</p>
-                <h1 className="page-title">Study group collaboration</h1>
-                <p className="body-text">Search, connect, and chat with peers & AI in real-time.</p>
-              </div>
+        /* Canvas-First Study Group Overview Dashboard */
+        <div className="overflow-y-auto px-4 py-8 sm:px-6 lg:px-8 lg:h-full custom-scrollbar">
+          <div className="mx-auto max-w-[1280px] space-y-8">
+            {/* Header */}
+            <div>
+              <p className="page-label">Study Groups</p>
+              <h1 className="page-title mb-2">Study Group Collaboration</h1>
+              <p className="page-description">Search peers, join groups with code, and chat in real-time.</p>
+            </div>
 
-              {error && <p className="mb-6 rounded-[14px] bg-[var(--error-bg)] border border-[var(--error-color)]/30 px-4 py-3 text-sm text-[var(--error-color)]">{error}</p>}
-              {status && <p className="mb-6 rounded-[14px] bg-[var(--success-bg)] border border-[var(--success-color)]/30 px-4 py-3 text-sm text-[var(--success-color)]">{status}</p>}
+            <hr className="canvas-divider" />
 
-              <form onSubmit={joinGroupByCode} className="mb-8 flex flex-col gap-3 rounded-[18px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-4 sm:flex-row">
+            {error && <p className="rounded-[14px] bg-[var(--error-bg)] border border-[var(--error-color)]/30 px-4 py-3 text-sm text-[var(--error-color)]">{error}</p>}
+            {status && <p className="rounded-[14px] bg-[var(--success-bg)] border border-[var(--success-color)]/30 px-4 py-3 text-sm text-[var(--success-color)]">{status}</p>}
+
+            {/* Forms */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <form onSubmit={joinGroupByCode} className="flex gap-3 items-center">
                 <input
                   value={joinCodeInput}
                   onChange={(event) => setJoinCodeInput(event.target.value)}
-                  placeholder="Join a group by code"
-                  className="saas-input w-full"
+                  placeholder="Enter group code to join..."
+                  className="saas-input w-full min-h-[48px]"
                 />
-                <button className="saas-button-primary">Join</button>
+                <button className="saas-button-primary font-bold px-6 shrink-0 min-h-[48px]">Join</button>
               </form>
 
-              <form onSubmit={handleSearch} className="mb-8 flex flex-col gap-3 sm:flex-row">
+              <form onSubmit={handleSearch} className="flex gap-3 items-center">
                 <input
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Search peers by name, email, or subject"
-                  className="saas-input w-full"
+                  placeholder="Search peers by name or email..."
+                  className="saas-input w-full min-h-[48px]"
                 />
-                <button className="saas-button-primary">
+                <button className="saas-button-primary font-bold px-6 shrink-0 min-h-[48px]">
                   Search
                 </button>
               </form>
+            </div>
 
-              {searchResults.length > 0 && (
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {searchResults.length > 0 && (
+              <div className="space-y-4 pt-4">
+                <h2 className="section-title">Search Results</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {searchResults.map((student) => (
-                    <div key={student._id} className="lg:col-span-6 saas-elevated-card">
+                    <div key={student._id} className="rounded-[16px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-4 shadow-sm">
                       <div className="flex items-center justify-between gap-3">
                         <div>
-                          <h2 className="card-title font-semibold">{student.name}</h2>
+                          <h3 className="card-title font-bold">{student.name}</h3>
                           <p className="caption-text">{student.email}</p>
                         </div>
                         <button
                           type="button"
                           onClick={() => sendRequest(student._id)}
-                          className="saas-button-primary min-h-[40px] px-4 text-xs"
+                          className="saas-button-primary min-h-[38px] px-4 text-xs font-bold"
                         >
-                          Send request
+                          Send Request
                         </button>
                       </div>
-                      <p className="body-text mt-3 text-sm">
+                      <p className="body-text mt-2 text-xs">
                         Subjects: {student.interestedSubjects?.join(', ') || 'N/A'}
                       </p>
                     </div>
                   ))}
                 </div>
-              )}
-            </section>
+              </div>
+            )}
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-              {incomingRequests.length > 0 && (
-                <section className="lg:col-span-6 saas-card shadow-glow">
-                  <h2 className="section-title mb-6">Incoming requests</h2>
-                  <div className="space-y-4">
-                    {incomingRequests.map((req) => (
-                      <div key={req._id} className="saas-elevated-card">
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <hr className="canvas-divider" />
+
+            <div className="space-y-4">
+              <h2 className="section-title">My Study Groups ({groups.length})</h2>
+                {groups.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {groups.map((group) => {
+                      const isHost = group.createdBy?._id === currentUserId || group.createdBy === currentUserId
+                      const uniqueMembers = getUniqueMembers(group.members)
+                      const memberNames = uniqueMembers.map((m) => (typeof m === 'object' && m?.name ? m.name : 'Member')).join(', ')
+                      return (
+                        <div
+                          key={group._id}
+                          className="rounded-[18px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-5 text-left transition hover:border-[var(--accent-color)] shadow-sm space-y-3 w-full flex flex-col justify-between"
+                        >
                           <div>
-                            <p className="card-title font-semibold">{req.sender?.name}</p>
-                            <p className="caption-text">{req.sender?.email}</p>
-                            {req.group ? (
-                              <p className="mt-1 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--accent-color)]">Group invite</p>
+                            <div className="flex items-center justify-between gap-3 mb-2">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <p className="card-title font-bold text-base truncate">{group.groupName || 'Study Group'}</p>
+                                {isHost && (
+                                  <span className="rounded-full bg-[var(--accent-color)] px-2 py-0.5 text-[10px] font-bold text-black shadow-sm shrink-0">👑 Host</span>
+                                )}
+                              </div>
+                              <span className="rounded-full border border-[var(--border-main)] bg-[var(--bg-primary)] px-3 py-1 text-xs font-bold text-[var(--text-secondary)] shrink-0">
+                                {uniqueMembers.length}/{group.maxMembers || MAX_MEMBERS}
+                              </span>
+                            </div>
+                            <p className="body-text text-xs text-[var(--text-secondary)] line-clamp-2">
+                              Members: {memberNames || 'None'}
+                            </p>
+                          </div>
+
+                          <div className="flex items-center justify-between gap-2 pt-3 border-t border-[var(--border-main)]">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedGroupId(group._id)}
+                              className="saas-button-primary min-h-[36px] px-4 text-xs font-bold"
+                            >
+                              Open Chat
+                            </button>
+                            {isHost ? (
+                              <button
+                                type="button"
+                                onClick={() => setConfirmModal({ open: true, type: 'delete', groupId: group._id, groupName: group.groupName })}
+                                className="saas-button-secondary min-h-[36px] px-3 text-xs font-semibold text-[var(--error-color)] border-[var(--error-color)]/30 hover:bg-[var(--error-bg)] flex items-center gap-1.5"
+                              >
+                                <svg className="w-3.5 h-3.5 text-[var(--error-color)] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                                <span>Delete</span>
+                              </button>
                             ) : (
-                              <p className="mt-1 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)]">Peer request</p>
+                              <button
+                                type="button"
+                                onClick={() => setConfirmModal({ open: true, type: 'leave', groupId: group._id, groupName: group.groupName })}
+                                className="saas-button-secondary min-h-[36px] px-3 text-xs font-semibold hover:text-[var(--error-color)] hover:border-[var(--error-color)] flex items-center gap-1.5"
+                              >
+                                <svg className="w-3.5 h-3.5 text-[var(--text-secondary)] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                                </svg>
+                                <span>Leave</span>
+                              </button>
                             )}
                           </div>
-                          <div className="flex gap-2">
-                            <button
-                              type="button"
-                              onClick={() => respondToRequest(req._id, true)}
-                              className="saas-button-primary min-h-[40px] px-4 text-xs bg-[var(--success-color)] text-white"
-                            >
-                              ✓ Accept
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => respondToRequest(req._id, false)}
-                              className="saas-button-secondary min-h-[40px] px-4 text-xs hover:border-[var(--error-color)] hover:text-[var(--error-color)]"
-                            >
-                              ✗ Reject
-                            </button>
-                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              )}
-
-              <section className={`${incomingRequests.length > 0 ? 'lg:col-span-6' : 'lg:col-span-12'} saas-card shadow-glow`}>
-                <h2 className="section-title mb-6">My study groups</h2>
-                {groups.length > 0 ? (
-                  <div className="space-y-4">
-                    {groups.map((group) => (
-                      <button
-                        key={group._id}
-                        type="button"
-                        onClick={() => setSelectedGroupId(group._id)}
-                        className="saas-elevated-card w-full text-left transition hover:border-[var(--accent-color)]"
-                      >
-                        <div className="flex items-center justify-between gap-3">
-                          <p className="card-title font-semibold">{group.groupName || 'Study Group'}</p>
-                          <span className="rounded-full border border-[var(--border-main)] bg-[var(--bg-secondary)] px-3 py-1 text-xs font-semibold text-[var(--text-secondary)]">
-                            {group.members?.length || 0}/{group.maxMembers || MAX_MEMBERS}
-                          </span>
-                        </div>
-                        <p className="body-text mt-2 text-sm">
-                          Members: {group.members?.map((m) => m.name).join(', ') || 'None'}
-                        </p>
-                      </button>
-                    ))}
+                      )
+                    })}
                   </div>
                 ) : (
-                  <p className="body-text text-sm text-[var(--text-muted)]">No study groups yet.</p>
+                  <p className="body-text text-[var(--text-muted)] italic">No study groups created or joined yet.</p>
                 )}
-              </section>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Real Confirmation Popup Modal (Center Screen) */}
+      {confirmModal.open && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/70 backdrop-blur-md p-4 animate-fadeIn">
+          <div className="saas-card max-w-md w-full shadow-2xl space-y-4 border-2 border-[var(--error-color)]/30">
+            <div className="flex items-center gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--error-bg)] text-lg font-bold text-[var(--error-color)]">
+                ⚠️
+              </span>
+              <div>
+                <h3 className="section-title text-lg font-bold text-[var(--text-primary)]">
+                  {confirmModal.type === 'delete' ? 'Delete Group Chat?' : 'Leave Group Chat?'}
+                </h3>
+                <p className="caption-text mt-0.5">Confirmation required</p>
+              </div>
+            </div>
+
+            <p className="body-text text-sm text-[var(--text-secondary)] leading-relaxed">
+              {confirmModal.type === 'delete'
+                ? `Do you really want to delete "${confirmModal.groupName || 'this study group'}"? All group chat history and member access will be permanently removed.`
+                : `Do you really want to leave "${confirmModal.groupName || 'this study group'}"? You will need an invite or join code to re-join.`}
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-[var(--border-main)]">
+              <button
+                type="button"
+                onClick={() => setConfirmModal({ open: false, type: null, groupId: null, groupName: '' })}
+                className="saas-button-secondary min-h-[40px] px-4 text-xs font-semibold"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={executeConfirmAction}
+                className="saas-button-primary min-h-[40px] px-5 text-xs font-bold bg-[var(--error-color)] text-white hover:bg-[var(--error-color)]/90 shadow-md"
+              >
+                {confirmModal.type === 'delete' ? 'Yes, Delete Group' : 'Yes, Leave Group'}
+              </button>
             </div>
           </div>
         </div>
