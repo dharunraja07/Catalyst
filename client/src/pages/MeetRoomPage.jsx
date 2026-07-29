@@ -52,8 +52,9 @@ export default function MeetRoomPage() {
   // Whiteboard State
   const [wbColor, setWbColor] = useState('#F59E0B')
   const [wbWidth, setWbWidth] = useState(3)
+  const [wbEraserWidth, setWbEraserWidth] = useState(30)
   const [wbTool, setWbTool] = useState('pen') // 'pen' | 'text' | 'eraser'
-  const [textInput, setTextInput] = useState({ open: false, x: 0, y: 0, content: '' })
+  const [textInput, setTextInput] = useState({ open: false, x: 0, y: 0, nx: 0, ny: 0, content: '' })
 
   // Refs
   const localStreamRef = useRef(null)
@@ -355,10 +356,15 @@ export default function MeetRoomPage() {
     const { tool, color, width, points } = stroke
     if (!points || points.length === 0) return
 
+    const canvas = canvasRef.current
+    const dpr = window.devicePixelRatio || 1
+    const cWidth = canvas ? canvas.width / dpr : 800
+    const cHeight = canvas ? canvas.height / dpr : 600
+
     ctx.save()
     if (tool === 'eraser') {
       ctx.globalCompositeOperation = 'destination-out'
-      ctx.lineWidth = width || 20
+      ctx.lineWidth = width || 30
     } else {
       ctx.globalCompositeOperation = 'source-over'
       ctx.strokeStyle = color || '#F59E0B'
@@ -367,10 +373,22 @@ export default function MeetRoomPage() {
     ctx.lineCap = 'round'
     ctx.lineJoin = 'round'
 
+    const getPt = (pt) => ({
+      x: pt.nx !== undefined ? pt.nx * cWidth : pt.x,
+      y: pt.ny !== undefined ? pt.ny * cHeight : pt.y
+    })
+
     ctx.beginPath()
-    ctx.moveTo(points[0].x, points[0].y)
-    for (let i = 1; i < points.length; i++) {
-      ctx.lineTo(points[i].x, points[i].y)
+    const startPt = getPt(points[0])
+    ctx.moveTo(startPt.x, startPt.y)
+
+    if (points.length === 1) {
+      ctx.lineTo(startPt.x, startPt.y)
+    } else {
+      for (let i = 1; i < points.length; i++) {
+        const pt = getPt(points[i])
+        ctx.lineTo(pt.x, pt.y)
+      }
     }
     ctx.stroke()
     ctx.restore()
@@ -378,14 +396,22 @@ export default function MeetRoomPage() {
 
   const renderTextOnCanvas = useCallback((ctx, textItem) => {
     if (!ctx || !textItem) return
-    const { x, y, content, color } = textItem
+    const { x, y, nx, ny, content, color } = textItem
     if (!content) return
+
+    const canvas = canvasRef.current
+    const dpr = window.devicePixelRatio || 1
+    const cWidth = canvas ? canvas.width / dpr : 800
+    const cHeight = canvas ? canvas.height / dpr : 600
+
+    const tx = nx !== undefined ? nx * cWidth : x
+    const ty = ny !== undefined ? ny * cHeight : y
 
     ctx.save()
     ctx.globalCompositeOperation = 'source-over'
     ctx.fillStyle = color || '#F59E0B'
     ctx.font = 'bold 16px sans-serif'
-    ctx.fillText(content, x, y)
+    ctx.fillText(content, tx, ty)
     ctx.restore()
   }, [])
 
@@ -437,6 +463,8 @@ export default function MeetRoomPage() {
           textId: payload.textId,
           x: payload.x,
           y: payload.y,
+          nx: payload.nx,
+          ny: payload.ny,
           content: payload.content,
           color: payload.color
         })
@@ -849,28 +877,37 @@ export default function MeetRoomPage() {
   // 7. Whiteboard Canvas Interaction Handlers
   const getCanvasCoordinates = (e) => {
     const canvas = canvasRef.current
-    if (!canvas) return { x: 0, y: 0 }
+    if (!canvas) return { x: 0, y: 0, nx: 0, ny: 0 }
     const rect = canvas.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
+    const w = rect.width || 1
+    const h = rect.height || 1
     return {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top
+      x,
+      y,
+      nx: Math.max(0, Math.min(1, x / w)),
+      ny: Math.max(0, Math.min(1, y / h))
     }
   }
 
   const handleCanvasPointerDown = (e) => {
+    const point = getCanvasCoordinates(e)
+
     if (wbTool === 'text') {
-      const { x, y } = getCanvasCoordinates(e)
-      setTextInput({ open: true, x, y, content: '' })
+      setTextInput({ open: true, x: point.x, y: point.y, nx: point.nx, ny: point.ny, content: '' })
       return
     }
 
-    const { x, y } = getCanvasCoordinates(e)
+    try {
+      e.target?.setPointerCapture?.(e.pointerId)
+    } catch (_) {}
+
     const strokeId = `stroke_${Date.now()}_${Math.random()}`
     currentStrokeIdRef.current = strokeId
     isDrawingRef.current = true
 
-    const point = { x, y }
-    const effectiveWidth = wbTool === 'eraser' ? 20 : wbWidth
+    const effectiveWidth = wbTool === 'eraser' ? wbEraserWidth : wbWidth
 
     const socket = getSocket()
     if (socket && socket.connected) {
@@ -899,8 +936,7 @@ export default function MeetRoomPage() {
 
   const handleCanvasPointerMove = (e) => {
     if (!isDrawingRef.current || !currentStrokeIdRef.current) return
-    const { x, y } = getCanvasCoordinates(e)
-    const point = { x, y }
+    const point = getCanvasCoordinates(e)
     const strokeId = currentStrokeIdRef.current
 
     const socket = getSocket()
@@ -919,11 +955,17 @@ export default function MeetRoomPage() {
     }
   }
 
-  const handleCanvasPointerUp = () => {
+  const handleCanvasPointerUp = (e) => {
     if (!isDrawingRef.current || !currentStrokeIdRef.current) return
     const strokeId = currentStrokeIdRef.current
     isDrawingRef.current = false
     currentStrokeIdRef.current = null
+
+    try {
+      if (e?.target?.releasePointerCapture && e?.pointerId) {
+        e.target.releasePointerCapture(e.pointerId)
+      }
+    } catch (_) {}
 
     // Push to local user's undo stack
     const action = remoteBoardActionsRef.current.find((s) => s.strokeId === strokeId)
@@ -949,7 +991,7 @@ export default function MeetRoomPage() {
   const handleSubmitText = (e) => {
     e.preventDefault()
     if (!textInput.content.trim()) {
-      setTextInput({ open: false, x: 0, y: 0, content: '' })
+      setTextInput({ open: false, x: 0, y: 0, nx: 0, ny: 0, content: '' })
       return
     }
 
@@ -958,6 +1000,8 @@ export default function MeetRoomPage() {
       textId,
       x: textInput.x,
       y: textInput.y,
+      nx: textInput.nx !== undefined ? textInput.nx : 0,
+      ny: textInput.ny !== undefined ? textInput.ny : 0,
       content: textInput.content.trim(),
       color: wbColor
     }
@@ -984,7 +1028,7 @@ export default function MeetRoomPage() {
     redoStackRef.current = []
 
     redrawCanvas()
-    setTextInput({ open: false, x: 0, y: 0, content: '' })
+    setTextInput({ open: false, x: 0, y: 0, nx: 0, ny: 0, content: '' })
   }
 
   const handleClearBoard = () => {
@@ -1338,12 +1382,24 @@ export default function MeetRoomPage() {
 
                     {/* Stroke Width & Color Swatches */}
                     <div className="flex items-center gap-2">
-                      {wbTool !== 'eraser' && (
+                      {wbTool === 'eraser' ? (
+                        <select
+                          value={wbEraserWidth}
+                          onChange={(e) => setWbEraserWidth(Number(e.target.value))}
+                          className="saas-input text-xs py-1 px-2 min-h-[32px] bg-[var(--bg-primary)] cursor-pointer"
+                          title="Eraser Size"
+                        >
+                          <option value={15}>Small Eraser (15px)</option>
+                          <option value={30}>Medium Eraser (30px)</option>
+                          <option value={50}>Large Eraser (50px)</option>
+                        </select>
+                      ) : (
                         <>
                           <select
                             value={wbWidth}
                             onChange={(e) => setWbWidth(Number(e.target.value))}
-                            className="saas-input text-xs py-1 px-2 min-h-[32px] bg-[var(--bg-primary)]"
+                            className="saas-input text-xs py-1 px-2 min-h-[32px] bg-[var(--bg-primary)] cursor-pointer"
+                            title="Pen Thickness"
                           >
                             <option value={2}>Thin (2px)</option>
                             <option value={4}>Medium (4px)</option>
@@ -1398,7 +1454,9 @@ export default function MeetRoomPage() {
                       onPointerDown={handleCanvasPointerDown}
                       onPointerMove={handleCanvasPointerMove}
                       onPointerUp={handleCanvasPointerUp}
-                      className="touch-none"
+                      onPointerCancel={handleCanvasPointerUp}
+                      onPointerLeave={handleCanvasPointerUp}
+                      className="touch-none w-full h-full block"
                     />
 
                     {/* Floating Text Input Box */}

@@ -200,9 +200,9 @@ export function setupMeetSocket(io) {
       socket.to(code).emit(event, payload)
     }
 
-    socket.on('wb_draw_start', ({ roomCode, strokeId, color, width, point }) => {
+    socket.on('wb_draw_start', ({ roomCode, strokeId, tool, color, width, point }) => {
       if (!roomCode) return
-      appendAndBroadcastWbEvent('wb_draw_start', roomCode, { strokeId, color, width, point })
+      appendAndBroadcastWbEvent('wb_draw_start', roomCode, { strokeId, tool, color, width, point })
     })
 
     socket.on('wb_draw_point', ({ roomCode, strokeId, point }) => {
@@ -215,9 +215,9 @@ export function setupMeetSocket(io) {
       appendAndBroadcastWbEvent('wb_draw_end', roomCode, { strokeId })
     })
 
-    socket.on('wb_add_text', ({ roomCode, textId, x, y, content, color }) => {
+    socket.on('wb_add_text', ({ roomCode, textId, x, y, nx, ny, content, color }) => {
       if (!roomCode) return
-      appendAndBroadcastWbEvent('wb_add_text', roomCode, { textId, x, y, content, color })
+      appendAndBroadcastWbEvent('wb_add_text', roomCode, { textId, x, y, nx, ny, content, color })
     })
 
     socket.on('wb_clear', async ({ roomCode }) => {
