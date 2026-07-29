@@ -8,7 +8,7 @@ const meetBoards = new Map()
 // socketMeetRooms: Map<socketId, Set<roomCode>>
 const socketMeetRooms = new Map()
 
-const ALLOWED_EMOJIS = new Set(['👍', '❤️', '😂', '👏', '🎉', '🤔'])
+const ALLOWED_EMOJIS = new Set(['👍', '❤️', '😂', '👏', '🎉', '🤔', '✋', '🔥'])
 
 function broadcastParticipants(io, roomCode) {
   const roomMap = meetPresence.get(roomCode)

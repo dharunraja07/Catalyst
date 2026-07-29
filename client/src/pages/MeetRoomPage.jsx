@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 import getSocket from '../api/socket.js'
 import CopyButton from '../components/CopyButton.jsx'
 
-const REACTION_EMOJIS = ['👍', '❤️', '😂', '👏', '🎉', '🤔']
+const REACTION_EMOJIS = ['👍', '❤️', '😂', '👏', '🎉', '🤔', '✋', '🔥']
 const COLOR_SWATCHES = ['#F59E0B', '#EF4444', '#10B981', '#3B82F6', '#8B5CF6', '#FFFFFF', '#1E293B']
 
 export default function MeetRoomPage() {
@@ -35,6 +35,7 @@ export default function MeetRoomPage() {
   const [showReactionsPicker, setShowReactionsPicker] = useState(false)
   const [confirmEndModal, setConfirmEndModal] = useState(false)
   const [reactions, setReactions] = useState([]) // array of { id, name, emoji, xPercent }
+  const [activeTileReactions, setActiveTileReactions] = useState({}) // userId -> { emoji, id }
 
   // Screen Sharing State
   const [isSharingScreen, setIsSharingScreen] = useState(false)
@@ -79,6 +80,56 @@ export default function MeetRoomPage() {
   const remoteBoardActionsRef = useRef([])
   const undoStackRef = useRef([]) // local user's actions for undo
   const redoStackRef = useRef([]) // local user's actions for redo
+
+  // Helper to trigger reaction locally and for remote participants
+  const triggerReaction = useCallback(({ userId, name, emoji }) => {
+    const id = `${Date.now()}_${Math.random()}`
+
+    if (userId || name) {
+      setActiveTileReactions((prev) => {
+        const next = { ...prev }
+        if (userId) next[userId] = { emoji, id }
+        if (name) next[name] = { emoji, id }
+        return next
+      })
+
+      setTimeout(() => {
+        setActiveTileReactions((prev) => {
+          const next = { ...prev }
+          if (userId && next[userId]?.id === id) delete next[userId]
+          if (name && next[name]?.id === id) delete next[name]
+          return next
+        })
+      }, 3500)
+    }
+
+    const newParticles = [0, 1, 2].map((idx) => ({
+      id: `${id}_${idx}`,
+      name: name || 'Peer',
+      emoji,
+      xPercent: Math.floor(Math.random() * 65) + 15,
+      delayMs: idx * 180
+    }))
+
+    setReactions((prev) => [...prev, ...newParticles])
+
+    setTimeout(() => {
+      setReactions((prev) => prev.filter((r) => !r.id.startsWith(id)))
+    }, 2800)
+  }, [])
+
+  const getTileReaction = useCallback(
+    (userId, name) => {
+      if (userId && activeTileReactions[userId]) {
+        return activeTileReactions[userId].emoji
+      }
+      if (name && activeTileReactions[name]) {
+        return activeTileReactions[name].emoji
+      }
+      return null
+    },
+    [activeTileReactions]
+  )
 
   // Helper to reliably attach media streams to video elements on mount/re-render
   const attachStream = useCallback((node, stream) => {
@@ -526,14 +577,8 @@ export default function MeetRoomPage() {
       closePeerConnection(userId)
     }
 
-    const handleReactionReceived = ({ name, emoji }) => {
-      const id = `${Date.now()}_${Math.random()}`
-      const xPercent = Math.floor(Math.random() * 70) + 15
-      setReactions((prev) => [...prev, { id, name, emoji, xPercent }])
-
-      setTimeout(() => {
-        setReactions((prev) => prev.filter((r) => r.id !== id))
-      }, 2200)
+    const handleReactionReceived = ({ userId, name, emoji }) => {
+      triggerReaction({ userId, name, emoji })
     }
 
     const handleMeetBoardHistory = (actions) => {
@@ -775,7 +820,25 @@ export default function MeetRoomPage() {
     navigate('/meet')
   }
 
+  // Close reactions picker when clicking outside
+  useEffect(() => {
+    if (!showReactionsPicker) return
+    const handleClickOutside = (e) => {
+      if (!e.target.closest('.reaction-picker-container')) {
+        setShowReactionsPicker(false)
+      }
+    }
+    window.addEventListener('pointerdown', handleClickOutside)
+    return () => window.removeEventListener('pointerdown', handleClickOutside)
+  }, [showReactionsPicker])
+
   const sendReaction = (emoji) => {
+    triggerReaction({
+      userId: currentUserId,
+      name: user?.name || 'You',
+      emoji
+    })
+
     const socket = getSocket()
     if (socket && socket.connected) {
       socket.emit('send_reaction', { roomCode: upperRoomCode, emoji })
@@ -1133,16 +1196,21 @@ export default function MeetRoomPage() {
 
   return (
     <div className="flex h-screen w-screen min-h-0 flex-col overflow-hidden bg-[var(--bg-primary)] relative select-none">
-      {/* Floating Animated Reaction Emojis Overlay */}
+      {/* Floating Animated Reaction Emojis Overlay (Zoom style) */}
       <div className="absolute inset-0 z-40 pointer-events-none overflow-hidden">
         {reactions.map((r) => (
           <div
             key={r.id}
-            style={{ left: `${r.xPercent}%` }}
-            className="absolute bottom-24 flex flex-col items-center animate-bounce transition-all duration-1000"
+            style={{
+              left: `${r.xPercent}%`,
+              animationDelay: `${r.delayMs || 0}ms`
+            }}
+            className="absolute bottom-20 flex flex-col items-center animate-zoomFloat"
           >
-            <span className="text-4xl drop-shadow-lg">{r.emoji}</span>
-            <span className="rounded-full bg-black/80 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm mt-1">
+            <span className="text-5xl drop-shadow-2xl filter transform hover:scale-125 transition">
+              {r.emoji}
+            </span>
+            <span className="rounded-full bg-black/85 border border-white/20 px-2.5 py-0.5 text-[10px] font-bold text-white shadow-xl mt-1">
               {r.name}
             </span>
           </div>
@@ -1396,6 +1464,11 @@ export default function MeetRoomPage() {
             <div className="flex-none h-28 flex gap-2.5 overflow-x-auto custom-scrollbar pb-1">
               {/* Local User Tile */}
               <div className="relative h-full w-36 shrink-0 rounded-[16px] border border-[var(--border-main)] bg-slate-950 overflow-hidden flex items-center justify-center shadow-md">
+                {getTileReaction(currentUserId, user?.name) && (
+                  <div className="absolute top-1.5 right-1.5 z-30 flex items-center justify-center bg-black/80 backdrop-blur-md px-2 py-0.5 rounded-full border border-amber-400/50 shadow-md animate-bounce text-sm">
+                    {getTileReaction(currentUserId, user?.name)}
+                  </div>
+                )}
                 {localStream ? (
                   <video
                     ref={(node) => attachStream(node, localStream)}
@@ -1437,6 +1510,11 @@ export default function MeetRoomPage() {
                       key={p.userId}
                       className="relative h-full w-36 shrink-0 rounded-[16px] border border-[var(--border-main)] bg-slate-950 overflow-hidden flex items-center justify-center shadow-md"
                     >
+                      {getTileReaction(p.userId, p.name) && (
+                        <div className="absolute top-1.5 right-1.5 z-30 flex items-center justify-center bg-black/80 backdrop-blur-md px-2 py-0.5 rounded-full border border-amber-400/50 shadow-md animate-bounce text-sm">
+                          {getTileReaction(p.userId, p.name)}
+                        </div>
+                      )}
                       {stream && p.videoOn ? (
                         <video
                           ref={(node) => attachStream(node, stream)}
@@ -1464,6 +1542,11 @@ export default function MeetRoomPage() {
             <div className={`grid ${gridColsClass} gap-3 auto-rows-fr h-full min-h-[340px]`}>
               {/* Local User Tile */}
               <div className="relative rounded-[20px] border border-[var(--border-main)] bg-slate-950 overflow-hidden flex items-center justify-center shadow-md min-h-[200px]">
+                {getTileReaction(currentUserId, user?.name) && (
+                  <div className="absolute top-3 right-3 z-30 flex items-center justify-center bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-amber-400/50 shadow-2xl animate-bounce">
+                    <span className="text-2xl">{getTileReaction(currentUserId, user?.name)}</span>
+                  </div>
+                )}
                 {localStream ? (
                   <video
                     ref={(node) => attachStream(node, localStream)}
@@ -1518,6 +1601,11 @@ export default function MeetRoomPage() {
                       key={p.userId}
                       className="relative rounded-[20px] border border-[var(--border-main)] bg-slate-950 overflow-hidden flex items-center justify-center shadow-md min-h-[200px]"
                     >
+                      {getTileReaction(p.userId, p.name) && (
+                        <div className="absolute top-3 right-3 z-30 flex items-center justify-center bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-amber-400/50 shadow-2xl animate-bounce">
+                          <span className="text-2xl">{getTileReaction(p.userId, p.name)}</span>
+                        </div>
+                      )}
                       {stream && p.videoOn ? (
                         <video
                           ref={(node) => attachStream(node, stream)}
@@ -1613,24 +1701,28 @@ export default function MeetRoomPage() {
             </button>
 
             {/* Reactions Trigger Button */}
-            <div className="relative">
+            <div className="relative reaction-picker-container">
               <button
                 type="button"
                 onClick={() => setShowReactionsPicker((prev) => !prev)}
-                className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-[14px] font-bold text-xs bg-[var(--bg-secondary)] border border-[var(--border-main)] text-[var(--text-primary)] hover:border-[var(--accent-color)] transition cursor-pointer"
+                className={`flex items-center gap-1.5 px-3.5 py-2.5 rounded-[14px] font-bold text-xs border transition cursor-pointer ${
+                  showReactionsPicker
+                    ? 'bg-[var(--accent-color)] text-black border-transparent font-extrabold shadow-md scale-105'
+                    : 'bg-[var(--bg-secondary)] border-[var(--border-main)] text-[var(--text-primary)] hover:border-[var(--accent-color)]'
+                }`}
               >
                 <span>😊 Reactions</span>
               </button>
 
-              {/* Reactions Emoji Picker Popover */}
+              {/* Reactions Emoji Picker Popover (Fixed Overlay prevents overflow clipping) */}
               {showReactionsPicker && (
-                <div className="absolute bottom-14 left-0 flex items-center gap-1 bg-[var(--bg-surface)] p-2 rounded-[16px] border border-[var(--border-main)] shadow-xl z-50 animate-fadeIn">
+                <div className="fixed bottom-20 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-[var(--bg-surface)] p-2.5 rounded-[20px] border-2 border-[var(--accent-color)] shadow-2xl z-[100] animate-fadeIn">
                   {REACTION_EMOJIS.map((emoji) => (
                     <button
                       key={emoji}
                       type="button"
                       onClick={() => sendReaction(emoji)}
-                      className="p-2 hover:bg-[var(--bg-secondary)] rounded-[10px] text-xl transition transform active:scale-125 cursor-pointer"
+                      className="p-2.5 hover:bg-[var(--bg-secondary)] hover:scale-125 rounded-[12px] text-2xl transition transform active:scale-150 cursor-pointer"
                       title={`Send ${emoji}`}
                     >
                       {emoji}

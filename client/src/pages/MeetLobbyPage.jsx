@@ -17,8 +17,9 @@ export default function MeetLobbyPage() {
   const [error, setError] = useState('')
 
   useEffect(() => {
+    if (!user) return
     fetchRecentMeets()
-  }, [])
+  }, [user])
 
   const fetchRecentMeets = async () => {
     setLoading(true)

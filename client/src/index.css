@@ -365,3 +365,26 @@ textarea {
   background: var(--text-muted);
 }
 
+@keyframes zoomFloat {
+  0% {
+    opacity: 0;
+    transform: translateY(20px) scale(0.5);
+  }
+  15% {
+    opacity: 1;
+    transform: translateY(-20px) scale(1.2);
+  }
+  80% {
+    opacity: 0.95;
+    transform: translateY(-160px) scale(1.1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-230px) scale(0.7);
+  }
+}
+
+.animate-zoomFloat {
+  animation: zoomFloat 2.6s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
