@@ -115,7 +115,7 @@ export default function TopUtilityBar({ onOpenMobileDrawer, toggleCollapse, isCo
         </div>
 
         {/* Center: Search Component */}
-        <div className="flex-1 max-w-md mx-auto hidden sm:block">
+        <div className="flex-1 max-w-xs sm:max-w-sm md:max-w-md ml-4 sm:ml-8 md:ml-12 hidden sm:block">
           <div className="relative w-full">
             <input
               type="text"

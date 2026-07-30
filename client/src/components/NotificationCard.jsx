@@ -20,8 +20,46 @@ function formatRelativeTime(dateString) {
   return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
-export default function NotificationCard({ notification, onAccept, onDecline }) {
+export default function NotificationCard({ notification, onAccept, onDecline, onMarkRead }) {
   const [loadingAction, setLoadingAction] = useState(null)
+
+  if (notification.type === 'local') {
+    const isUnread = !notification.isRead && notification.status === 'pending'
+    return (
+      <div
+        onClick={() => isUnread && onMarkRead && onMarkRead(notification._id)}
+        className={`group relative flex flex-col gap-2 rounded-[20px] border p-4 transition-all duration-200 ${
+          isUnread
+            ? 'border-[var(--accent-color)]/40 bg-[var(--bg-secondary)] shadow-sm cursor-pointer'
+            : 'border-[var(--border-main)] bg-[var(--bg-surface)] hover:border-[var(--border-hover)]'
+        }`}
+      >
+        {isUnread && (
+          <span className="absolute top-4 right-4 h-2.5 w-2.5 rounded-full bg-[var(--accent-color)] animate-pulse" />
+        )}
+        <div className="flex items-start gap-3">
+          <div className="relative shrink-0">
+            <div className="flex h-11 w-11 items-center justify-center rounded-[14px] bg-gradient-to-br from-[var(--accent-color)]/20 to-[var(--accent-color)]/5 border border-[var(--accent-color)]/30 text-xl shadow-sm">
+              🎉
+            </div>
+          </div>
+          <div className="flex-1 min-w-0 pr-4">
+            <div className="flex items-center justify-between gap-2">
+              <h4 className="text-sm font-bold text-[var(--text-primary)] truncate">
+                {notification.title || 'Streak Update'}
+              </h4>
+              <span className="text-[11px] font-medium text-[var(--text-muted)] whitespace-nowrap">
+                {formatRelativeTime(notification.createdAt)}
+              </span>
+            </div>
+            <p className="text-xs text-[var(--text-secondary)] mt-1 leading-relaxed">
+              {notification.message}
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   const groupName = notification.group?.groupName || 'Study Group'
   const inviterName = notification.sender?.name || 'A classmate'

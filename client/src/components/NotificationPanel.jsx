@@ -43,7 +43,8 @@ export default function NotificationPanel() {
     acceptInvite,
     declineInvite,
     markAllAsRead,
-    clearAllNotifications
+    clearAllNotifications,
+    markLocalNotificationRead
   } = useNotifications()
 
   const [activeTab, setActiveTab] = useState('unread')
@@ -181,6 +182,7 @@ export default function NotificationPanel() {
                 notification={notification}
                 onAccept={acceptInvite}
                 onDecline={declineInvite}
+                onMarkRead={markLocalNotificationRead}
               />
             ))
           )}

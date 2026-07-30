@@ -2,6 +2,25 @@ import { createContext, useContext, useState, useEffect, useCallback, useRef } f
 import { useAuth } from './AuthContext.jsx'
 import getSocket from '../api/socket.js'
 
+const LOCAL_NOTIF_KEY = 'catalyst_local_notifications'
+
+function getStoredLocalNotifications() {
+  try {
+    const data = localStorage.getItem(LOCAL_NOTIF_KEY)
+    return data ? JSON.parse(data) : []
+  } catch {
+    return []
+  }
+}
+
+function saveStoredLocalNotifications(list) {
+  try {
+    localStorage.setItem(LOCAL_NOTIF_KEY, JSON.stringify(list))
+  } catch (err) {
+    console.error('Failed to save local notifications:', err)
+  }
+}
+
 const NotificationContext = createContext(null)
 
 export function NotificationProvider({ children }) {
@@ -28,7 +47,7 @@ export function NotificationProvider({ children }) {
     })
   }, [])
 
-  // Fetch pending / stored notifications from server
+  // Fetch pending / stored notifications from server merged with local notifications
   const fetchNotifications = useCallback(async () => {
     if (!user) return
     setLoading(true)
@@ -45,10 +64,21 @@ export function NotificationProvider({ children }) {
         }
       }
 
-      const list = res.data || []
-      setNotifications(list)
+      const serverList = res.data || []
+      const localList = getStoredLocalNotifications()
+      
+      // Combine local notifications with server notifications (deduping by _id if needed)
+      const combinedMap = new Map()
+      localList.forEach((item) => combinedMap.set(item._id, item))
+      serverList.forEach((item) => combinedMap.set(item._id, item))
 
-      const unread = list.filter((item) => item.status === 'pending' && !item.isRead).length
+      const mergedList = Array.from(combinedMap.values()).sort(
+        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+      )
+
+      setNotifications(mergedList)
+
+      const unread = mergedList.filter((item) => item.status === 'pending' && !item.isRead).length
       setUnreadCount(unread)
     } catch (err) {
       console.error('Failed to load notifications:', err)
@@ -56,6 +86,42 @@ export function NotificationProvider({ children }) {
       setLoading(false)
     }
   }, [user, api])
+
+  // Add local notification (e.g. streak milestone)
+  const addLocalNotification = useCallback(({ title, message }) => {
+    const newNotif = {
+      _id: 'local-' + Date.now() + '-' + Math.random().toString(36).substring(2, 6),
+      type: 'local',
+      status: 'pending',
+      title,
+      message,
+      isRead: false,
+      createdAt: new Date().toISOString()
+    }
+
+    setNotifications((prev) => {
+      const updated = [newNotif, ...prev]
+      const localsOnly = updated.filter((item) => item.type === 'local')
+      saveStoredLocalNotifications(localsOnly)
+      return updated
+    })
+
+    setUnreadCount((prev) => prev + 1)
+  }, [])
+
+  // Mark local notification as read
+  const markLocalNotificationRead = useCallback((id) => {
+    setNotifications((prev) => {
+      const updated = prev.map((item) =>
+        item._id === id ? { ...item, isRead: true } : item
+      )
+      const localsOnly = updated.filter((item) => item.type === 'local')
+      saveStoredLocalNotifications(localsOnly)
+      const unread = updated.filter((item) => item.status === 'pending' && !item.isRead).length
+      setUnreadCount(unread)
+      return updated
+    })
+  }, [])
 
   // Initial fetch when user logs in
   useEffect(() => {
@@ -170,7 +236,12 @@ export function NotificationProvider({ children }) {
 
   // Mark all notifications as read
   const markAllAsRead = async () => {
-    setNotifications((prev) => prev.map((item) => ({ ...item, isRead: true })))
+    setNotifications((prev) => {
+      const updated = prev.map((item) => ({ ...item, isRead: true }))
+      const localsOnly = updated.filter((item) => item.type === 'local')
+      saveStoredLocalNotifications(localsOnly)
+      return updated
+    })
     setUnreadCount(0)
 
     try {
@@ -182,7 +253,12 @@ export function NotificationProvider({ children }) {
 
   // Clear all notifications
   const clearAllNotifications = async () => {
-    setNotifications((prev) => prev.filter((item) => item.status === 'pending'))
+    setNotifications((prev) => {
+      const updated = prev.filter((item) => item.status === 'pending')
+      const localsOnly = updated.filter((item) => item.type === 'local')
+      saveStoredLocalNotifications(localsOnly)
+      return updated
+    })
 
     try {
       await api.delete('/study-groups/notifications')
@@ -219,7 +295,9 @@ export function NotificationProvider({ children }) {
         clearAllNotifications,
         sendInvite,
         fetchNotifications,
-        subscribeGroupJoined
+        subscribeGroupJoined,
+        addLocalNotification,
+        markLocalNotificationRead
       }}
     >
       {children}

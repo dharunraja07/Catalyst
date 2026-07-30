@@ -36,6 +36,18 @@ export default function QuestionsPage() {
       })
       setPracticeData(response.data)
       setVisibleAnswers({}) // Reset visible answers
+
+      // Stamp today's date into catalyst_practice_days in localStorage
+      try {
+        const localDate = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0]
+        const stored = JSON.parse(localStorage.getItem('catalyst_practice_days') || '[]')
+        if (!stored.includes(localDate)) {
+          stored.push(localDate)
+          localStorage.setItem('catalyst_practice_days', JSON.stringify(stored))
+        }
+      } catch (e) {
+        console.error('Failed to stamp practice day in localStorage', e)
+      }
     } catch (err) {
       setAiError(err.response?.data?.error || 'Unable to generate practice questions')
     } finally {
