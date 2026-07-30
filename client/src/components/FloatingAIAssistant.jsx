@@ -113,7 +113,7 @@ export default function FloatingAIAssistant() {
         onClick={() => setIsOpen(true)}
         style={{
           bottom: 'max(20px, env(safe-area-inset-bottom))',
-          right: 'max(16px, env(safe-area-inset-right))'
+          right: 'max(28px, env(safe-area-inset-right))'
         }}
         className="fixed z-[60] flex h-14 w-14 min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-amber-400/40 bg-[var(--accent-color)] text-xl text-black font-bold shadow-2xl transition hover:scale-105 active:scale-95 cursor-pointer"
         aria-label="Open AI assistant"

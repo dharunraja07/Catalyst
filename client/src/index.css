@@ -346,23 +346,37 @@ textarea {
   box-shadow: 0 0 0 2px var(--accent-light);
 }
 
-/* Sleek custom scrollbar utility */
+/* Global & Utility Custom Scrollbar (Matching Image 2 across all pages) */
+::-webkit-scrollbar,
 .custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 12px;
+  height: 12px;
 }
 
+::-webkit-scrollbar-track,
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: transparent;
+  background: var(--bg-secondary);
+  border-left: 1px solid var(--border-main);
 }
 
+::-webkit-scrollbar-thumb,
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: var(--border-main);
+  background-color: var(--text-muted);
   border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+  min-height: 40px;
 }
 
+::-webkit-scrollbar-thumb:hover,
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: var(--text-muted);
+  background-color: var(--text-secondary);
+  background-clip: content-box;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--text-muted) var(--bg-secondary);
 }
 
 @keyframes zoomFloat {

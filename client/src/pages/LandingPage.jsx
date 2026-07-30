@@ -1,86 +1,30 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
+import HeroSection from '../components/HeroSection.jsx'
 
 export default function LandingPage() {
   const { user, api } = useAuth()
-  const [tasks, setTasks] = useState([])
-  const [newTask, setNewTask] = useState('')
-  const [reminderMinutes, setReminderMinutes] = useState('')
-  const [notice, setNotice] = useState('')
-  const remindedIds = useRef(new Set())
-
-  const fetchTasks = async () => {
-    try {
-      const response = await api.get('/todos')
-      setTasks(response.data)
-    } catch (err) {
-      setTasks([])
-    }
-  }
+  const [stats, setStats] = useState({
+    students: '0',
+    assessmentsGenerated: '0',
+    completionRate: '95%',
+    aiMentor: '24/7'
+  })
 
   useEffect(() => {
-    if (!user) return
-    fetchTasks()
-  }, [user, api])
-
-  useEffect(() => {
-    if (!user) return
-    const timer = window.setInterval(() => {
-      const now = Date.now()
-      const dueTask = tasks.find(
-        (task) => task.status === 'pending' && task.reminderTime && new Date(task.reminderTime).getTime() <= now && !remindedIds.current.has(task._id)
-      )
-
-      if (dueTask) {
-        remindedIds.current.add(dueTask._id)
-        setNotice(`You still have a pending task: ${dueTask.title}`)
+    async function loadStats() {
+      try {
+        const response = await api.get('/stats')
+        if (response.data) {
+          setStats(response.data)
+        }
+      } catch {
+        // keep defaults
       }
-    }, 10000)
-
-    return () => window.clearInterval(timer)
-  }, [user, tasks])
-
-  const addTask = async (event) => {
-    event.preventDefault()
-    if (!newTask.trim()) return
-
-    try {
-      const payload = {
-        title: newTask.trim(),
-        reminderTime: reminderMinutes && Number(reminderMinutes) > 0
-          ? new Date(Date.now() + Number(reminderMinutes) * 60000).toISOString()
-          : null
-      }
-      await api.post('/todos', payload)
-      setNewTask('')
-      setReminderMinutes('')
-      await fetchTasks()
-    } catch (err) {
-      setNotice('Unable to add task')
     }
-  }
-
-  const toggleTask = async (taskId, nextStatus) => {
-    try {
-      await api.patch(`/todos/${taskId}`, { status: nextStatus })
-      await fetchTasks()
-    } catch (err) {
-      setNotice('Unable to update task')
-    }
-  }
-
-  const deleteTask = async (taskId) => {
-    try {
-      await api.delete(`/todos/${taskId}`)
-      await fetchTasks()
-    } catch (err) {
-      setNotice('Unable to delete task')
-    }
-  }
-
-  const pendingTasks = tasks.filter((task) => task.status === 'pending')
-  const completedTasks = tasks.filter((task) => task.status === 'completed')
+    loadStats()
+  }, [api])
 
   const scrollToFeatures = (e) => {
     e.preventDefault()
@@ -91,116 +35,27 @@ export default function LandingPage() {
   }
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 space-y-16">
-      {/* Optional Logged In User Productivity Hub */}
-      {user && (
-        <section className="saas-card shadow-glow">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between border-b border-[var(--divider-main)] pb-6">
-            <div>
-              <p className="caption-text uppercase tracking-[0.24em] text-[var(--accent-color)] font-semibold mb-1">Welcome back</p>
-              <h1 className="page-title">{user.name}</h1>
-            </div>
-            <span className="inline-flex items-center min-h-[44px] rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-secondary)] px-4 py-2 text-sm font-medium text-[var(--text-secondary)]">Productivity Hub</span>
-          </div>
-
-          {notice && (
-            <div className="mt-6 rounded-[14px] border border-[var(--accent-color)]/30 bg-[var(--accent-light)] px-4 py-3 text-sm text-[var(--text-primary)]">
-              {notice}
-            </div>
-          )}
-
-          <div className="mt-8 grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-            <div className="saas-elevated-card">
-              <h2 className="section-title mb-4">Pending Tasks</h2>
-              <form onSubmit={addTask} className="flex flex-col gap-3 sm:flex-row">
-                <input
-                  value={newTask}
-                  onChange={(event) => setNewTask(event.target.value)}
-                  placeholder="Add a task"
-                  className="saas-input flex-1"
-                />
-                <input
-                  type="number"
-                  min="0"
-                  value={reminderMinutes}
-                  onChange={(event) => setReminderMinutes(event.target.value)}
-                  placeholder="Remind (min)"
-                  className="saas-input sm:w-36"
-                />
-                <button type="submit" className="saas-button-primary">Add Task</button>
-              </form>
-              <div className="mt-6 space-y-3">
-                {pendingTasks.length ? pendingTasks.map((task) => (
-                  <div key={task._id} className="flex items-center justify-between rounded-[14px] bg-[var(--bg-secondary)] p-4 border border-[var(--border-main)]">
-                    <div>
-                      <p className="card-title text-base">{task.title}</p>
-                      {task.reminderTime && (
-                        <p className="caption-text mt-1">Reminder: {new Date(task.reminderTime).toLocaleString()}</p>
-                      )}
-                    </div>
-                    <div className="flex gap-2">
-                      <button onClick={() => toggleTask(task._id, 'completed')} className="saas-button-primary min-h-[40px] px-4 text-xs">Done</button>
-                      <button onClick={() => deleteTask(task._id)} className="saas-button-secondary min-h-[40px] px-4 text-xs hover:border-[var(--error-color)] hover:text-[var(--error-color)]">Delete</button>
-                    </div>
-                  </div>
-                )) : <p className="rounded-[14px] bg-[var(--bg-secondary)] p-4 text-sm text-[var(--text-muted)]">No pending tasks</p>}
-              </div>
-            </div>
-
-            <div className="saas-elevated-card">
-              <h2 className="section-title mb-4">Completed Tasks</h2>
-              <div className="space-y-3">
-                {completedTasks.length ? completedTasks.map((task) => (
-                  <div key={task._id} className="flex items-center justify-between rounded-[14px] bg-[var(--bg-secondary)] p-4 border border-[var(--border-main)]">
-                    <p className="body-text text-sm text-[var(--text-muted)] line-through">{task.title}</p>
-                    <button onClick={() => deleteTask(task._id)} className="saas-button-secondary min-h-[40px] px-4 text-xs hover:border-[var(--error-color)] hover:text-[var(--error-color)]">Delete</button>
-                  </div>
-                )) : <p className="rounded-[14px] bg-[var(--bg-secondary)] p-4 text-sm text-[var(--text-muted)]">No completed tasks</p>}
-              </div>
-            </div>
-          </div>
-        </section>
-      )}
+    <div className="mx-auto w-full max-w-[1600px] px-2 sm:px-4 lg:px-6 space-y-16">
 
       {/* 1. Hero Section */}
-      <section className="saas-card shadow-glow sm:p-14 text-center">
-        <div className="max-w-4xl mx-auto space-y-6">
-          <span className="inline-flex items-center rounded-[14px] bg-[var(--accent-light)] px-4 py-2 text-xs font-bold uppercase tracking-wider text-[var(--accent-color)] border border-[var(--accent-color)]/20">
-            AI-Powered Personalized Learning
-          </span>
-          <h1 className="page-title text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[1.15]">
-            Learn smarter with an AI mentor that adapts to your pace.
-          </h1>
-          <p className="body-text text-lg sm:text-xl max-w-2xl mx-auto">
-            Learn smarter with an AI mentor that adapts to your pace, tracks your progress, and helps you achieve your career goals.
-          </p>
-          <div className="flex flex-wrap gap-4 justify-center pt-4">
-            <Link to={user ? "/dashboard" : "/register"} className="saas-button-primary inline-flex items-center justify-center min-h-[48px] px-8 text-base font-semibold">
-              Get Started
-            </Link>
-            <a href="#core-features" onClick={scrollToFeatures} className="saas-button-secondary inline-flex items-center justify-center min-h-[48px] px-8 text-base font-semibold">
-              Explore Features
-            </a>
-          </div>
-        </div>
-      </section>
+      <HeroSection />
 
       {/* 2. Statistics Section */}
       <section className="grid grid-cols-2 lg:grid-cols-4 gap-6">
         <div className="saas-card-hover text-center py-8">
-          <p className="page-title text-4xl font-extrabold text-[var(--accent-color)]">10,000+</p>
+          <p className="page-title text-4xl font-extrabold text-[var(--accent-color)]">{stats.students}</p>
           <p className="card-title text-base mt-2 font-medium">Students</p>
         </div>
         <div className="saas-card-hover text-center py-8">
-          <p className="page-title text-4xl font-extrabold text-[var(--accent-color)]">150+</p>
-          <p className="card-title text-base mt-2 font-medium">Courses</p>
+          <p className="page-title text-4xl font-extrabold text-[var(--accent-color)]">{stats.assessmentsGenerated}</p>
+          <p className="card-title text-base mt-2 font-medium">Assessments Generated</p>
         </div>
         <div className="saas-card-hover text-center py-8">
-          <p className="page-title text-4xl font-extrabold text-[var(--accent-color)]">95%</p>
+          <p className="page-title text-4xl font-extrabold text-[var(--accent-color)]">{stats.completionRate}</p>
           <p className="card-title text-base mt-2 font-medium">Completion Rate</p>
         </div>
         <div className="saas-card-hover text-center py-8">
-          <p className="page-title text-4xl font-extrabold text-[var(--accent-color)]">24/7</p>
+          <p className="page-title text-4xl font-extrabold text-[var(--accent-color)]">{stats.aiMentor}</p>
           <p className="card-title text-base mt-2 font-medium">AI Mentor</p>
         </div>
       </section>

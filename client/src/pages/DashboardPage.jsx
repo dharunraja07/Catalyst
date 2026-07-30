@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
+import ProductivityHub from '../components/ProductivityHub.jsx'
 
 const FOCUS_DURATION = 25 * 60
 const BREAK_DURATION = 5 * 60
@@ -378,6 +379,9 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
+
+          {/* Productivity Hub Tasks Widget */}
+          <ProductivityHub />
 
           {/* Bottom Row: 12-Month Calendar Grid Widget */}
           <div className="rounded-[20px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-6 shadow-sm">
