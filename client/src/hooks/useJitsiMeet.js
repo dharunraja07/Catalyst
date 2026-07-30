@@ -40,7 +40,8 @@ export function useJitsiMeet({ roomName, containerEl, displayName, onJoined, onL
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  const domain = import.meta.env.VITE_JITSI_DOMAIN || 'meet.element.io'
+  const envDomain = import.meta.env.VITE_JITSI_DOMAIN
+  const domain = (envDomain && envDomain !== 'meet.jit.si') ? envDomain : 'meet.element.io'
 
   useEffect(() => {
     let isMounted = true

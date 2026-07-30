@@ -1,14 +1,19 @@
 {
     "name": "ai-learning-platform",
     "private": true,
+    "type": "module",
+    "engines": {
+        "node": ">=18.18.0"
+    },
     "scripts": {
         "dev": "concurrently \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
         "server": "npm run dev --prefix server",
         "client": "npm run dev --prefix client",
         "dev:server": "npm run dev --prefix server",
         "dev:client": "npm run dev --prefix client",
-        "build": "npm run build --prefix client",
-        "start": "npm run start --prefix server"
+        "build": "npm install --prefix client && npm run build --prefix client",
+        "start": "npm run start --prefix server",
+        "vercel-build": "npm run build"
     },
     "devDependencies": {
         "concurrently": "^9.0.0"
