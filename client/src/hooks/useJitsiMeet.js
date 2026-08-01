@@ -64,7 +64,7 @@ export function useJitsiMeet({ roomName, containerEl, displayName, onJoined, onL
         }
 
         const options = {
-          roomName: roomName.toUpperCase(),
+          roomName: `Catalyst_${roomName.toUpperCase()}`,
           width: '100%',
           height: '100%',
           parentNode: containerEl,

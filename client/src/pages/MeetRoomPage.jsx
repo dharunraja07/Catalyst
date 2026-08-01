@@ -57,6 +57,8 @@ export default function MeetRoomPage() {
   const [wbEraserWidth, setWbEraserWidth] = useState(30)
   const [wbTool, setWbTool] = useState('pen') // 'pen' | 'text' | 'eraser'
   const [textInput, setTextInput] = useState({ open: false, x: 0, y: 0, nx: 0, ny: 0, content: '' })
+  const [wbAllowedUserIds, setWbAllowedUserIds] = useState([])
+  const [showWbPermPopover, setShowWbPermPopover] = useState(false)
 
   // Jitsi Container Node State
   const [jitsiContainerEl, setJitsiContainerEl] = useState(null)
@@ -417,10 +419,24 @@ export default function MeetRoomPage() {
       navigate('/meet')
     }
 
+    const handleWbToggle = ({ isOpen }) => {
+      if (isOpen) {
+        setActiveSidePanel('whiteboard')
+      } else {
+        setActiveSidePanel((prev) => (prev === 'whiteboard' ? null : prev))
+      }
+    }
+
+    const handleWbPermissionsUpdated = ({ allowedUserIds }) => {
+      setWbAllowedUserIds(allowedUserIds || [])
+    }
+
     socket.on('meet_error', handleMeetError)
     socket.on('meet_participants_update', handleParticipantsUpdate)
     socket.on('reaction_received', handleReactionReceived)
     socket.on('meet_board_history', handleMeetBoardHistory)
+    socket.on('wb_toggle', handleWbToggle)
+    socket.on('wb_permissions_updated', handleWbPermissionsUpdated)
     socket.on('wb_draw_start', handleWbDrawStart)
     socket.on('wb_draw_point', handleWbDrawPoint)
     socket.on('wb_draw_end', handleWbDrawEnd)
@@ -436,6 +452,8 @@ export default function MeetRoomPage() {
       socket.off('meet_participants_update', handleParticipantsUpdate)
       socket.off('reaction_received', handleReactionReceived)
       socket.off('meet_board_history', handleMeetBoardHistory)
+      socket.off('wb_toggle', handleWbToggle)
+      socket.off('wb_permissions_updated', handleWbPermissionsUpdated)
       socket.off('wb_draw_start', handleWbDrawStart)
       socket.off('wb_draw_point', handleWbDrawPoint)
       socket.off('wb_draw_end', handleWbDrawEnd)
@@ -518,6 +536,26 @@ export default function MeetRoomPage() {
     setShowReactionsPicker(false)
   }
 
+  const hostUserId = (meetInfo?.createdBy?._id || meetInfo?.createdBy || '').toString()
+  const isHost = Boolean(currentUserId && hostUserId && currentUserId === hostUserId)
+  const canDraw = Boolean(isHost || wbAllowedUserIds.includes(currentUserId))
+
+  const handleToggleWhiteboard = () => {
+    const nextOpen = activeSidePanel !== 'whiteboard'
+    const socket = getSocket()
+    if (socket && socket.connected) {
+      socket.emit('wb_toggle', { roomCode: upperRoomCode, isOpen: nextOpen })
+    }
+  }
+
+  const handleToggleWbPermission = (targetUserId) => {
+    if (!isHost || !targetUserId) return
+    const socket = getSocket()
+    if (socket && socket.connected) {
+      socket.emit('wb_toggle_permission', { roomCode: upperRoomCode, targetUserId })
+    }
+  }
+
   // Whiteboard Canvas Interaction Handlers
   const getCanvasCoordinates = (e) => {
     const canvas = canvasRef.current
@@ -536,6 +574,7 @@ export default function MeetRoomPage() {
   }
 
   const handleCanvasPointerDown = (e) => {
+    if (!canDraw) return
     const point = getCanvasCoordinates(e)
 
     if (wbTool === 'text') {
@@ -579,7 +618,7 @@ export default function MeetRoomPage() {
   }
 
   const handleCanvasPointerMove = (e) => {
-    if (!isDrawingRef.current || !currentStrokeIdRef.current) return
+    if (!canDraw || !isDrawingRef.current || !currentStrokeIdRef.current) return
     const point = getCanvasCoordinates(e)
     const strokeId = currentStrokeIdRef.current
 
@@ -633,7 +672,7 @@ export default function MeetRoomPage() {
 
   const handleSubmitText = (e) => {
     e.preventDefault()
-    if (!textInput.content.trim()) {
+    if (!canDraw || !textInput.content.trim()) {
       setTextInput({ open: false, x: 0, y: 0, nx: 0, ny: 0, content: '' })
       return
     }
@@ -765,8 +804,6 @@ export default function MeetRoomPage() {
     )
   }
 
-  const hostUserId = (meetInfo?.createdBy?._id || meetInfo?.createdBy || '').toString()
-  const isHost = Boolean(currentUserId && hostUserId && currentUserId === hostUserId)
   const shareableUrl = `${window.location.origin}/meet/room/${upperRoomCode}`
   const allParticipantCount = participants.length > 0 ? participants.length : 1
 
@@ -870,8 +907,8 @@ export default function MeetRoomPage() {
           )}
         </div>
 
-        {/* RIGHT SIDE PANEL AREA (Tabbed Panel Reflows Layout) */}
-        {activeSidePanel && (
+        {/* RIGHT SIDE PANEL AREA (Participants & Chat) */}
+        {activeSidePanel && activeSidePanel !== 'whiteboard' && (
           <div className="w-80 sm:w-[380px] shrink-0 h-full flex flex-col rounded-[20px] border border-[var(--border-main)] bg-[var(--bg-surface)] overflow-hidden shadow-2xl transition-all duration-300 ease-in-out">
             {/* 1. PARTICIPANTS PANEL */}
             {activeSidePanel === 'participants' && (
@@ -915,7 +952,7 @@ export default function MeetRoomPage() {
                     .map((p) => (
                       <div
                         key={p.userId}
-                        className="flex items-center justify-between p-2.5 rounded-[12px] bg-[var(--bg-secondary)] border border-[var(--border-main)]"
+                        className="flex items-center justify-between p-2.5 rounded-[12px] bg-[var(--bg-secondary)] border border-[var(--border-main)] gap-2"
                       >
                         <div className="flex items-center gap-2 min-w-0">
                           <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[var(--bg-primary)] border border-[var(--border-main)] text-[var(--accent-color)] text-xs font-bold shrink-0">
@@ -925,7 +962,29 @@ export default function MeetRoomPage() {
                             {p.name}
                           </span>
                         </div>
-                        <div className="flex items-center gap-1.5 text-xs">
+                        <div className="flex items-center gap-1.5 text-xs shrink-0">
+                          {isHost ? (
+                            <button
+                              type="button"
+                              onClick={() => handleToggleWbPermission(p.userId)}
+                              className={`px-2 py-1 rounded-[8px] text-[10px] font-bold transition cursor-pointer ${
+                                wbAllowedUserIds.includes(p.userId)
+                                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 hover:bg-red-500/20 hover:text-red-400'
+                                  : 'bg-[var(--bg-primary)] text-[var(--text-secondary)] border border-[var(--border-main)] hover:border-[var(--accent-color)]'
+                              }`}
+                              title={
+                                wbAllowedUserIds.includes(p.userId)
+                                  ? 'Click to Revoke Whiteboard Write Access'
+                                  : 'Click to Grant Whiteboard Write Access'
+                              }
+                            >
+                              {wbAllowedUserIds.includes(p.userId) ? '✏️ Granted' : '+ Allow Draw'}
+                            </button>
+                          ) : (
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[var(--bg-primary)] border border-[var(--border-main)] text-[var(--text-secondary)]">
+                              {wbAllowedUserIds.includes(p.userId) ? '✏️ Draw' : '🔒 View'}
+                            </span>
+                          )}
                           {!p.audioOn ? <span>🔇</span> : <span>🎙️</span>}
                           {!p.videoOn ? <span>📷</span> : <span>📹</span>}
                         </div>
@@ -944,49 +1003,130 @@ export default function MeetRoomPage() {
                 onClose={() => setActiveSidePanel(null)}
               />
             )}
+          </div>
+        )}
 
-            {/* 3. WHITEBOARD PANEL */}
-            {activeSidePanel === 'whiteboard' && (
-              <div className="h-full w-full flex flex-col bg-[var(--bg-surface)] overflow-hidden">
-                {/* Whiteboard Header Toolbar */}
-                <div className="flex flex-wrap items-center justify-between gap-1.5 border-b border-[var(--border-main)] bg-[var(--bg-secondary)] p-2">
-                  <div className="flex items-center gap-1">
+        {/* FULL SCREEN WHITEBOARD OVERLAY */}
+        {activeSidePanel === 'whiteboard' && (
+          <div className="absolute inset-2 sm:inset-3 z-40 flex flex-col rounded-[20px] border border-[var(--border-main)] bg-[var(--bg-surface)] shadow-2xl overflow-hidden animate-fadeIn">
+            {/* Whiteboard Header Toolbar */}
+            <div className="flex flex-wrap items-center justify-between gap-1.5 border-b border-[var(--border-main)] bg-[var(--bg-secondary)] p-2">
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setWbTool('pen')}
+                  disabled={!canDraw}
+                  className={`px-2.5 py-1 rounded-[8px] text-xs font-bold transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+                    wbTool === 'pen'
+                      ? 'bg-[var(--accent-color)] text-black'
+                      : 'bg-[var(--bg-primary)] text-[var(--text-secondary)] border border-[var(--border-main)]'
+                  }`}
+                >
+                  ✏️ Pen
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setWbTool('text')}
+                  disabled={!canDraw}
+                  className={`px-2.5 py-1 rounded-[8px] text-xs font-bold transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+                    wbTool === 'text'
+                      ? 'bg-[var(--accent-color)] text-black'
+                      : 'bg-[var(--bg-primary)] text-[var(--text-secondary)] border border-[var(--border-main)]'
+                  }`}
+                >
+                  🔤 Text
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setWbTool('eraser')}
+                  disabled={!canDraw}
+                  className={`px-2.5 py-1 rounded-[8px] text-xs font-bold transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+                    wbTool === 'eraser'
+                      ? 'bg-[var(--accent-color)] text-black'
+                      : 'bg-[var(--bg-primary)] text-[var(--text-secondary)] border border-[var(--border-main)]'
+                  }`}
+                >
+                  🧹 Eraser
+                </button>
+              </div>
+
+              {/* Center Status / Host Permission Popover Toggle */}
+              <div className="flex items-center gap-2">
+                {!canDraw ? (
+                  <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1">
+                    🔒 Read-Only (Host Permission Required)
+                  </span>
+                ) : !isHost ? (
+                  <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                    ✏️ Drawing Access Granted
+                  </span>
+                ) : null}
+
+                {isHost && (
+                  <div className="relative">
                     <button
                       type="button"
-                      onClick={() => setWbTool('pen')}
-                      className={`px-2.5 py-1 rounded-[8px] text-xs font-bold transition cursor-pointer ${
-                        wbTool === 'pen'
-                          ? 'bg-[var(--accent-color)] text-black'
-                          : 'bg-[var(--bg-primary)] text-[var(--text-secondary)] border border-[var(--border-main)]'
-                      }`}
+                      onClick={() => setShowWbPermPopover((prev) => !prev)}
+                      className="px-2.5 py-1 rounded-[8px] text-xs font-bold bg-[var(--accent-color)] text-black flex items-center gap-1 cursor-pointer hover:opacity-90 transition"
                     >
-                      ✏️ Pen
+                      <span>✏️ Permissions ({wbAllowedUserIds.length})</span>
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => setWbTool('text')}
-                      className={`px-2.5 py-1 rounded-[8px] text-xs font-bold transition cursor-pointer ${
-                        wbTool === 'text'
-                          ? 'bg-[var(--accent-color)] text-black'
-                          : 'bg-[var(--bg-primary)] text-[var(--text-secondary)] border border-[var(--border-main)]'
-                      }`}
-                    >
-                      🔤 Text
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setWbTool('eraser')}
-                      className={`px-2.5 py-1 rounded-[8px] text-xs font-bold transition cursor-pointer ${
-                        wbTool === 'eraser'
-                          ? 'bg-[var(--accent-color)] text-black'
-                          : 'bg-[var(--bg-primary)] text-[var(--text-secondary)] border border-[var(--border-main)]'
-                      }`}
-                    >
-                      🧹 Eraser
-                    </button>
+                    {showWbPermPopover && (
+                      <div className="absolute left-1/2 -translate-x-1/2 sm:left-auto sm:right-0 top-9 w-64 p-3 bg-[var(--bg-surface)] border border-[var(--border-main)] rounded-[14px] shadow-2xl z-50 space-y-2">
+                        <div className="flex items-center justify-between pb-1.5 border-b border-[var(--border-main)]">
+                          <span className="text-xs font-bold text-[var(--text-primary)]">
+                            Whiteboard Access
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setShowWbPermPopover(false)}
+                            className="text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                        <div className="max-h-48 overflow-y-auto space-y-1.5 custom-scrollbar">
+                          {participants
+                            .filter((p) => p.userId !== currentUserId)
+                            .map((p) => {
+                              const isAllowed = wbAllowedUserIds.includes(p.userId)
+                              return (
+                                <div
+                                  key={p.userId}
+                                  className="flex items-center justify-between p-1.5 rounded-[8px] bg-[var(--bg-secondary)] text-xs border border-[var(--border-main)]"
+                                >
+                                  <span className="truncate font-medium text-[var(--text-primary)] max-w-[120px]">
+                                    {p.name}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleToggleWbPermission(p.userId)}
+                                    className={`px-2 py-0.5 rounded-[6px] text-[10px] font-bold cursor-pointer transition ${
+                                      isAllowed
+                                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 hover:bg-red-500/20 hover:text-red-400'
+                                        : 'bg-[var(--bg-primary)] border border-[var(--border-main)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                                    }`}
+                                  >
+                                    {isAllowed ? '✓ Allowed' : '+ Allow'}
+                                  </button>
+                                </div>
+                              )
+                            })}
+                          {participants.filter((p) => p.userId !== currentUserId).length === 0 && (
+                            <p className="text-[11px] text-[var(--text-muted)] italic text-center py-1">
+                              No other participants in room
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
+                )}
+              </div>
 
-                  <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5">
+                {canDraw && (
+                  <>
                     {wbTool === 'eraser' ? (
                       <select
                         value={wbEraserWidth}
@@ -1026,66 +1166,79 @@ export default function MeetRoomPage() {
                         </div>
                       </>
                     )}
+                  </>
+                )}
 
-                    {isHost && (
-                      <button
-                        type="button"
-                        onClick={handleClearBoard}
-                        className="px-2 py-1 rounded-[6px] text-[10px] font-bold bg-[var(--error-bg)] text-[var(--error-color)] border border-[var(--error-color)]/30 hover:opacity-80 transition cursor-pointer"
-                        title="Clear whiteboard for everyone"
-                      >
-                        Clear
-                      </button>
-                    )}
+                {isHost && (
+                  <button
+                    type="button"
+                    onClick={handleClearBoard}
+                    className="px-2 py-1 rounded-[6px] text-[10px] font-bold bg-[var(--error-bg)] text-[var(--error-color)] border border-[var(--error-color)]/30 hover:opacity-80 transition cursor-pointer"
+                    title="Clear whiteboard for everyone"
+                  >
+                    Clear
+                  </button>
+                )}
 
-                    <button
-                      type="button"
-                      onClick={() => setActiveSidePanel(null)}
-                      className="h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                </div>
-
-                {/* Canvas Workspace */}
-                <div ref={canvasContainerRef} className="relative flex-1 min-h-0 bg-slate-900 overflow-hidden cursor-crosshair">
-                  <canvas
-                    ref={canvasRef}
-                    onPointerDown={handleCanvasPointerDown}
-                    onPointerMove={handleCanvasPointerMove}
-                    onPointerUp={handleCanvasPointerUp}
-                    onPointerCancel={handleCanvasPointerUp}
-                    onPointerLeave={handleCanvasPointerUp}
-                    className="touch-none w-full h-full block"
-                  />
-
-                  {/* Floating Text Input Box */}
-                  {textInput.open && (
-                    <form
-                      onSubmit={handleSubmitText}
-                      style={{ left: `${textInput.x}px`, top: `${textInput.y}px` }}
-                      className="absolute z-20 flex gap-1 bg-black/80 p-1.5 rounded-[10px] border border-[var(--accent-color)] shadow-xl"
-                    >
-                      <input
-                        type="text"
-                        autoFocus
-                        value={textInput.content}
-                        onChange={(e) => setTextInput((prev) => ({ ...prev, content: e.target.value }))}
-                        placeholder="Type text..."
-                        className="saas-input text-xs py-1 px-2 bg-slate-900 min-w-[120px]"
-                      />
-                      <button
-                        type="submit"
-                        className="px-2.5 py-1 text-xs font-bold bg-[var(--accent-color)] text-black rounded-[6px]"
-                      >
-                        Add
-                      </button>
-                    </form>
-                  )}
-                </div>
+                <button
+                  type="button"
+                  onClick={handleToggleWhiteboard}
+                  className="h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
+                  title="Close Whiteboard for everyone"
+                >
+                  ✕
+                </button>
               </div>
-            )}
+            </div>
+
+            {/* Canvas Workspace */}
+            <div
+              ref={canvasContainerRef}
+              className={`relative flex-1 min-h-0 bg-slate-900 overflow-hidden ${
+                canDraw ? 'cursor-crosshair' : 'cursor-not-allowed'
+              }`}
+            >
+              {!canDraw && (
+                <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 px-3 py-1.5 rounded-full bg-black/80 border border-amber-500/50 text-amber-300 text-xs font-semibold shadow-lg backdrop-blur-md pointer-events-none flex items-center gap-1.5">
+                  <span>🔒 View-Only Mode</span>
+                  <span className="text-[10px] text-slate-400">(Host permission required to draw)</span>
+                </div>
+              )}
+
+              <canvas
+                ref={canvasRef}
+                onPointerDown={handleCanvasPointerDown}
+                onPointerMove={handleCanvasPointerMove}
+                onPointerUp={handleCanvasPointerUp}
+                onPointerCancel={handleCanvasPointerUp}
+                onPointerLeave={handleCanvasPointerUp}
+                className="touch-none w-full h-full block"
+              />
+
+              {/* Floating Text Input Box */}
+              {textInput.open && canDraw && (
+                <form
+                  onSubmit={handleSubmitText}
+                  style={{ left: `${textInput.x}px`, top: `${textInput.y}px` }}
+                  className="absolute z-20 flex gap-1 bg-black/80 p-1.5 rounded-[10px] border border-[var(--accent-color)] shadow-xl"
+                >
+                  <input
+                    type="text"
+                    autoFocus
+                    value={textInput.content}
+                    onChange={(e) => setTextInput((prev) => ({ ...prev, content: e.target.value }))}
+                    placeholder="Type text..."
+                    className="saas-input text-xs py-1 px-2 bg-slate-900 min-w-[120px]"
+                  />
+                  <button
+                    type="submit"
+                    className="px-2.5 py-1 text-xs font-bold bg-[var(--accent-color)] text-black rounded-[6px]"
+                  >
+                    Add
+                  </button>
+                </form>
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -1203,7 +1356,7 @@ export default function MeetRoomPage() {
             {/* Whiteboard Toggle */}
             <button
               type="button"
-              onClick={() => setActiveSidePanel((prev) => (prev === 'whiteboard' ? null : 'whiteboard'))}
+              onClick={handleToggleWhiteboard}
               className={`flex items-center gap-1.5 px-3.5 py-2.5 rounded-[14px] font-bold text-xs border transition cursor-pointer ${
                 activeSidePanel === 'whiteboard'
                   ? 'bg-[var(--accent-color)] text-black border-transparent font-extrabold'

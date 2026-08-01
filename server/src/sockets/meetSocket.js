@@ -9,8 +9,23 @@ const meetBoards = new Map()
 const meetChats = new Map()
 // socketMeetRooms: Map<socketId, Set<roomCode>>
 const socketMeetRooms = new Map()
+// meetHosts: Map<roomCode, string>
+const meetHosts = new Map()
+// meetWbOpen: Map<roomCode, boolean>
+const meetWbOpen = new Map()
+// meetWbPermissions: Map<roomCode, Set<string>>
+const meetWbPermissions = new Map()
 
 const ALLOWED_EMOJIS = new Set(['👍', '❤️', '😂', '👏', '🎉', '🤔', '✋', '🔥'])
+
+function isUserAllowedToDraw(userId, roomCode) {
+  const code = roomCode.trim().toUpperCase()
+  const hostId = meetHosts.get(code)
+  if (hostId && hostId === userId) return true
+  const allowedSet = meetWbPermissions.get(code)
+  if (allowedSet && allowedSet.has(userId)) return true
+  return false
+}
 
 function broadcastParticipants(io, roomCode) {
   const roomMap = meetPresence.get(roomCode)
@@ -79,6 +94,7 @@ export function setupMeetSocket(io) {
 
         socket.join(code)
         socketMeetRooms.get(socket.id).add(code)
+        meetHosts.set(code, meet.createdBy.toString())
 
         if (!meetPresence.has(code)) {
           meetPresence.set(code, new Map())
@@ -101,6 +117,16 @@ export function setupMeetSocket(io) {
         // Replay meet chat history to joining socket
         const chatHistory = meetChats.get(code) || []
         socket.emit('meet_chat_history', chatHistory)
+
+        // Send current room whiteboard open state and permissions
+        const isWbOpen = meetWbOpen.get(code) || false
+        socket.emit('wb_toggle', { isOpen: isWbOpen })
+
+        if (!meetWbPermissions.has(code)) {
+          meetWbPermissions.set(code, new Set())
+        }
+        const allowedSet = meetWbPermissions.get(code)
+        socket.emit('wb_permissions_updated', { allowedUserIds: Array.from(allowedSet) })
 
         // Broadcast updated participants to everyone in room
         broadcastParticipants(io, code)
@@ -173,7 +199,40 @@ export function setupMeetSocket(io) {
       })
     })
 
-    // 6. Whiteboard Events
+    // 6. Whiteboard Events & Visibility Sync
+    socket.on('wb_toggle', ({ roomCode, isOpen }) => {
+      if (!roomCode) return
+      const code = roomCode.trim().toUpperCase()
+      const openState = Boolean(isOpen)
+      meetWbOpen.set(code, openState)
+      io.to(code).emit('wb_toggle', { isOpen: openState })
+    })
+
+    socket.on('wb_toggle_permission', async ({ roomCode, targetUserId }) => {
+      if (!roomCode || !targetUserId) return
+      const code = roomCode.trim().toUpperCase()
+      const userId = socket.user._id.toString()
+      const hostId = meetHosts.get(code)
+
+      if (hostId !== userId) {
+        return socket.emit('meet_error', { error: 'Only host can manage whiteboard permissions' })
+      }
+
+      if (!meetWbPermissions.has(code)) {
+        meetWbPermissions.set(code, new Set())
+      }
+      const allowedSet = meetWbPermissions.get(code)
+      const targetStr = targetUserId.toString()
+
+      if (allowedSet.has(targetStr)) {
+        allowedSet.delete(targetStr)
+      } else {
+        allowedSet.add(targetStr)
+      }
+
+      io.to(code).emit('wb_permissions_updated', { allowedUserIds: Array.from(allowedSet) })
+    })
+
     const appendAndBroadcastWbEvent = (event, roomCode, payload) => {
       const code = roomCode.trim().toUpperCase()
       if (!meetBoards.has(code)) {
@@ -185,21 +244,25 @@ export function setupMeetSocket(io) {
 
     socket.on('wb_draw_start', ({ roomCode, strokeId, tool, color, width, point }) => {
       if (!roomCode) return
+      if (!isUserAllowedToDraw(socket.user._id.toString(), roomCode)) return
       appendAndBroadcastWbEvent('wb_draw_start', roomCode, { strokeId, tool, color, width, point })
     })
 
     socket.on('wb_draw_point', ({ roomCode, strokeId, point }) => {
       if (!roomCode) return
+      if (!isUserAllowedToDraw(socket.user._id.toString(), roomCode)) return
       appendAndBroadcastWbEvent('wb_draw_point', roomCode, { strokeId, point })
     })
 
     socket.on('wb_draw_end', ({ roomCode, strokeId }) => {
       if (!roomCode) return
+      if (!isUserAllowedToDraw(socket.user._id.toString(), roomCode)) return
       appendAndBroadcastWbEvent('wb_draw_end', roomCode, { strokeId })
     })
 
     socket.on('wb_add_text', ({ roomCode, textId, x, y, nx, ny, content, color }) => {
       if (!roomCode) return
+      if (!isUserAllowedToDraw(socket.user._id.toString(), roomCode)) return
       appendAndBroadcastWbEvent('wb_add_text', roomCode, { textId, x, y, nx, ny, content, color })
     })
 
@@ -222,6 +285,7 @@ export function setupMeetSocket(io) {
     socket.on('wb_remove_action', ({ roomCode, actionId, actionType }) => {
       if (!roomCode || !actionId) return
       const code = roomCode.trim().toUpperCase()
+      if (!isUserAllowedToDraw(socket.user._id.toString(), roomCode)) return
       const history = meetBoards.get(code)
       if (history) {
         const updatedHistory = history.filter((item) => {
@@ -266,6 +330,9 @@ export function setupMeetSocket(io) {
         meetPresence.delete(code)
         meetBoards.delete(code)
         meetChats.delete(code)
+        meetHosts.delete(code)
+        meetWbOpen.delete(code)
+        meetWbPermissions.delete(code)
       } catch (err) {
         console.error('Socket end_meet_for_all error:', err)
       }
