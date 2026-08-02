@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import HeroSection from '../components/HeroSection.jsx'
+import CoreFeaturesShowcase from '../components/CoreFeaturesShowcase.jsx'
 
 export default function LandingPage() {
   const { user, api } = useAuth()
@@ -145,69 +146,8 @@ export default function LandingPage() {
 
 
       {/* 6. Core Features Section */}
-      <section id="core-features" className="saas-card shadow-glow space-y-8">
-        <div className="text-center max-w-3xl mx-auto space-y-3">
-          <p className="caption-text uppercase tracking-[0.24em] text-[var(--accent-color)] font-semibold">Core Features</p>
-          <h2 className="section-title text-3xl font-bold">Everything you need to excel in your studies.</h2>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <Link to={user ? "/dashboard" : "/login"} className="saas-card-hover block">
-            <div className="h-10 w-10 rounded-[14px] bg-[var(--accent-light)] border border-[var(--accent-color)]/30 flex items-center justify-center text-[var(--accent-color)] mb-4">
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
-            </div>
-            <h3 className="card-title text-lg font-semibold mb-2">Dashboard</h3>
-            <p className="body-text text-sm">Comprehensive overview of your study goals, focus sessions, and active progress.</p>
-          </Link>
-
-          <Link to={user ? "/assessment" : "/login"} className="saas-card-hover block">
-            <div className="h-10 w-10 rounded-[14px] bg-[var(--accent-light)] border border-[var(--accent-color)]/30 flex items-center justify-center text-[var(--accent-color)] mb-4">
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-            </div>
-            <h3 className="card-title text-lg font-semibold mb-2">Assessment</h3>
-            <p className="body-text text-sm">Diagnostic tests to pinpoint knowledge gaps and evaluate current skill level.</p>
-          </Link>
-
-          <Link to={user ? "/roadmap" : "/login"} className="saas-card-hover block">
-            <div className="h-10 w-10 rounded-[14px] bg-[var(--accent-light)] border border-[var(--accent-color)]/30 flex items-center justify-center text-[var(--accent-color)] mb-4">
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" /></svg>
-            </div>
-            <h3 className="card-title text-lg font-semibold mb-2">Roadmap</h3>
-            <p className="body-text text-sm">Step-by-step personalized learning paths tailored to your goals.</p>
-          </Link>
-
-          <Link to={user ? "/questions" : "/login"} className="saas-card-hover block">
-            <div className="h-10 w-10 rounded-[14px] bg-[var(--accent-light)] border border-[var(--accent-color)]/30 flex items-center justify-center text-[var(--accent-color)] mb-4">
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-            </div>
-            <h3 className="card-title text-lg font-semibold mb-2">Practice</h3>
-            <p className="body-text text-sm">Adaptive 2-mark and long-answer practice questions generated on demand.</p>
-          </Link>
-
-          <Link to={user ? "/progress" : "/login"} className="saas-card-hover block">
-            <div className="h-10 w-10 rounded-[14px] bg-[var(--accent-light)] border border-[var(--accent-color)]/30 flex items-center justify-center text-[var(--accent-color)] mb-4">
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
-            </div>
-            <h3 className="card-title text-lg font-semibold mb-2">Progress</h3>
-            <p className="body-text text-sm">Detailed topic completion records and score history tracking.</p>
-          </Link>
-
-          <Link to={user ? "/career" : "/login"} className="saas-card-hover block">
-            <div className="h-10 w-10 rounded-[14px] bg-[var(--accent-light)] border border-[var(--accent-color)]/30 flex items-center justify-center text-[var(--accent-color)] mb-4">
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
-            </div>
-            <h3 className="card-title text-lg font-semibold mb-2">Career</h3>
-            <p className="body-text text-sm">Personalized career path recommendations matched with your skill profile.</p>
-          </Link>
-
-          <Link to={user ? "/study-group" : "/login"} className="saas-card-hover block md:col-span-2 lg:col-span-3">
-            <div className="h-10 w-10 rounded-[14px] bg-[var(--accent-light)] border border-[var(--accent-color)]/30 flex items-center justify-center text-[var(--accent-color)] mb-4">
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-            </div>
-            <h3 className="card-title text-lg font-semibold mb-2">Study Group</h3>
-            <p className="body-text text-sm">Collaborate with peers, share notes, and query the group AI companion.</p>
-          </Link>
-        </div>
+      <section id="core-features" className="w-full">
+        <CoreFeaturesShowcase />
       </section>
 
       {/* 7. Learning Journey Vertical Roadmap */}
