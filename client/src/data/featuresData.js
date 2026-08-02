@@ -54,35 +54,37 @@ export const FEATURES = [
     accentColor: 'from-rose-500/20 to-pink-500/20',
     glowColor: 'rgba(244, 63, 94, 0.35)'
   },
-  // Placeholders reserved for the next upload batch (Features 6, 7, 8)
   {
     id: 'career',
-    title: 'Career',
+    title: 'Career Guidance',
     badge: 'Guidance',
     description: 'Personalized career path recommendations matched with your skill profile.',
-    image: null,
+    image: '/features/career.png',
     route: '/career',
-    available: false,
-    placeholderText: 'Screenshot Upload Reserved'
+    available: true,
+    accentColor: 'from-sky-500/20 to-blue-500/20',
+    glowColor: 'rgba(14, 165, 233, 0.35)'
   },
   {
     id: 'study-groups',
-    title: 'Study Group',
+    title: 'Study Groups',
     badge: 'Collaboration',
     description: 'Collaborate with peers, share notes, and query the group AI companion.',
-    image: null,
+    image: '/features/study-groups.png',
     route: '/study-groups',
-    available: false,
-    placeholderText: 'Screenshot Upload Reserved'
+    available: true,
+    accentColor: 'from-violet-500/20 to-purple-500/20',
+    glowColor: 'rgba(139, 92, 246, 0.35)'
   },
   {
     id: 'meeting',
     title: 'Live Video Collaboration',
     badge: 'Real-time',
     description: 'Interactive live video rooms with AI note-taking and shared whiteboards.',
-    image: null,
+    image: '/features/meeting.png',
     route: '/meeting',
-    available: false,
-    placeholderText: 'Screenshot Upload Reserved'
+    available: true,
+    accentColor: 'from-emerald-500/20 to-green-500/20',
+    glowColor: 'rgba(16, 185, 129, 0.35)'
   }
 ]

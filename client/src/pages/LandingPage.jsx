@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import { useAuth } from '../context/AuthContext.jsx'
 import HeroSection from '../components/HeroSection.jsx'
 import CoreFeaturesShowcase from '../components/CoreFeaturesShowcase.jsx'
+import LearningJourneySection from '../components/LearningJourneySection.jsx'
 
 export default function LandingPage() {
   const { user, api } = useAuth()
@@ -36,29 +38,35 @@ export default function LandingPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1600px] px-2 sm:px-4 lg:px-6 space-y-16">
+    <div className={`mx-auto w-full max-w-[1600px] px-2 sm:px-4 lg:px-6 ${user ? 'space-y-6 pt-0' : 'space-y-12'}`}>
 
       {/* 1. Hero Section */}
       <HeroSection />
 
       {/* 2. Statistics Section */}
       <section className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="saas-card-hover text-center py-8">
-          <p className="page-title text-4xl font-extrabold text-[var(--accent-color)]">{stats.students}</p>
-          <p className="card-title text-base mt-2 font-medium">Students</p>
-        </div>
-        <div className="saas-card-hover text-center py-8">
-          <p className="page-title text-4xl font-extrabold text-[var(--accent-color)]">{stats.assessmentsGenerated}</p>
-          <p className="card-title text-base mt-2 font-medium">Assessments Generated</p>
-        </div>
-        <div className="saas-card-hover text-center py-8">
-          <p className="page-title text-4xl font-extrabold text-[var(--accent-color)]">{stats.completionRate}</p>
-          <p className="card-title text-base mt-2 font-medium">Completion Rate</p>
-        </div>
-        <div className="saas-card-hover text-center py-8">
-          <p className="page-title text-4xl font-extrabold text-[var(--accent-color)]">{stats.aiMentor}</p>
-          <p className="card-title text-base mt-2 font-medium">AI Mentor</p>
-        </div>
+        {[
+          { label: 'Students', value: stats.students },
+          { label: 'Assessments Generated', value: stats.assessmentsGenerated },
+          { label: 'Completion Rate', value: stats.completionRate },
+          { label: 'AI Mentor', value: stats.aiMentor }
+        ].map((item, idx) => (
+          <motion.div
+            key={item.label}
+            initial={{ opacity: 0, y: 30, scale: 0.95 }}
+            whileInView={{ opacity: 1, y: 0, scale: 1 }}
+            viewport={{ once: false, amount: 0.3 }}
+            transition={{ duration: 0.7, delay: idx * 0.1, ease: [0.16, 1, 0.3, 1] }}
+            className="gold-orbit-card text-center py-8 px-4 flex flex-col items-center justify-center cursor-pointer select-none"
+          >
+            <p className="page-title text-4xl sm:text-5xl font-extrabold text-[var(--accent-color)] tracking-tight">
+              {item.value}
+            </p>
+            <p className="card-title text-sm sm:text-base mt-2.5 font-semibold text-[var(--text-secondary)]">
+              {item.label}
+            </p>
+          </motion.div>
+        ))}
       </section>
 
       {/* 3. Why Catalyst */}
@@ -146,55 +154,12 @@ export default function LandingPage() {
 
 
       {/* 6. Core Features Section */}
-      <section id="core-features" className="w-full">
+      <section id="core-features" className="-mx-5 sm:-mx-10 lg:-mx-14 w-[calc(100%+2.5rem)] sm:w-[calc(100%+5rem)] lg:w-[calc(100%+7rem)] overflow-hidden">
         <CoreFeaturesShowcase />
       </section>
 
       {/* 7. Learning Journey Vertical Roadmap */}
-      <section className="saas-card shadow-glow space-y-8">
-        <div className="text-center max-w-3xl mx-auto space-y-3">
-          <p className="caption-text uppercase tracking-[0.24em] text-[var(--accent-color)] font-semibold">Learning Journey</p>
-          <h2 className="section-title text-3xl font-bold">Your step-by-step path to career readiness.</h2>
-        </div>
-
-        <div className="max-w-2xl mx-auto relative pl-6 sm:pl-8 space-y-6 border-l-2 border-[var(--accent-color)]/40">
-          <div className="saas-elevated-card relative">
-            <span className="absolute -left-[37px] sm:-left-[45px] top-6 h-6 w-6 rounded-full bg-[var(--accent-color)] border-4 border-[var(--bg-surface)]" />
-            <h4 className="card-title font-semibold">1. Join Catalyst</h4>
-            <p className="body-text text-sm mt-1">Create your profile and set your learning preferences.</p>
-          </div>
-
-          <div className="saas-elevated-card relative">
-            <span className="absolute -left-[37px] sm:-left-[45px] top-6 h-6 w-6 rounded-full bg-[var(--accent-color)] border-4 border-[var(--bg-surface)]" />
-            <h4 className="card-title font-semibold">2. Take Assessment</h4>
-            <p className="body-text text-sm mt-1">Diagnostic evaluation to identify your strengths and gaps.</p>
-          </div>
-
-          <div className="saas-elevated-card relative">
-            <span className="absolute -left-[37px] sm:-left-[45px] top-6 h-6 w-6 rounded-full bg-[var(--accent-color)] border-4 border-[var(--bg-surface)]" />
-            <h4 className="card-title font-semibold">3. Get Personalized Roadmap</h4>
-            <p className="body-text text-sm mt-1">AI generates a step-by-step study schedule built just for you.</p>
-          </div>
-
-          <div className="saas-elevated-card relative">
-            <span className="absolute -left-[37px] sm:-left-[45px] top-6 h-6 w-6 rounded-full bg-[var(--accent-color)] border-4 border-[var(--bg-surface)]" />
-            <h4 className="card-title font-semibold">4. Daily Learning</h4>
-            <p className="body-text text-sm mt-1">Practice adaptive questions and focus with Pomodoro timers.</p>
-          </div>
-
-          <div className="saas-elevated-card relative">
-            <span className="absolute -left-[37px] sm:-left-[45px] top-6 h-6 w-6 rounded-full bg-[var(--accent-color)] border-4 border-[var(--bg-surface)]" />
-            <h4 className="card-title font-semibold">5. Track Progress</h4>
-            <p className="body-text text-sm mt-1">Monitor real-time score improvements and completion metrics.</p>
-          </div>
-
-          <div className="saas-elevated-card relative">
-            <span className="absolute -left-[37px] sm:-left-[45px] top-6 h-6 w-6 rounded-full bg-[var(--accent-color)] border-4 border-[var(--bg-surface)]" />
-            <h4 className="card-title font-semibold">6. Become Career Ready</h4>
-            <p className="body-text text-sm mt-1">Achieve subject mastery and align with target career pathways.</p>
-          </div>
-        </div>
-      </section>
+      <LearningJourneySection />
 
       {/* 8. Why Choose Catalyst Comparison Table */}
       <section className="saas-card shadow-glow space-y-8">

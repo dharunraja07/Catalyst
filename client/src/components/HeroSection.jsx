@@ -211,7 +211,7 @@ export default function HeroSection() {
               <div className="flex items-center justify-between rounded-[14px] border border-slate-800 bg-slate-950/60 p-3.5">
                 <div>
                   <p className="text-[11px] uppercase tracking-wider font-bold text-[var(--accent-color)]">Welcome back</p>
-                  <h3 className="text-base sm:text-lg font-bold text-white mt-0.5">Hello, Balaraman 👋</h3>
+                  <h3 className="text-base sm:text-lg font-bold text-white mt-0.5">Hello, Alex 👋</h3>
                   <p className="text-xs text-slate-400">Your AI Learning Assistant is active.</p>
                 </div>
                 <div className="rounded-[12px] border border-[var(--accent-color)]/30 bg-[var(--accent-light)] px-3 py-1.5 text-xs font-bold text-[var(--accent-color)]">

@@ -98,7 +98,7 @@ export default function NavBar({ onOpenProfile }) {
 
   return (
     <>
-      <header className="fixed top-0 left-0 right-0 z-50 border-b border-[var(--border-main)] bg-[var(--bg-nav)]/95 backdrop-blur-md transition-colors duration-200">
+      <header className="fixed top-0 left-0 right-0 z-50 border-b border-[var(--border-main)]/60 bg-[var(--bg-nav)]/80 backdrop-blur-md shadow-sm transition-colors duration-200">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 text-[var(--text-primary)] sm:px-6">
           
           {/* Logo Section */}
