@@ -50,17 +50,30 @@ export default function NotificationPanel() {
   const [activeTab, setActiveTab] = useState('unread')
   const panelRef = useRef(null)
 
-  // Handle click outside to close dropdown/panel
+  // Handle click outside & Escape key to close dropdown/panel
   useEffect(() => {
     function handleClickOutside(event) {
-      if (panelRef.current && !panelRef.current.contains(event.target)) {
+      if (
+        panelRef.current &&
+        !panelRef.current.contains(event.target) &&
+        !event.target.closest('[data-notification-bell]')
+      ) {
+        closePanel()
+      }
+    }
+    function handleKeyDown(event) {
+      if (event.key === 'Escape') {
         closePanel()
       }
     }
     if (isPanelOpen) {
       document.addEventListener('mousedown', handleClickOutside)
+      document.addEventListener('keydown', handleKeyDown)
     }
-    return () => document.removeEventListener('mousedown', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
   }, [isPanelOpen, closePanel])
 
   if (!isPanelOpen) return null
@@ -71,16 +84,16 @@ export default function NotificationPanel() {
 
   return (
     <>
-      {/* Mobile Backdrop Overlay (<md:) */}
+      {/* Mobile Backdrop Overlay (<md) */}
       <div
         onClick={closePanel}
-        className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm md:hidden animate-in fade-in duration-200"
+        className="fixed inset-0 z-40 bg-black/50 backdrop-blur-xs md:hidden animate-in fade-in duration-200"
       />
 
       {/* Responsive Drawer Container */}
       <div
         ref={panelRef}
-        className="fixed bottom-0 left-0 right-0 z-50 flex max-h-[85vh] flex-col rounded-t-[28px] border-t border-[var(--border-main)] bg-[var(--bg-surface)] shadow-2xl transition-all duration-300 md:absolute md:bottom-auto md:left-auto md:right-0 md:top-full md:mt-2 md:w-[420px] md:max-h-[580px] md:rounded-[24px] md:border"
+        className="fixed bottom-0 left-0 right-0 z-50 flex max-h-[85vh] flex-col rounded-t-[28px] border-t border-[var(--border-main)] bg-[var(--bg-surface)] shadow-2xl transition-all duration-300 md:fixed md:bottom-auto md:left-auto md:right-6 md:top-16 md:w-[420px] md:max-h-[580px] md:rounded-[24px] md:border"
       >
         {/* Mobile Pull Handle Pill */}
         <div className="flex justify-center pt-3 pb-1 md:hidden">
@@ -138,11 +151,10 @@ export default function NotificationPanel() {
           <button
             type="button"
             onClick={() => setActiveTab('unread')}
-            className={`flex-1 pb-2.5 text-xs font-bold transition-colors relative ${
-              activeTab === 'unread'
+            className={`flex-1 pb-2.5 text-xs font-bold transition-colors relative ${activeTab === 'unread'
                 ? 'text-[var(--accent-color)]'
                 : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
-            }`}
+              }`}
           >
             Unread ({unreadNotifications.length})
             {activeTab === 'unread' && (
@@ -153,11 +165,10 @@ export default function NotificationPanel() {
           <button
             type="button"
             onClick={() => setActiveTab('read')}
-            className={`flex-1 pb-2.5 text-xs font-bold transition-colors relative ${
-              activeTab === 'read'
+            className={`flex-1 pb-2.5 text-xs font-bold transition-colors relative ${activeTab === 'read'
                 ? 'text-[var(--accent-color)]'
                 : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'
-            }`}
+              }`}
           >
             Read / History ({readNotifications.length})
             {activeTab === 'read' && (

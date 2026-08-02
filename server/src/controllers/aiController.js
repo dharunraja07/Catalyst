@@ -3,16 +3,30 @@ import AiConversation from '../models/AiConversation.js'
 import AiMessage from '../models/AiMessage.js'
 import { generateJSON, chatCompletion, AIProviderError, getAvailableProviderNames } from '../services/ai/aiService.js'
 
-function buildMappedQuestion(item) {
+function buildMappedQuestion(item, defaultDiff = 'Medium') {
+    let topicName = item.topic
+    if (!topicName || topicName === 'General') {
+        const text = item.question || ''
+        if (text.length > 5) {
+            const words = text.replace(/[^a-zA-Z0-9\s]/g, ' ').split(/\s+/).filter((w) => w.length > 3)
+            if (words.length >= 2) {
+                topicName = `${words[0].charAt(0).toUpperCase() + words[0].slice(1)} ${words[1].charAt(0).toUpperCase() + words[1].slice(1)}`
+            } else if (words.length === 1) {
+                topicName = words[0].charAt(0).toUpperCase() + words[0].slice(1)
+            }
+        }
+    }
+    if (!topicName) topicName = 'Core Concept'
+
     return {
         _id: `ai-${Math.random().toString(36).slice(2, 10)}`,
         text: item.question || '',
         options: Array.isArray(item.options) ? item.options : [],
         answer: item.correctAnswer || '',
         explanation: item.explanation || '',
-        subject: 'Syllabus',
-        topic: 'General',
-        difficulty: 'Medium'
+        subject: item.subject || 'Syllabus',
+        topic: topicName,
+        difficulty: defaultDiff || item.difficulty || 'Medium'
     }
 }
 
@@ -43,7 +57,7 @@ function validatePracticePayload(payload) {
 
 export async function generateAssessment(req, res, next) {
     try {
-        const { syllabus, provider } = req.body
+        const { syllabus, provider, difficulty = 'adaptive' } = req.body
         if (!syllabus || !syllabus.trim()) {
             return res.status(400).json({ error: 'Syllabus is required' })
         }
@@ -52,7 +66,24 @@ export async function generateAssessment(req, res, next) {
             return res.status(400).json({ error: 'Syllabus text is too long (max 10,000 characters)' })
         }
 
-        const prompt = `Create 15 multiple-choice questions based on the following syllabus. Return only valid JSON in this exact shape: {"questions":[{"question":"...","options":["...","...","...","..."],"correctAnswer":"...","explanation":"..."}]}. Every question must have exactly 4 options, and the correctAnswer must match one of the options. Syllabus: ${syllabus}`
+        let difficultyLabel = 'Medium'
+        let difficultyInstruction = 'balanced mix of questions'
+
+        if (difficulty === 'easy') {
+            difficultyLabel = 'Easy'
+            difficultyInstruction = '15 EASY introductory & foundational questions testing basic definitions and direct concepts'
+        } else if (difficulty === 'medium') {
+            difficultyLabel = 'Medium'
+            difficultyInstruction = '15 MEDIUM difficulty standard application questions testing core understanding'
+        } else if (difficulty === 'hard') {
+            difficultyLabel = 'Hard'
+            difficultyInstruction = '15 HARD advanced questions testing complex problem solving, analytical thinking, and edge cases'
+        } else if (difficulty === 'adaptive') {
+            difficultyLabel = 'Adaptive'
+            difficultyInstruction = '15 ADAPTIVE targeted diagnostic questions focusing specifically on unlearned, weak, or unmastered topics from previous attempts'
+        }
+
+        const prompt = `Create 15 multiple-choice questions based on the following syllabus. Difficulty Directive: ${difficultyInstruction}. Return only valid JSON in this exact shape: {"questions":[{"question":"...","options":["...","...","...","..."],"correctAnswer":"...","explanation":"...","difficulty":"${difficultyLabel}"}]}. Every question must have exactly 4 options, and the correctAnswer must match one of the options. Syllabus: ${syllabus}`
 
         let payload
         try {
@@ -68,7 +99,7 @@ export async function generateAssessment(req, res, next) {
             return res.status(502).json({ error: 'Failed to generate a valid assessment. Please try again.' })
         }
 
-        const questions = payload.questions.map(buildMappedQuestion)
+        const questions = payload.questions.map((q) => buildMappedQuestion(q, difficultyLabel))
         res.json({ questions })
     } catch (error) {
         next(error)

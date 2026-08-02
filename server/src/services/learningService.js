@@ -57,9 +57,111 @@ export function analyzeTopics(answers) {
   return performance
 }
 
-export async function generateRoadmap(userId, classification) {
-  const template = roadmapTemplates[classification.toLowerCase()] || roadmapTemplates.beginner
-  const roadmap = await Roadmap.findOneAndUpdate({ user: userId }, { items: template }, { new: true, upsert: true })
+export function getScoreTier(score) {
+  const p = Math.max(0, Math.min(100, Math.round(score)))
+  if (p <= 10) return { tier: 'Foundational', range: '0-10%', level: 1 }
+  if (p <= 20) return { tier: 'Novice', range: '11-20%', level: 2 }
+  if (p <= 30) return { tier: 'Beginner', range: '21-30%', level: 3 }
+  if (p <= 40) return { tier: 'Developing', range: '31-40%', level: 4 }
+  if (p <= 50) return { tier: 'Approaching Competency', range: '41-50%', level: 5 }
+  if (p <= 60) return { tier: 'Competent', range: '51-60%', level: 6 }
+  if (p <= 70) return { tier: 'Proficient', range: '61-70%', level: 7 }
+  if (p <= 80) return { tier: 'Advanced', range: '71-80%', level: 8 }
+  if (p <= 90) return { tier: 'Excellence', range: '81-90%', level: 9 }
+  return { tier: 'Mastery', range: '91-100%', level: 10 }
+}
+
+export async function generateRoadmap(userId, classification, score = 0, topicPerformance = {}, answers = []) {
+  const scoreInfo = getScoreTier(score)
+  
+  const wrongTopics = Array.isArray(answers)
+    ? answers.filter((a) => !a.correct).map((a) => a.topic || a.subject).filter((t) => t && t !== 'General' && t !== 'Syllabus')
+    : []
+  const correctTopics = Array.isArray(answers)
+    ? answers.filter((a) => a.correct).map((a) => a.topic || a.subject).filter((t) => t && t !== 'General' && t !== 'Syllabus')
+    : []
+
+  const uniqueWeaknesses = Array.from(new Set(wrongTopics))
+  const rawStrengths = Array.from(new Set(correctTopics))
+  const uniqueStrengths = rawStrengths.filter((t) => !uniqueWeaknesses.includes(t))
+
+  const dynamicItems = []
+  
+  // Step 1: Re-study & Strengthen Weak Topics / Wrong Answers
+  if (uniqueWeaknesses.length > 0) {
+    dynamicItems.push({
+      title: `Strengthen Weak Areas: ${uniqueWeaknesses.slice(0, 3).join(', ')}`,
+      description: `Re-study missed concepts from topics: ${uniqueWeaknesses.join(', ')}. Review explanations for questions you answered incorrectly.`,
+      estimatedTime: '20 mins',
+      difficulty: 'Targeted Focus',
+      completed: false,
+      type: 'weakness'
+    })
+  } else {
+    dynamicItems.push({
+      title: `Review Core Fundamentals (${scoreInfo.tier} Tier)`,
+      description: `Maintain a strong baseline by reviewing core formulas and fundamental definitions.`,
+      estimatedTime: '15 mins',
+      difficulty: 'Easy',
+      completed: false,
+      type: 'review'
+    })
+  }
+
+  // Step 2: Tier-Specific Learning Goal
+  dynamicItems.push({
+    title: `${scoreInfo.tier} Milestone (${scoreInfo.range} Target)`,
+    description: `Complete 15 targeted practice questions calibrated for ${scoreInfo.tier} level (${scoreInfo.range} mastery range).`,
+    estimatedTime: '25 mins',
+    difficulty: scoreInfo.level <= 3 ? 'Easy' : scoreInfo.level <= 7 ? 'Medium' : 'Hard',
+    completed: false,
+    type: 'tier_goal'
+  })
+
+  // Step 3: Practice & Problem Solving
+  if (uniqueStrengths.length > 0) {
+    dynamicItems.push({
+      title: `Appreciate & Expand Mastered Topics: ${uniqueStrengths.slice(0, 2).join(', ')}`,
+      description: `Great job mastering ${uniqueStrengths.slice(0, 2).join(', ')}! Take on advanced multi-topic problem sets to deepen your expertise.`,
+      estimatedTime: '30 mins',
+      difficulty: 'Medium',
+      completed: false,
+      type: 'strength'
+    })
+  } else {
+    dynamicItems.push({
+      title: 'Guided Practice Drills',
+      description: 'Solve step-by-step practice questions to build initial topic mastery.',
+      estimatedTime: '25 mins',
+      difficulty: 'Easy',
+      completed: false,
+      type: 'practice'
+    })
+  }
+
+  // Step 4: Diagnostic Re-Assessment
+  dynamicItems.push({
+    title: 'Diagnostic Re-Test & Progress Check',
+    description: `Take a follow-up assessment to verify improvement and advance past the ${scoreInfo.range} score bracket.`,
+    estimatedTime: '15 mins',
+    difficulty: 'Adaptive',
+    completed: false,
+    type: 'retest'
+  })
+
+  const roadmapData = {
+    items: dynamicItems,
+    score: Math.round(score),
+    scoreTier: scoreInfo.tier,
+    strengths: uniqueStrengths,
+    weaknesses: uniqueWeaknesses
+  }
+
+  const roadmap = await Roadmap.findOneAndUpdate(
+    { user: userId },
+    roadmapData,
+    { new: true, upsert: true }
+  )
   return roadmap
 }
 
