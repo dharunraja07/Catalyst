@@ -51,38 +51,41 @@ export function NotificationProvider({ children }) {
   const fetchNotifications = useCallback(async () => {
     if (!user) return
     setLoading(true)
+    let serverList = []
     try {
-      let res
       try {
-        res = await api.get('/study-groups/notifications')
+        const res = await api.get('/study-groups/notifications')
+        serverList = res.data || []
       } catch (e1) {
-        if (e1.response?.status === 401) return
-        try {
-          res = await api.get('/study-groups/requests/incoming')
-        } catch {
-          return
+        if (e1.response?.status !== 401) {
+          try {
+            const res2 = await api.get('/study-groups/requests/incoming')
+            serverList = res2.data || []
+          } catch {
+            serverList = []
+          }
         }
       }
-
-      const serverList = res.data || []
+    } catch (err) {
+      console.warn('Server notification fetch fallback to local:', err)
+    } finally {
       const localList = getStoredLocalNotifications()
       
-      // Combine local notifications with server notifications (deduping by _id if needed)
+      // Combine local notifications with server notifications (deduping by _id)
       const combinedMap = new Map()
       localList.forEach((item) => combinedMap.set(item._id, item))
-      serverList.forEach((item) => combinedMap.set(item._id, item))
+      if (Array.isArray(serverList)) {
+        serverList.forEach((item) => combinedMap.set(item._id, item))
+      }
 
       const mergedList = Array.from(combinedMap.values()).sort(
-        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+        (a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
       )
 
       setNotifications(mergedList)
 
       const unread = mergedList.filter((item) => item.status === 'pending' && !item.isRead).length
       setUnreadCount(unread)
-    } catch (err) {
-      console.error('Failed to load notifications:', err)
-    } finally {
       setLoading(false)
     }
   }, [user, api])
@@ -277,8 +280,17 @@ export function NotificationProvider({ children }) {
     return await api.post(`/study-groups/groups/${groupId}/invite`, { userId: targetUserId })
   }
 
-  const togglePanel = () => setIsPanelOpen((prev) => !prev)
-  const closePanel = () => setIsPanelOpen(false)
+  const closePanel = useCallback(() => setIsPanelOpen(false), [])
+
+  const togglePanel = useCallback(() => {
+    setIsPanelOpen((prev) => {
+      const next = !prev
+      if (next && user) {
+        fetchNotifications()
+      }
+      return next
+    })
+  }, [user, fetchNotifications])
 
   return (
     <NotificationContext.Provider

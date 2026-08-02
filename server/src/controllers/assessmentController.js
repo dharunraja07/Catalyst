@@ -39,8 +39,8 @@ export async function submitAssessment(req, res, next) {
       topicPerformance
     })
 
-    // Auto-generate roadmap based on assessment results
-    const roadmap = await generateRoadmap(req.user._id, classification)
+    // Auto-generate dynamic roadmap based on assessment results & wrong/correct answers
+    const roadmap = await generateRoadmap(req.user._id, classification, percentage, topicPerformance, normalizedAnswers)
     await updateProgress(req.user._id, percentage, topicPerformance)
     const resources = await recommendResources(topicPerformance)
     const questions = await buildAdaptiveQuestions(classification)

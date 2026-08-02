@@ -17,9 +17,8 @@ function AnimatedThemeToggle({ isDark, onToggle }) {
         <span className={isDark ? 'text-amber-300' : 'text-[var(--text-muted)]'}>🌙</span>
       </span>
       <span
-        className={`absolute h-7 w-7 rounded-full bg-[var(--accent-color)] shadow-md transition-transform duration-300 ease-in-out flex items-center justify-center text-xs font-bold text-black ${
-          isDark ? 'translate-x-7' : 'translate-x-0'
-        }`}
+        className={`absolute h-7 w-7 rounded-full bg-[var(--accent-color)] shadow-md transition-transform duration-300 ease-in-out flex items-center justify-center text-xs font-bold text-black ${isDark ? 'translate-x-7' : 'translate-x-0'
+          }`}
       >
         {isDark ? '🌙' : '☀'}
       </span>
@@ -83,7 +82,7 @@ export default function TopUtilityBar({ onOpenMobileDrawer, toggleCollapse, isCo
   return (
     <header className="sticky top-0 z-20 border-b border-[var(--border-main)] bg-[var(--bg-nav)]/95 backdrop-blur-md transition-colors duration-200">
       <div className="mx-auto flex w-full items-center justify-between gap-4 px-4 py-3 sm:px-6">
-        
+
         {/* Left Side: Mobile Drawer Trigger / Desktop Sidebar Collapse Trigger */}
         <div className="flex items-center gap-3">
           {/* Mobile Drawer Trigger (<768px) */}

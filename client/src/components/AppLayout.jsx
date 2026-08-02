@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
+import { useNotifications } from '../context/NotificationContext.jsx'
 import SidebarNav from './SidebarNav.jsx'
 import TopUtilityBar from './TopUtilityBar.jsx'
 import MobileDrawer from './MobileDrawer.jsx'
@@ -9,6 +11,8 @@ import FloatingAIAssistant from './FloatingAIAssistant.jsx'
 
 export default function AppLayout({ children }) {
   const { user } = useAuth()
+  const { closePanel, fetchNotifications } = useNotifications()
+  const location = useLocation()
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [isCollapsed, setIsCollapsed] = useState(() => {
@@ -22,6 +26,15 @@ export default function AppLayout({ children }) {
   useEffect(() => {
     localStorage.setItem('sidebarCollapsed', isCollapsed ? 'true' : 'false')
   }, [isCollapsed])
+
+  // Automatically close notification panel & mobile drawer when navigating to a new page, and sync notifications
+  useEffect(() => {
+    closePanel()
+    setIsMobileDrawerOpen(false)
+    if (user) {
+      fetchNotifications()
+    }
+  }, [location.pathname, user, closePanel, fetchNotifications])
 
   const toggleCollapse = () => {
     setIsCollapsed((prev) => !prev)

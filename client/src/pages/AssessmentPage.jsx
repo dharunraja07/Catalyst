@@ -55,9 +55,46 @@ export default function AssessmentPage() {
     }
   }
 
+  const [selectedDifficulty, setSelectedDifficulty] = useState('adaptive')
+
+  const difficultyModes = [
+    {
+      id: 'easy',
+      label: 'Easy',
+      icon: '🟢',
+      badge: '15 Easy Questions',
+      description: 'Foundational concepts & definitions',
+      activeClass: 'border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-2 ring-emerald-500/30'
+    },
+    {
+      id: 'medium',
+      label: 'Medium',
+      icon: '🟡',
+      badge: '15 Medium Questions',
+      description: 'Standard application & conceptual questions',
+      activeClass: 'border-amber-500 bg-amber-500/10 text-amber-600 dark:text-amber-400 ring-2 ring-amber-500/30'
+    },
+    {
+      id: 'hard',
+      label: 'Hard',
+      icon: '🔴',
+      badge: '15 Hard Questions',
+      description: 'Advanced problem-solving & edge cases',
+      activeClass: 'border-rose-500 bg-rose-500/10 text-rose-600 dark:text-rose-400 ring-2 ring-rose-500/30'
+    },
+    {
+      id: 'adaptive',
+      label: 'Default / Adaptive',
+      icon: '⚡',
+      badge: '15 Focus Unlearned',
+      description: 'Targets weak topics from previous assessment',
+      activeClass: 'border-[var(--accent-color)] bg-[var(--accent-color)]/10 text-[var(--text-primary)] ring-2 ring-[var(--accent-color)]/30'
+    }
+  ]
+
   const handleGenerateAssessment = async () => {
-    if (!syllabus.trim()) {
-      setAiError('Please enter a syllabus before generating questions.')
+    if (!syllabus.trim() && selectedDifficulty !== 'adaptive') {
+      setAiError('Please enter a syllabus or topics before generating questions.')
       return
     }
     setGenerating(true)
@@ -67,7 +104,29 @@ export default function AssessmentPage() {
     setResult(null)
     try {
       const provider = localStorage.getItem('ai_provider') || 'gemini'
-      const response = await api.post('/ai/generate-assessment', { syllabus: syllabus.trim(), provider })
+
+      let targetSyllabus = syllabus.trim()
+      if (selectedDifficulty === 'adaptive' && result?.answers?.length) {
+        const unlearnedList = result.answers
+          .filter((a) => !a.correct)
+          .map((a) => a.topic || a.subject)
+          .filter(Boolean)
+        const uniqueUnlearned = Array.from(new Set(unlearnedList))
+        if (uniqueUnlearned.length > 0) {
+          const focusContext = `Focus specifically on unlearned topics: ${uniqueUnlearned.join(', ')}`
+          targetSyllabus = targetSyllabus ? `${targetSyllabus} (${focusContext})` : focusContext
+        }
+      }
+
+      if (!targetSyllabus) {
+        targetSyllabus = 'General Diagnostic Assessment'
+      }
+
+      const response = await api.post('/ai/generate-assessment', {
+        syllabus: targetSyllabus,
+        provider,
+        difficulty: selectedDifficulty
+      })
       setQuestions(response.data.questions || [])
     } catch (err) {
       setAiError(err.response?.data?.error || 'Unable to generate assessment questions')
@@ -127,13 +186,63 @@ export default function AssessmentPage() {
         </p>
       )}
 
+      {/* Assessment Difficulty / Mode Selection */}
+      <div className="space-y-3">
+        <label className="block text-sm font-semibold text-[var(--text-primary)]">
+          Select Assessment Mode / Difficulty
+        </label>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          {difficultyModes.map((mode) => {
+            const isSelected = selectedDifficulty === mode.id
+            return (
+              <button
+                key={mode.id}
+                type="button"
+                onClick={() => setSelectedDifficulty(mode.id)}
+                className={`flex flex-col justify-between text-left p-4 rounded-[18px] border transition-all duration-200 min-h-[110px] ${
+                  isSelected
+                    ? mode.activeClass
+                    : 'border-[var(--border-main)] bg-[var(--bg-secondary)] hover:border-[var(--border-hover)] text-[var(--text-secondary)]'
+                }`}
+              >
+                <div className="flex items-center justify-between w-full">
+                  <span className="text-xl">{mode.icon}</span>
+                  <span
+                    className={`text-[10px] uppercase tracking-wider font-extrabold px-2 py-0.5 rounded-full border ${
+                      isSelected
+                        ? 'border-current bg-current/10'
+                        : 'border-[var(--border-main)] bg-[var(--bg-primary)] text-[var(--text-muted)]'
+                    }`}
+                  >
+                    {mode.badge}
+                  </span>
+                </div>
+                <div className="mt-3">
+                  <h4 className="text-sm font-bold text-[var(--text-primary)] flex items-center gap-1.5">
+                    {mode.label}
+                    {isSelected && <span className="text-xs font-black">✓</span>}
+                  </h4>
+                  <p className="text-xs text-[var(--text-muted)] mt-0.5 leading-snug">
+                    {mode.description}
+                  </p>
+                </div>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
       {/* Syllabus Generation Form */}
       <div className="space-y-4">
         <label className="block text-sm font-semibold text-[var(--text-primary)]">Syllabus / Topics</label>
         <textarea
           value={syllabus}
           onChange={(event) => setSyllabus(event.target.value)}
-          placeholder="Paste your syllabus or topics here..."
+          placeholder={
+            selectedDifficulty === 'adaptive'
+              ? 'Enter topics or leave empty to automatically focus on unlearned topics from your previous assessment...'
+              : 'Paste your syllabus or topics here...'
+          }
           rows="4"
           className="saas-input w-full min-h-[120px] p-4 text-base"
         />
@@ -144,7 +253,7 @@ export default function AssessmentPage() {
             disabled={generating}
             className="saas-button-primary font-bold px-8 shadow-sm"
           >
-            {generating ? 'Generating...' : 'Generate Assessment'}
+            {generating ? 'Generating...' : `Generate ${selectedDifficulty.toUpperCase()} Assessment`}
           </button>
         </div>
       </div>
@@ -159,8 +268,18 @@ export default function AssessmentPage() {
               <section key={question._id} className="rounded-[18px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-6 shadow-sm">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between text-xs font-semibold text-[var(--text-muted)]">
                   <span>{question.subject} • {question.topic}</span>
-                  <span className="rounded-[10px] border border-[var(--border-main)] bg-[var(--bg-primary)] px-3 py-1 text-xs text-[var(--text-secondary)] font-semibold w-fit">
-                    {question.difficulty}
+                  <span className={`rounded-[10px] border px-3 py-1 text-xs font-bold w-fit ${
+                    (question.difficulty || selectedDifficulty).toLowerCase() === 'easy'
+                      ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                      : (question.difficulty || selectedDifficulty).toLowerCase() === 'hard'
+                        ? 'border-rose-500/40 bg-rose-500/10 text-rose-600 dark:text-rose-400'
+                        : (question.difficulty || selectedDifficulty).toLowerCase() === 'adaptive'
+                          ? 'border-[var(--accent-color)]/40 bg-[var(--accent-color)]/10 text-[var(--text-primary)]'
+                          : 'border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                  }`}>
+                    {question.difficulty && question.difficulty !== 'Medium'
+                      ? question.difficulty
+                      : selectedDifficulty.charAt(0).toUpperCase() + selectedDifficulty.slice(1)}
                   </span>
                 </div>
                 <p className="card-title mt-4 text-lg font-bold">{idx + 1}. {question.text}</p>

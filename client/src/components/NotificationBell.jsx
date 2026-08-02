@@ -8,6 +8,7 @@ export default function NotificationBell() {
     <div className="relative">
       <button
         type="button"
+        data-notification-bell="true"
         onClick={togglePanel}
         aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ''}`}
         className={`relative flex items-center justify-center p-2.5 rounded-[14px] border bg-[var(--bg-secondary)] transition-all duration-200 focus:outline-none ${
