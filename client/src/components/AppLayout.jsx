@@ -65,7 +65,7 @@ export default function AppLayout({ children }) {
       {/* Main Workspace Column */}
       <div className="flex-1 flex flex-col min-w-0 h-full overflow-y-auto custom-scrollbar">
         {/* Sticky Top Utility Bar */}
-        <div className="sticky top-0 z-20 shrink-0">
+        <div className="sticky top-0 z-30 shrink-0">
           <TopUtilityBar
             onOpenMobileDrawer={() => setIsMobileDrawerOpen(true)}
             onOpenProfile={() => setIsProfileOpen(true)}
@@ -75,7 +75,7 @@ export default function AppLayout({ children }) {
         </div>
 
         {/* Main Content Workspace Area */}
-        <main className="flex-1 w-full max-w-[1600px] mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6 pb-12">
+        <main className="flex-1 w-full max-w-[1600px] mx-auto px-3 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-12">
           {children}
         </main>
       </div>
