@@ -11,7 +11,7 @@ export default function NotificationBell() {
         data-notification-bell="true"
         onClick={togglePanel}
         aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ''}`}
-        className={`relative flex items-center justify-center p-2.5 rounded-[14px] border bg-[var(--bg-secondary)] transition-all duration-200 focus:outline-none ${
+        className={`relative flex items-center justify-center min-h-[44px] min-w-[44px] p-2.5 rounded-[14px] border bg-[var(--bg-secondary)] transition-all duration-200 focus:outline-none cursor-pointer ${
           isPanelOpen
             ? 'border-[var(--accent-color)] text-[var(--accent-color)] shadow-sm'
             : 'border-[var(--border-main)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--accent-color)]'
