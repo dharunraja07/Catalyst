@@ -7,7 +7,7 @@ import {
   Zap,
   BookOpen,
   TrendingUp,
-  GraduationCap
+  Target
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext.jsx'
 
@@ -158,7 +158,7 @@ export default function HeroSection() {
           {/* Short Description */}
           <motion.p
             variants={fadeUpVariant}
-            className="line-clamp-2 text-base font-medium text-slate-300 sm:text-lg leading-relaxed max-w-xl"
+            className="text-base font-medium text-slate-300 sm:text-lg leading-relaxed max-w-xl"
           >
             Personalized learning paths, interactive AI mentoring, smart progress tracking, and collaborative study groups designed for your success.
           </motion.p>
@@ -310,22 +310,23 @@ export default function HeroSection() {
             </div>
           </motion.div>
 
-          {/* 4. Floating Card 3: Learning Roadmap Card (Bottom Left Perimeter - Z-Index 20) */}
+          {/* 4. Floating Card 3: Smart Practice Drill Card (Bottom Left Perimeter - Z-Index 20) */}
           <motion.div
             animate={floatAnim(-5, 4.5, 0.2)}
             className="absolute bottom-0 left-0 z-20 w-[180px] sm:w-[195px] rounded-[16px] border border-slate-700 bg-slate-900/95 p-2.5 shadow-[0_15px_35px_rgba(0,0,0,0.5)] backdrop-blur-md hidden sm:block text-left"
           >
             <div className="flex items-center gap-1.5 mb-1">
-              <div className="h-5 w-5 rounded-lg bg-blue-500/10 border border-blue-500/30 text-blue-400 flex items-center justify-center shrink-0">
-                <GraduationCap className="h-3 w-3" />
+              <div className="h-5 w-5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center shrink-0">
+                <Target className="h-3 w-3" />
               </div>
               <div>
-                <p className="text-[11px] font-bold text-white leading-tight">AI Roadmap Node</p>
-                <p className="text-[8px] text-slate-400">Node.js Microservices</p>
+                <p className="text-[11px] font-bold text-white leading-tight">Smart Practice</p>
+                <p className="text-[8px] text-slate-400">Adaptive Drills</p>
               </div>
             </div>
-            <div className="w-full bg-slate-950/80 rounded-lg p-1.5 border border-slate-800 text-[9px] text-slate-300 font-medium truncate">
-              Next: Auth API Setup
+            <div className="w-full bg-slate-950/80 rounded-lg p-1.5 border border-slate-800 text-[9px] text-emerald-400 font-semibold truncate flex items-center justify-between">
+              <span>Diagnostic Accuracy</span>
+              <span className="font-bold text-white">94%</span>
             </div>
           </motion.div>
 

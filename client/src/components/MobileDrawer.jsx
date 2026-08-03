@@ -114,9 +114,11 @@ export default function MobileDrawer({ isOpen, onClose, onOpenProfile }) {
           {/* Header */}
           <div className="flex items-center justify-between border-b border-[var(--divider-main)] pb-4">
             <div className="flex items-center gap-3">
-              <span className="inline-flex h-9 w-9 items-center justify-center rounded-[12px] bg-[var(--accent-color)] text-sm font-extrabold text-black">
-                AI
-              </span>
+              <img
+                src="/favicon.png"
+                alt="Catalyst Logo"
+                className="h-9 w-9 shrink-0 rounded-[12px] object-cover shadow-sm border border-[var(--accent-color)]/30"
+              />
               <div>
                 <h3 className="font-extrabold text-base text-[var(--text-primary)]">Catalyst</h3>
                 <p className="text-[10px] uppercase tracking-widest text-[var(--text-secondary)] font-semibold">

@@ -490,4 +490,10 @@ textarea {
   filter: drop-shadow(0 0 10px rgba(230, 179, 37, 0.85));
 }
 
+.perspective-1000 {
+  perspective: 1000px;
+  transform-style: preserve-3d;
+}
+
+
 

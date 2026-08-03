@@ -97,9 +97,11 @@ export default function SidebarNav({ isCollapsed, toggleCollapse }) {
       <div className="space-y-6">
         <div className="flex items-center justify-between px-2 py-1">
           <Link to="/" title="Catalyst AI Powered Learning" className="flex items-center gap-3 overflow-hidden">
-            <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px] bg-[var(--accent-color)] text-base font-extrabold text-black shadow-sm">
-              AI
-            </span>
+            <img
+              src="/favicon.png"
+              alt="Catalyst Logo"
+              className="h-10 w-10 shrink-0 rounded-[14px] object-cover shadow-sm border border-[var(--accent-color)]/30"
+            />
             {!isCollapsed && (
               <div className="flex flex-col leading-tight transition-opacity duration-200">
                 <span className="font-extrabold text-xl tracking-tight text-[var(--text-primary)]">Catalyst</span>

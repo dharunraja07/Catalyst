@@ -98,7 +98,7 @@ export default function NavBar({ onOpenProfile }) {
 
   return (
     <>
-      <header className="fixed top-0 left-0 right-0 z-50 border-b border-[var(--border-main)]/60 bg-[var(--bg-nav)]/80 backdrop-blur-md shadow-sm transition-colors duration-200">
+      <header className="fixed top-0 left-0 right-0 z-50 bg-[var(--bg-nav)]/80 backdrop-blur-md shadow-sm transition-colors duration-200">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 text-[var(--text-primary)] sm:px-6">
           
           {/* Logo Section */}
@@ -117,9 +117,11 @@ export default function NavBar({ onOpenProfile }) {
             )}
 
             <Link to="/" onClick={closeMobileMenu} className="flex items-center gap-3 font-bold tracking-tight text-lg">
-              <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px] bg-[var(--accent-color)] text-base font-extrabold text-black shadow-sm">
-                AI
-              </span>
+              <img
+                src="/favicon.png"
+                alt="Catalyst Logo"
+                className="h-10 w-10 shrink-0 rounded-[14px] object-cover shadow-sm border border-[var(--accent-color)]/30"
+              />
               <div className="flex flex-col leading-tight">
                 <span className="font-extrabold text-xl tracking-tight text-[var(--text-primary)]">Catalyst</span>
                 <span className="text-[10px] uppercase tracking-widest text-[var(--text-secondary)] font-bold whitespace-nowrap">
@@ -235,7 +237,11 @@ export default function NavBar({ onOpenProfile }) {
             <div className="space-y-6">
               <div className="flex items-center justify-between border-b border-[var(--divider-main)] pb-4">
                 <div className="flex items-center gap-3">
-                  <span className="inline-flex h-9 w-9 items-center justify-center rounded-[12px] bg-[var(--accent-color)] text-sm font-extrabold text-black">AI</span>
+                  <img
+                    src="/favicon.png"
+                    alt="Catalyst Logo"
+                    className="h-9 w-9 shrink-0 rounded-[12px] object-cover shadow-sm border border-[var(--accent-color)]/30"
+                  />
                   <div>
                     <h3 className="font-extrabold text-base text-[var(--text-primary)]">Catalyst</h3>
                     <p className="text-[10px] uppercase tracking-widest text-[var(--text-secondary)] font-semibold">AI Learning</p>

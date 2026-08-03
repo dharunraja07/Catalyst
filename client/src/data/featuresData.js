@@ -38,7 +38,7 @@ export const FEATURES = [
     badge: 'Smart Drills',
     description: 'Practice adaptive questions with AI-generated long and short answer challenges.',
     image: '/features/practice.png',
-    route: '/practice',
+    route: '/questions',
     available: true,
     accentColor: 'from-amber-500/20 to-orange-500/20',
     glowColor: 'rgba(245, 158, 11, 0.35)'
@@ -71,7 +71,7 @@ export const FEATURES = [
     badge: 'Collaboration',
     description: 'Collaborate with peers, share notes, and query the group AI companion.',
     image: '/features/study-groups.png',
-    route: '/study-groups',
+    route: '/study-group',
     available: true,
     accentColor: 'from-violet-500/20 to-purple-500/20',
     glowColor: 'rgba(139, 92, 246, 0.35)'
@@ -82,7 +82,7 @@ export const FEATURES = [
     badge: 'Real-time',
     description: 'Interactive live video rooms with AI note-taking and shared whiteboards.',
     image: '/features/meeting.png',
-    route: '/meeting',
+    route: '/meet',
     available: true,
     accentColor: 'from-emerald-500/20 to-green-500/20',
     glowColor: 'rgba(16, 185, 129, 0.35)'

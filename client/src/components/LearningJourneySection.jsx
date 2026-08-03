@@ -1,96 +1,50 @@
 import { useRef, useEffect, useState } from 'react'
 import { motion, useScroll, useSpring, useTransform } from 'framer-motion'
 
-function UserIcon({ className }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-    </svg>
-  )
-}
-
-function AssessmentIcon({ className }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
-  )
-}
-
-function RoadmapIcon({ className }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-    </svg>
-  )
-}
-
-function LearningIcon({ className }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-    </svg>
-  )
-}
-
-function ProgressIcon({ className }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-    </svg>
-  )
-}
-
-function CareerIcon({ className }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-    </svg>
-  )
-}
+import { UserCheck, BrainCircuit, Compass, BookOpenCheck, Users, Award } from 'lucide-react'
 
 const STEPS = [
   {
     step: 1,
-    title: '1. Join Catalyst',
-    description: 'Create your profile and set your learning preferences.',
-    IconComponent: UserIcon,
-    badge: 'Onboarding'
+    title: 'Create Catalyst Account',
+    description: 'Secure sign-up using Email or Google Authentication.',
+    IconComponent: UserCheck,
+    badge: 'ONBOARDING'
   },
   {
     step: 2,
-    title: '2. Take Assessment',
-    description: 'Diagnostic evaluation to identify your strengths and gaps.',
-    IconComponent: AssessmentIcon,
-    badge: 'AI Diagnostic'
+    title: 'Complete Adaptive Assessment',
+    description: 'AI evaluates strengths, weaknesses and learning level.',
+    IconComponent: BrainCircuit,
+    badge: 'AI ASSESSMENT'
   },
   {
     step: 3,
-    title: '3. Get Personalized Roadmap',
-    description: 'AI generates a step-by-step study schedule built just for you.',
-    IconComponent: RoadmapIcon,
-    badge: 'Smart Strategy'
+    title: 'Receive Personalized Roadmap',
+    description: 'AI generates a customized study plan.',
+    IconComponent: Compass,
+    badge: 'PERSONALIZED'
   },
   {
     step: 4,
-    title: '4. Daily Learning',
-    description: 'Practice adaptive questions and focus with Pomodoro timers.',
-    IconComponent: LearningIcon,
-    badge: 'Active Practice'
+    title: 'Learn & Practice',
+    description: 'Study with AI Mentor, adaptive practice questions and coding challenges.',
+    IconComponent: BookOpenCheck,
+    badge: 'ACTIVE LEARNING'
   },
   {
     step: 5,
-    title: '5. Track Progress',
-    description: 'Monitor real-time score improvements and completion metrics.',
-    IconComponent: ProgressIcon,
-    badge: 'Analytics'
+    title: 'Collaborate & Track Progress',
+    description: 'Join Study Groups, attend live meetings and monitor learning analytics.',
+    IconComponent: Users,
+    badge: 'COLLABORATION'
   },
   {
     step: 6,
-    title: '6. Become Career Ready',
-    description: 'Achieve subject mastery and align with target career pathways.',
-    IconComponent: CareerIcon,
-    badge: 'Goal Achieved'
+    title: 'Become Career Ready',
+    description: 'Complete roadmap milestones and receive career recommendations.',
+    IconComponent: Award,
+    badge: 'CAREER READY'
   }
 ]
 

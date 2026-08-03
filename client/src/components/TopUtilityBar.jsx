@@ -100,9 +100,11 @@ export default function TopUtilityBar({ onOpenMobileDrawer, toggleCollapse, isCo
           {/* Brand Logo displayed when sidebar is collapsed or on mobile */}
           {(isCollapsed || window.innerWidth < 768) && (
             <Link to="/" className="flex items-center gap-3 font-bold tracking-tight text-lg">
-              <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px] bg-[var(--accent-color)] text-base font-extrabold text-black shadow-sm">
-                AI
-              </span>
+              <img
+                src="/favicon.png"
+                alt="Catalyst Logo"
+                className="h-10 w-10 shrink-0 rounded-[14px] object-cover shadow-sm border border-[var(--accent-color)]/30"
+              />
               <div className="flex flex-col leading-tight">
                 <span className="font-extrabold text-xl tracking-tight text-[var(--text-primary)]">Catalyst</span>
                 <span className="text-[10px] uppercase tracking-widest text-[var(--text-secondary)] font-bold whitespace-nowrap">
