@@ -98,7 +98,7 @@ export default function HeroSection() {
   })
 
   return (
-    <section className="relative w-full max-w-full mx-auto overflow-hidden rounded-[24px] sm:rounded-[28px] border border-slate-800/80 bg-slate-950/70 p-6 sm:p-10 lg:p-12 shadow-2xl backdrop-blur-xl text-slate-100">
+    <section className="relative w-full max-w-full mx-auto overflow-hidden rounded-[24px] sm:rounded-[28px] border border-slate-800/80 bg-slate-950/70 p-4 sm:p-10 lg:p-12 shadow-2xl backdrop-blur-xl text-slate-100">
       {/* Background Ambient Glow & Subtle Grid Overlay */}
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_70%_60%_at_50%_0%,rgba(230,179,37,0.12),transparent_75%)] z-0" />
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_80%_60%,rgba(59,130,246,0.07),transparent_60%)] z-0" />
@@ -127,22 +127,22 @@ export default function HeroSection() {
         variants={containerVariants}
         initial="hidden"
         animate="visible"
-        className="relative z-10 grid grid-cols-1 items-center gap-10 lg:grid-cols-[44%_56%] lg:gap-12"
+        className="relative z-10 grid grid-cols-1 items-center gap-8 lg:grid-cols-[44%_56%] lg:gap-12"
       >
         {/* LEFT COLUMN: Copy & CTAs */}
-        <div className="flex flex-col items-start space-y-6 text-left">
+        <div className="flex flex-col items-start space-y-5 sm:space-y-6 text-left w-full max-w-full">
           {/* Small Badge */}
-          <motion.div variants={fadeUpVariant}>
-            <span className="inline-flex items-center gap-2 rounded-full border border-[var(--accent-color)]/30 bg-[var(--accent-light)] px-4 py-1.5 text-xs font-bold uppercase tracking-wider text-[var(--accent-color)] backdrop-blur-md shadow-sm">
-              <Sparkles className="h-3.5 w-3.5 text-[var(--accent-color)] animate-pulse" />
-              AI-Powered Personalized Learning
+          <motion.div variants={fadeUpVariant} className="max-w-full">
+            <span className="inline-flex items-center gap-2 rounded-full border border-[var(--accent-color)]/30 bg-[var(--accent-light)] px-3.5 py-1.5 text-[11px] sm:text-xs font-bold uppercase tracking-wider text-[var(--accent-color)] backdrop-blur-md shadow-sm max-w-full break-words">
+              <Sparkles className="h-3.5 w-3.5 shrink-0 text-[var(--accent-color)] animate-pulse" />
+              <span>AI-Powered Personalized Learning</span>
             </span>
           </motion.div>
 
           {/* Main Heading with Typing Cursor Animation */}
           <motion.h1
             variants={fadeUpVariant}
-            className="text-3xl font-extrabold tracking-tight text-[#F8FAFC] sm:text-4xl lg:text-5xl lg:leading-[1.15] min-h-[2.8em] sm:min-h-[2.4em]"
+            className="text-2xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-[#F8FAFC] leading-snug sm:leading-[1.15] min-h-[2.4em] sm:min-h-[2.2em] break-words w-full"
           >
             Learn Smarter with{' '}
             <span className="text-[var(--accent-color)]">
@@ -158,7 +158,7 @@ export default function HeroSection() {
           {/* Short Description */}
           <motion.p
             variants={fadeUpVariant}
-            className="text-base font-medium text-slate-300 sm:text-lg leading-relaxed max-w-xl"
+            className="text-sm sm:text-base lg:text-lg font-medium text-slate-300 leading-relaxed max-w-xl"
           >
             Personalized learning paths, interactive AI mentoring, smart progress tracking, and collaborative study groups designed for your success.
           </motion.p>
@@ -166,18 +166,18 @@ export default function HeroSection() {
           {/* Primary & Secondary CTAs */}
           <motion.div
             variants={fadeUpVariant}
-            className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto pt-2 z-30"
+            className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full sm:w-auto pt-1 sm:pt-2 z-30"
           >
             <Link
               to={user ? '/dashboard' : '/register'}
-              className="saas-button-primary inline-flex items-center justify-center min-h-[48px] px-8 text-base font-bold shadow-[0_8px_25px_-5px_rgba(230,179,37,0.35)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_30px_-5px_rgba(230,179,37,0.5)] active:translate-y-0"
+              className="saas-button-primary inline-flex items-center justify-center min-h-[48px] px-6 sm:px-8 text-sm sm:text-base font-bold shadow-[0_8px_25px_-5px_rgba(230,179,37,0.35)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_30px_-5px_rgba(230,179,37,0.5)] active:translate-y-0 cursor-pointer w-full sm:w-auto"
             >
               Get Started
             </Link>
             <a
               href="#core-features"
               onClick={scrollToFeatures}
-              className="saas-button-secondary inline-flex items-center justify-center min-h-[48px] px-8 text-base font-semibold border-slate-700 bg-slate-900/60 text-slate-200 backdrop-blur-md transition-all duration-300 hover:border-[var(--accent-color)] hover:bg-slate-800/80 hover:text-white"
+              className="saas-button-secondary inline-flex items-center justify-center min-h-[48px] px-6 sm:px-8 text-sm sm:text-base font-semibold border-slate-700 bg-slate-900/60 text-slate-200 backdrop-blur-md transition-all duration-300 hover:border-[var(--accent-color)] hover:bg-slate-800/80 hover:text-white cursor-pointer w-full sm:w-auto"
             >
               Explore Features
             </a>

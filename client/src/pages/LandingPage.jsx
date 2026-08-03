@@ -54,13 +54,13 @@ export default function LandingPage() {
   }
 
   return (
-    <div className={`mx-auto w-full max-w-[1600px] px-2 sm:px-4 lg:px-6 ${user ? 'space-y-6 pt-0' : 'space-y-12'}`}>
+    <div className={`mx-auto w-full max-w-[1600px] max-w-full overflow-x-hidden px-3 sm:px-6 lg:px-8 pb-16 ${user ? 'space-y-6 sm:space-y-8 pt-0' : 'space-y-8 sm:space-y-12'}`}>
 
       {/* 1. Hero Section */}
       <HeroSection />
 
       {/* 2. Statistics Section */}
-      <section className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+      <section className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6">
         {[
           { label: 'Students', value: stats.students },
           { label: 'Assessments Generated', value: stats.assessmentsGenerated },
@@ -73,12 +73,12 @@ export default function LandingPage() {
             whileInView={{ opacity: 1, y: 0, scale: 1 }}
             viewport={{ once: false, amount: 0.3 }}
             transition={{ duration: 0.7, delay: idx * 0.1, ease: [0.16, 1, 0.3, 1] }}
-            className="gold-orbit-card text-center py-8 px-4 flex flex-col items-center justify-center cursor-pointer select-none"
+            className="gold-orbit-card text-center py-5 sm:py-8 px-3 sm:px-4 flex flex-col items-center justify-center cursor-pointer select-none"
           >
-            <p className="page-title text-4xl sm:text-5xl font-extrabold text-[var(--accent-color)] tracking-tight">
+            <p className="page-title text-3xl sm:text-5xl font-extrabold text-[var(--accent-color)] tracking-tight">
               {item.value}
             </p>
-            <p className="card-title text-sm sm:text-base mt-2.5 font-semibold text-[var(--text-secondary)]">
+            <p className="card-title text-xs sm:text-base mt-2 font-semibold text-[var(--text-secondary)]">
               {item.label}
             </p>
           </motion.div>
@@ -86,21 +86,21 @@ export default function LandingPage() {
       </section>
 
       {/* 3. Why Catalyst - Bento Grid Section */}
-      <section className="saas-card shadow-glow space-y-8 p-6 sm:p-10 rounded-[28px] border border-[var(--border-main)] bg-[var(--bg-secondary)]">
-        <div className="text-center max-w-3xl mx-auto space-y-3">
-          <p className="caption-text uppercase tracking-[0.24em] text-[var(--accent-color)] font-semibold">
+      <section className="saas-card shadow-glow space-y-6 sm:space-y-8 p-4 sm:p-8 lg:p-10 rounded-2xl sm:rounded-[28px] border border-[var(--border-main)] bg-[var(--bg-secondary)]">
+        <div className="text-center max-w-3xl mx-auto space-y-2 sm:space-y-3">
+          <p className="caption-text uppercase tracking-[0.24em] text-[var(--accent-color)] font-semibold text-xs sm:text-sm">
             Why Catalyst
           </p>
-          <h2 className="section-title text-2xl sm:text-4xl font-extrabold text-[var(--text-primary)] tracking-tight">
+          <h2 className="section-title text-xl sm:text-4xl font-extrabold text-[var(--text-primary)] tracking-tight leading-snug">
             Built for personalized, high-efficiency learning.
           </h2>
-          <p className="body-text text-sm sm:text-base text-[var(--text-secondary)]">
+          <p className="body-text text-xs sm:text-base text-[var(--text-secondary)]">
             Explore the core ecosystem powers engineered to transform your academic journey.
           </p>
         </div>
 
         {/* 8-Card Responsive Bento Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
           {[
             {
               title: 'AI Mentor',
@@ -160,33 +160,33 @@ export default function LandingPage() {
                 viewport={{ once: false, amount: 0.2 }}
                 transition={{ duration: 0.5, delay: idx * 0.06, ease: [0.16, 1, 0.3, 1] }}
                 whileHover={{ y: -6, scale: 1.015 }}
-                className={`group relative overflow-hidden rounded-[22px] border border-[var(--border-main)] bg-[var(--bg-elevated)] p-6 shadow-md transition-all duration-300 hover:border-[var(--accent-color)] hover:shadow-[0_15px_35px_rgba(230,179,37,0.18)] flex flex-col justify-between ${item.colSpan || ''}`}
+                className={`group relative overflow-hidden rounded-2xl sm:rounded-[22px] border border-[var(--border-main)] bg-[var(--bg-elevated)] p-4.5 sm:p-6 shadow-md transition-all duration-300 hover:border-[var(--accent-color)] hover:shadow-[0_15px_35px_rgba(230,179,37,0.18)] flex flex-col justify-between ${item.colSpan || ''}`}
               >
                 {/* Ambient Glow Pill Accent */}
                 <div className="absolute -top-16 -left-16 h-44 w-44 rounded-full bg-[var(--accent-light)] blur-3xl opacity-20 group-hover:opacity-70 transition-opacity duration-500 pointer-events-none" />
 
-                <div className="space-y-4 relative z-10">
+                <div className="space-y-3 sm:space-y-4 relative z-10">
                   <div className="flex items-center justify-between">
-                    <div className="h-11 w-11 rounded-[14px] bg-[var(--accent-light)] border border-[var(--accent-color)]/30 flex items-center justify-center text-[var(--accent-color)] group-hover:scale-110 group-hover:bg-[var(--accent-color)] group-hover:text-black transition-all duration-300 shadow-sm">
-                      <IconComp className="h-5 w-5" />
+                    <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-xl sm:rounded-[14px] bg-[var(--accent-light)] border border-[var(--accent-color)]/30 flex items-center justify-center text-[var(--accent-color)] group-hover:scale-110 group-hover:bg-[var(--accent-color)] group-hover:text-black transition-all duration-300 shadow-sm shrink-0">
+                      <IconComp className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
                     </div>
-                    <span className="px-2.5 py-0.5 rounded-md bg-[var(--accent-light)] border border-[var(--accent-color)]/30 text-[10px] font-bold text-[var(--accent-color)] uppercase tracking-wider">
+                    <span className="px-2 sm:px-2.5 py-0.5 rounded-md bg-[var(--accent-light)] border border-[var(--accent-color)]/30 text-[10px] font-bold text-[var(--accent-color)] uppercase tracking-wider">
                       {item.badge}
                     </span>
                   </div>
 
                   <div>
-                    <h3 className="card-title text-lg font-bold text-[var(--text-primary)] group-hover:text-[var(--accent-color)] transition-colors duration-200">
+                    <h3 className="card-title text-base sm:text-lg font-bold text-[var(--text-primary)] group-hover:text-[var(--accent-color)] transition-colors duration-200">
                       {item.title}
                     </h3>
-                    <p className="body-text text-xs sm:text-sm text-[var(--text-secondary)] mt-2 leading-relaxed">
+                    <p className="body-text text-xs sm:text-sm text-[var(--text-secondary)] mt-1.5 sm:mt-2 leading-relaxed">
                       {item.description}
                     </p>
                   </div>
                 </div>
 
                 {/* Bottom Border Accent Line */}
-                <div className="mt-5 h-[2px] w-0 bg-[var(--accent-color)] group-hover:w-full transition-all duration-500 rounded-full" />
+                <div className="mt-4 sm:mt-5 h-[2px] w-0 bg-[var(--accent-color)] group-hover:w-full transition-all duration-500 rounded-full" />
               </motion.div>
             )
           })}
@@ -194,21 +194,21 @@ export default function LandingPage() {
       </section>
 
       {/* 4. How Catalyst Works - 7-Step Connected Workflow Section */}
-      <section className="saas-card shadow-glow space-y-10 p-6 sm:p-10 rounded-[28px] border border-[var(--border-main)] bg-[var(--bg-secondary)]">
-        <div className="text-center max-w-3xl mx-auto space-y-3">
-          <p className="caption-text uppercase tracking-[0.24em] text-[var(--accent-color)] font-semibold">
+      <section className="saas-card shadow-glow space-y-6 sm:space-y-10 p-4 sm:p-8 lg:p-10 rounded-2xl sm:rounded-[28px] border border-[var(--border-main)] bg-[var(--bg-secondary)]">
+        <div className="text-center max-w-3xl mx-auto space-y-2 sm:space-y-3">
+          <p className="caption-text uppercase tracking-[0.24em] text-[var(--accent-color)] font-semibold text-xs sm:text-sm">
             How Catalyst Works
           </p>
-          <h2 className="section-title text-2xl sm:text-4xl font-extrabold text-[var(--text-primary)] tracking-tight">
+          <h2 className="section-title text-xl sm:text-4xl font-extrabold text-[var(--text-primary)] tracking-tight leading-snug">
             Seven simple steps to master any subject.
           </h2>
-          <p className="body-text text-sm sm:text-base text-[var(--text-secondary)]">
+          <p className="body-text text-xs sm:text-base text-[var(--text-secondary)]">
             From seamless onboarding to career readiness, experience an end-to-end intelligent workflow.
           </p>
         </div>
 
         {/* Connected Step Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 relative">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 relative">
           {[
             {
               step: 1,
@@ -251,7 +251,7 @@ export default function LandingPage() {
               title: 'Become Career Ready',
               description: 'Complete roadmap milestones, improve skills and receive AI-powered career guidance.',
               icon: Award,
-              colSpan: 'lg:col-span-2'
+              colSpan: 'sm:col-span-2 lg:col-span-2'
             }
           ].map((stepItem, idx) => {
             const StepIcon = stepItem.icon
@@ -263,20 +263,20 @@ export default function LandingPage() {
                 viewport={{ once: false, amount: 0.2 }}
                 transition={{ duration: 0.5, delay: idx * 0.07, ease: [0.16, 1, 0.3, 1] }}
                 whileHover={{ y: -5 }}
-                className={`group relative rounded-[22px] border border-[var(--border-main)] bg-[var(--bg-elevated)] p-6 shadow-md transition-all duration-300 hover:border-[var(--accent-color)] hover:shadow-[0_15px_35px_rgba(230,179,37,0.15)] flex flex-col justify-between ${stepItem.colSpan || ''}`}
+                className={`group relative rounded-2xl sm:rounded-[22px] border border-[var(--border-main)] bg-[var(--bg-elevated)] p-4.5 sm:p-6 shadow-md transition-all duration-300 hover:border-[var(--accent-color)] hover:shadow-[0_15px_35px_rgba(230,179,37,0.15)] flex flex-col justify-between ${stepItem.colSpan || ''}`}
               >
-                <div className="space-y-4">
+                <div className="space-y-3.5">
                   <div className="flex items-center justify-between">
-                    <span className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-[var(--accent-color)] text-black font-extrabold text-sm shadow-md group-hover:scale-110 transition-transform">
+                    <span className="inline-flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full bg-[var(--accent-color)] text-black font-extrabold text-xs sm:text-sm shadow-md group-hover:scale-110 transition-transform">
                       {stepItem.step}
                     </span>
-                    <div className="h-9 w-9 rounded-xl bg-[var(--accent-light)] border border-[var(--accent-color)]/30 flex items-center justify-center text-[var(--accent-color)]">
-                      <StepIcon className="h-4.5 w-4.5" />
+                    <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-xl bg-[var(--accent-light)] border border-[var(--accent-color)]/30 flex items-center justify-center text-[var(--accent-color)] shrink-0">
+                      <StepIcon className="h-4 w-4 sm:h-4.5 sm:w-4.5" />
                     </div>
                   </div>
 
                   <div>
-                    <h4 className="card-title text-base font-bold text-[var(--text-primary)] group-hover:text-[var(--accent-color)] transition-colors">
+                    <h4 className="card-title text-sm sm:text-base font-bold text-[var(--text-primary)] group-hover:text-[var(--accent-color)] transition-colors">
                       {stepItem.title}
                     </h4>
                     <p className="body-text text-xs text-[var(--text-secondary)] mt-1.5 leading-relaxed">
@@ -291,7 +291,7 @@ export default function LandingPage() {
       </section>
 
       {/* 6. Core Features Section */}
-      <section id="core-features" className="-mx-5 sm:-mx-10 lg:-mx-14 w-[calc(100%+2.5rem)] sm:w-[calc(100%+5rem)] lg:w-[calc(100%+7rem)] overflow-hidden">
+      <section id="core-features" className="w-full max-w-full overflow-hidden rounded-2xl sm:rounded-3xl">
         <CoreFeaturesShowcase />
       </section>
 
@@ -299,28 +299,28 @@ export default function LandingPage() {
       <LearningJourneySection />
 
       {/* 8. Why Choose Catalyst Comparison Table Section */}
-      <section className="saas-card shadow-glow space-y-8 p-6 sm:p-10 rounded-[28px] border border-[var(--border-main)] bg-[var(--bg-secondary)]">
-        <div className="text-center max-w-3xl mx-auto space-y-3">
-          <p className="caption-text uppercase tracking-[0.24em] text-[var(--accent-color)] font-semibold">
+      <section className="saas-card shadow-glow space-y-6 sm:space-y-8 p-4 sm:p-8 lg:p-10 rounded-2xl sm:rounded-[28px] border border-[var(--border-main)] bg-[var(--bg-secondary)]">
+        <div className="text-center max-w-3xl mx-auto space-y-2 sm:space-y-3">
+          <p className="caption-text uppercase tracking-[0.24em] text-[var(--accent-color)] font-semibold text-xs sm:text-sm">
             Why Choose Catalyst
           </p>
-          <h2 className="section-title text-2xl sm:text-4xl font-extrabold text-[var(--text-primary)] tracking-tight">
+          <h2 className="section-title text-xl sm:text-4xl font-extrabold text-[var(--text-primary)] tracking-tight leading-snug">
             Designed specifically for student success.
           </h2>
-          <p className="body-text text-sm sm:text-base text-[var(--text-secondary)]">
+          <p className="body-text text-xs sm:text-base text-[var(--text-secondary)]">
             Compare Catalyst’s comprehensive learning suite against standard static platforms.
           </p>
         </div>
 
         {/* 12-Feature Ecosystem Table */}
-        <div className="max-w-4xl mx-auto overflow-hidden rounded-[22px] border border-[var(--border-main)] bg-[var(--bg-elevated)] shadow-xl">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+        <div className="max-w-4xl mx-auto overflow-hidden rounded-2xl sm:rounded-[22px] border border-[var(--border-main)] bg-[var(--bg-elevated)] shadow-xl">
+          <div className="overflow-x-auto custom-scrollbar">
+            <table className="w-full text-left border-collapse min-w-[320px]">
               <thead>
                 <tr className="border-b border-[var(--divider-main)] bg-[var(--bg-primary)]/80 text-xs sm:text-sm font-bold">
-                  <th className="p-4 sm:p-5 text-[var(--text-primary)]">Feature</th>
-                  <th className="p-4 sm:p-5 text-center text-[var(--accent-color)]">Catalyst</th>
-                  <th className="p-4 sm:p-5 text-center text-[var(--text-secondary)]">Status</th>
+                  <th className="p-3 sm:p-5 text-[var(--text-primary)]">Feature</th>
+                  <th className="p-3 sm:p-5 text-center text-[var(--accent-color)]">Catalyst</th>
+                  <th className="p-3 sm:p-5 text-center text-[var(--text-secondary)]">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--divider-main)] text-xs sm:text-sm font-medium">
@@ -342,17 +342,17 @@ export default function LandingPage() {
                     key={row.name}
                     className="hover:bg-[var(--accent-light)]/20 transition-colors duration-200 group"
                   >
-                    <td className="p-4 sm:p-5 font-semibold text-[var(--text-primary)] group-hover:text-[var(--accent-color)] transition-colors">
+                    <td className="p-3 sm:p-5 font-semibold text-[var(--text-primary)] group-hover:text-[var(--accent-color)] transition-colors">
                       {row.name}
                     </td>
-                    <td className="p-4 sm:p-5 text-center">
-                      <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-[var(--accent-light)] border border-[var(--accent-color)]/40 text-[var(--accent-color)] font-extrabold shadow-sm group-hover:scale-110 transition-transform">
+                    <td className="p-3 sm:p-5 text-center">
+                      <span className="inline-flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-full bg-[var(--accent-light)] border border-[var(--accent-color)]/40 text-[var(--accent-color)] font-extrabold text-xs sm:text-sm shadow-sm group-hover:scale-110 transition-transform">
                         ✓
                       </span>
                     </td>
-                    <td className="p-4 sm:p-5 text-center">
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-[11px] font-bold text-emerald-400">
-                        <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                    <td className="p-3 sm:p-5 text-center">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-[10px] sm:text-[11px] font-bold text-emerald-400">
+                        <span className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-emerald-400 animate-pulse" />
                         {row.status}
                       </span>
                     </td>
@@ -365,20 +365,20 @@ export default function LandingPage() {
       </section>
 
       {/* 9. Final Call To Action */}
-      <section className="saas-elevated-card shadow-glow text-center p-8 sm:p-12 space-y-6 border border-[var(--accent-color)]/30 bg-gradient-to-b from-[var(--bg-elevated)] to-[var(--bg-secondary)]">
-        <h2 className="page-title text-3xl sm:text-4xl font-extrabold">Ready to Learn Smarter?</h2>
-        <p className="body-text text-lg max-w-xl mx-auto">
+      <section className="saas-elevated-card shadow-glow text-center p-6 sm:p-12 space-y-4 sm:space-y-6 border border-[var(--accent-color)]/30 bg-gradient-to-b from-[var(--bg-elevated)] to-[var(--bg-secondary)] rounded-2xl sm:rounded-3xl">
+        <h2 className="page-title text-2xl sm:text-4xl font-extrabold">Ready to Learn Smarter?</h2>
+        <p className="body-text text-sm sm:text-lg max-w-xl mx-auto">
           Join thousands of students learning with Catalyst.
         </p>
-        <div>
-          <Link to={user ? "/dashboard" : "/register"} className="saas-button-primary inline-flex items-center justify-center min-h-[48px] px-10 text-base font-semibold">
+        <div className="pt-2">
+          <Link to={user ? "/dashboard" : "/register"} className="saas-button-primary inline-flex items-center justify-center min-h-[48px] px-8 sm:px-10 text-sm sm:text-base font-semibold cursor-pointer w-full sm:w-auto">
             Get Started
           </Link>
         </div>
       </section>
 
       {/* 10. Footer */}
-      <footer className="saas-card p-8 space-y-8 border-t border-[var(--border-main)]">
+      <footer className="saas-card p-5 sm:p-8 space-y-6 sm:space-y-8 border-t border-[var(--border-main)] rounded-2xl sm:rounded-3xl">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           {/* Left Footer Branding */}
           <div className="space-y-2">
@@ -386,25 +386,25 @@ export default function LandingPage() {
               <img
                 src="/favicon.png"
                 alt="Catalyst Logo"
-                className="h-9 w-9 shrink-0 rounded-[12px] object-cover shadow-sm border border-[var(--accent-color)]/30"
+                className="h-8 w-8 sm:h-9 sm:w-9 shrink-0 rounded-[12px] object-cover shadow-sm border border-[var(--accent-color)]/30"
               />
-              <span className="card-title font-bold text-xl">Catalyst</span>
+              <span className="card-title font-bold text-lg sm:text-xl">Catalyst</span>
             </div>
-            <p className="small-text text-[var(--text-secondary)]">AI Powered Personalized Learning</p>
+            <p className="small-text text-[var(--text-secondary)] text-xs sm:text-sm">AI Powered Personalized Learning</p>
           </div>
 
           {/* Right Footer Links */}
-          <div className="flex flex-wrap gap-6 text-sm font-medium text-[var(--text-secondary)]">
-            <a href="#core-features" onClick={scrollToFeatures} className="hover:text-[var(--accent-color)] transition">Features</a>
-            <Link to="/about" className="hover:text-[var(--accent-color)] transition">About</Link>
-            <Link to="/privacy" className="hover:text-[var(--accent-color)] transition">Privacy Policy</Link>
-            <Link to="/terms" className="hover:text-[var(--accent-color)] transition">Terms</Link>
-            <Link to="/contact" className="hover:text-[var(--accent-color)] transition">Contact</Link>
+          <div className="flex flex-wrap gap-4 sm:gap-6 text-xs sm:text-sm font-medium text-[var(--text-secondary)]">
+            <a href="#core-features" onClick={scrollToFeatures} className="hover:text-[var(--accent-color)] transition py-1">Features</a>
+            <Link to="/about" className="hover:text-[var(--accent-color)] transition py-1">About</Link>
+            <Link to="/privacy" className="hover:text-[var(--accent-color)] transition py-1">Privacy Policy</Link>
+            <Link to="/terms" className="hover:text-[var(--accent-color)] transition py-1">Terms</Link>
+            <Link to="/contact" className="hover:text-[var(--accent-color)] transition py-1">Contact</Link>
           </div>
         </div>
 
         {/* Bottom Copyright */}
-        <div className="border-t border-[var(--divider-main)] pt-6 text-center text-xs text-[var(--text-muted)]">
+        <div className="border-t border-[var(--divider-main)] pt-5 text-center text-xs text-[var(--text-muted)]">
           © 2026 Catalyst. All Rights Reserved.
         </div>
       </footer>
