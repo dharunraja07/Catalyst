@@ -58,38 +58,10 @@ export default function AssessmentPage() {
   const [selectedDifficulty, setSelectedDifficulty] = useState('adaptive')
 
   const difficultyModes = [
-    {
-      id: 'easy',
-      label: 'Easy',
-      icon: '🟢',
-      badge: '15 Easy Questions',
-      description: 'Foundational concepts & definitions',
-      activeClass: 'border-emerald-500 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 ring-2 ring-emerald-500/30'
-    },
-    {
-      id: 'medium',
-      label: 'Medium',
-      icon: '🟡',
-      badge: '15 Medium Questions',
-      description: 'Standard application & conceptual questions',
-      activeClass: 'border-amber-500 bg-amber-500/10 text-amber-600 dark:text-amber-400 ring-2 ring-amber-500/30'
-    },
-    {
-      id: 'hard',
-      label: 'Hard',
-      icon: '🔴',
-      badge: '15 Hard Questions',
-      description: 'Advanced problem-solving & edge cases',
-      activeClass: 'border-rose-500 bg-rose-500/10 text-rose-600 dark:text-rose-400 ring-2 ring-rose-500/30'
-    },
-    {
-      id: 'adaptive',
-      label: 'Default / Adaptive',
-      icon: '⚡',
-      badge: '15 Focus Unlearned',
-      description: 'Targets weak topics from previous assessment',
-      activeClass: 'border-[var(--accent-color)] bg-[var(--accent-color)]/10 text-[var(--text-primary)] ring-2 ring-[var(--accent-color)]/30'
-    }
+    { id: 'easy', label: 'Easy' },
+    { id: 'medium', label: 'Medium' },
+    { id: 'hard', label: 'Hard' },
+    { id: 'adaptive', label: 'Default / Adaptive' }
   ]
 
   const handleGenerateAssessment = async () => {
@@ -187,49 +159,21 @@ export default function AssessmentPage() {
       )}
 
       {/* Assessment Difficulty / Mode Selection */}
-      <div className="space-y-3">
-        <label className="block text-sm font-semibold text-[var(--text-primary)]">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+        <label className="text-sm font-semibold text-[var(--text-primary)] whitespace-nowrap">
           Select Assessment Mode / Difficulty
         </label>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          {difficultyModes.map((mode) => {
-            const isSelected = selectedDifficulty === mode.id
-            return (
-              <button
-                key={mode.id}
-                type="button"
-                onClick={() => setSelectedDifficulty(mode.id)}
-                className={`flex flex-col justify-between text-left p-4 rounded-[18px] border transition-all duration-200 min-h-[110px] ${
-                  isSelected
-                    ? mode.activeClass
-                    : 'border-[var(--border-main)] bg-[var(--bg-secondary)] hover:border-[var(--border-hover)] text-[var(--text-secondary)]'
-                }`}
-              >
-                <div className="flex items-center justify-between w-full">
-                  <span className="text-xl">{mode.icon}</span>
-                  <span
-                    className={`text-[10px] uppercase tracking-wider font-extrabold px-2 py-0.5 rounded-full border ${
-                      isSelected
-                        ? 'border-current bg-current/10'
-                        : 'border-[var(--border-main)] bg-[var(--bg-primary)] text-[var(--text-muted)]'
-                    }`}
-                  >
-                    {mode.badge}
-                  </span>
-                </div>
-                <div className="mt-3">
-                  <h4 className="text-sm font-bold text-[var(--text-primary)] flex items-center gap-1.5">
-                    {mode.label}
-                    {isSelected && <span className="text-xs font-black">✓</span>}
-                  </h4>
-                  <p className="text-xs text-[var(--text-muted)] mt-0.5 leading-snug">
-                    {mode.description}
-                  </p>
-                </div>
-              </button>
-            )
-          })}
-        </div>
+        <select
+          value={selectedDifficulty}
+          onChange={(e) => setSelectedDifficulty(e.target.value)}
+          className="saas-input min-h-[44px] py-2 px-3 text-sm font-medium w-full sm:w-auto min-w-[180px] cursor-pointer"
+        >
+          {difficultyModes.map((mode) => (
+            <option key={mode.id} value={mode.id} className="bg-[var(--bg-secondary)] text-[var(--text-primary)]">
+              {mode.label}
+            </option>
+          ))}
+        </select>
       </div>
 
       {/* Syllabus Generation Form */}
