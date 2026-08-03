@@ -29,9 +29,18 @@ export default function MeetRoomPage() {
 
   // Side Panel State ('participants' | 'chat' | 'whiteboard' | null)
   const [activeSidePanel, setActiveSidePanel] = useState(null)
+  const activeSidePanelRef = useRef(activeSidePanel)
 
-  // In-Meeting Real-Time Chat State
+  // In-Meeting Real-Time Chat State & Incoming Toasts
   const [meetMessages, setMeetMessages] = useState([])
+  const [chatToasts, setChatToasts] = useState([])
+
+  useEffect(() => {
+    activeSidePanelRef.current = activeSidePanel
+    if (activeSidePanel === 'chat') {
+      setChatToasts([])
+    }
+  }, [activeSidePanel])
 
   // Floating UI Modals State
   const [showInviteModal, setShowInviteModal] = useState(false)
@@ -410,6 +419,27 @@ export default function MeetRoomPage() {
 
     const handleReceiveMeetMessage = (msg) => {
       setMeetMessages((prev) => [...prev, msg])
+
+      const msgSenderId = (msg.userId || msg.senderId || msg.sender?._id || msg.sender || '').toString()
+      const isSelf = msgSenderId && msgSenderId === currentUserId
+
+      if (!isSelf && activeSidePanelRef.current !== 'chat') {
+        const toastId = `${Date.now()}_${Math.random()}`
+        const newToast = {
+          id: toastId,
+          userId: msgSenderId,
+          name: msg.name || msg.sender?.name || 'Participant',
+          message: msg.message || '',
+          avatar: msg.avatar || msg.profilePic || null,
+          timestamp: msg.timestamp || msg.createdAt || new Date().toISOString()
+        }
+
+        setChatToasts((prev) => [...prev.slice(-2), newToast])
+
+        setTimeout(() => {
+          setChatToasts((prev) => prev.filter((t) => t.id !== toastId))
+        }, 4000)
+      }
     }
 
     const handleMeetEnded = () => {
@@ -1551,6 +1581,69 @@ export default function MeetRoomPage() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* INCOMING MEETING CHAT TOAST NOTIFICATIONS (Bottom-Right) */}
+      {chatToasts.length > 0 && activeSidePanel !== 'chat' && (
+        <div className="fixed bottom-20 right-6 z-50 flex flex-col gap-2.5 max-w-xs sm:max-w-sm w-full pointer-events-none">
+          {chatToasts.map((toast) => {
+            const initial = (toast.name?.[0] || 'U').toUpperCase()
+            const formattedTime = new Date(toast.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+
+            return (
+              <div
+                key={toast.id}
+                onClick={() => {
+                  setActiveSidePanel('chat')
+                  setChatToasts([])
+                }}
+                className="pointer-events-auto cursor-pointer p-3.5 rounded-[18px] bg-white text-black border-2 border-[var(--accent-color)] backdrop-blur-md shadow-2xl transition-all duration-300 hover:scale-[1.02] flex items-start gap-3 animate-toastSlideUp group"
+              >
+                {/* Avatar / Profile Picture */}
+                <div className="relative shrink-0">
+                  {toast.avatar ? (
+                    <img src={toast.avatar} alt={toast.name} className="h-9 w-9 rounded-full object-cover border border-slate-300 shadow-xs" />
+                  ) : (
+                    <div className="h-9 w-9 rounded-full bg-slate-950 text-[var(--accent-color)] font-black flex items-center justify-center text-xs shadow-xs">
+                      {initial}
+                    </div>
+                  )}
+                  <span className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--accent-color)] text-black text-[9px] font-bold shadow-xs">
+                    💬
+                  </span>
+                </div>
+
+                {/* Content Preview */}
+                <div className="min-w-0 flex-1 text-black">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs font-black text-black truncate">
+                      {toast.name}
+                    </p>
+                    <span className="text-[10px] text-slate-700 shrink-0 font-bold">
+                      {formattedTime}
+                    </span>
+                  </div>
+                  <p className="text-xs text-black font-semibold mt-0.5 line-clamp-2 leading-relaxed break-words">
+                    {toast.message}
+                  </p>
+                </div>
+
+                {/* Close / Dismiss Button */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setChatToasts((prev) => prev.filter((t) => t.id !== toast.id))
+                  }}
+                  className="text-slate-800 hover:text-black font-black text-xs p-1 rounded-full hover:bg-slate-200 transition shrink-0 cursor-pointer"
+                  title="Dismiss notification"
+                >
+                  ✕
+                </button>
+              </div>
+            )
+          })}
         </div>
       )}
     </div>

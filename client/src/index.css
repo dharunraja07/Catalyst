@@ -402,6 +402,21 @@ textarea {
   animation: zoomFloat 2.6s cubic-bezier(0.25, 1, 0.5, 1) forwards;
 }
 
+@keyframes slideUpToast {
+  0% {
+    opacity: 0;
+    transform: translateY(16px) scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-toastSlideUp {
+  animation: slideUpToast 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
 /* Hide all vertical and horizontal scrollbars globally while preserving full scroll capability */
 * {
   scrollbar-width: none !important;
