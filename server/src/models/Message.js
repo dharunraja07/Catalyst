@@ -5,7 +5,7 @@ const messageSchema = new mongoose.Schema({
   sender: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   message: { type: String, required: true },
   isSystem: { type: Boolean, default: false },
-  systemEventType: { type: String, enum: ['join', 'leave', null], default: null },
+  systemEventType: { type: String, default: null },
   createdAt: { type: Date, default: Date.now }
 })
 

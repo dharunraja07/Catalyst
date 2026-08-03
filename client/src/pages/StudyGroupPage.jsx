@@ -870,49 +870,54 @@ export default function StudyGroupPage() {
 
             {showMembersModal && (
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn">
-                <div className="saas-card max-w-md w-full shadow-2xl">
-                  <div className="mb-6">
-                    <h2 className="section-title">Group members</h2>
-                    <p className="small-text mt-1">Everyone currently in this study group.</p>
+                <div className="saas-card max-w-lg w-full shadow-2xl">
+                  <div className="mb-6 flex items-center justify-between">
+                    <div>
+                      <h2 className="section-title">Group members</h2>
+                      <p className="small-text mt-1">Everyone currently in this study group.</p>
+                    </div>
+                    <span className="rounded-full bg-[var(--accent-light)] px-3 py-1 text-xs font-bold text-[var(--accent-color)] border border-[var(--accent-color)]/20">
+                      {uniqueGroupMembers.length} {uniqueGroupMembers.length === 1 ? 'member' : 'members'}
+                    </span>
                   </div>
-                  <div className="space-y-3 max-h-80 overflow-y-auto custom-scrollbar">
+                  <div className="space-y-3 max-h-80 overflow-y-auto custom-scrollbar pr-1">
                     {uniqueGroupMembers.map((member) => {
                       const memberId = (member._id || member).toString()
                       const isOnline = onlineMembers.some((u) => (u.userId || u._id || u).toString() === memberId)
                       const isHost = hostUserId === memberId
 
                       return (
-                        <div key={memberId} className="flex items-center justify-between rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-4">
-                          <div className="flex items-center gap-3">
-                            <div className="relative">
-                              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--accent-light)] font-bold text-[var(--accent-color)] text-sm">
+                        <div key={memberId} className="flex items-center justify-between gap-3 rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-3.5 sm:p-4 transition-colors hover:border-[var(--border-hover)]">
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
+                            <div className="relative shrink-0">
+                              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--accent-light)] font-bold text-[var(--accent-color)] text-sm shadow-xs">
                                 {member.name?.[0]?.toUpperCase() || 'U'}
                               </div>
                               {isOnline && (
                                 <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-[var(--success-color)] ring-2 ring-[var(--bg-secondary)]" title="Online" />
                               )}
                             </div>
-                            <div>
+                            <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-2">
-                                <p className="card-title text-base">{member.name}</p>
+                                <p className="card-title text-sm sm:text-base font-semibold truncate" title={member.name}>{member.name}</p>
                                 {isOnline && (
-                                  <span className="text-[10px] uppercase font-semibold text-[var(--success-color)]">Online</span>
+                                  <span className="text-[10px] uppercase font-semibold text-[var(--success-color)] shrink-0 bg-[var(--success-color)]/10 px-1.5 py-0.5 rounded">Online</span>
                                 )}
                               </div>
-                              <p className="caption-text">{member.email}</p>
+                              <p className="caption-text text-xs text-[var(--text-muted)] truncate" title={member.email}>{member.email}</p>
                             </div>
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
                             {isHost ? (
-                              <span className="rounded-full bg-[var(--accent-color)] px-2.5 py-1 text-[11px] font-bold text-black flex items-center gap-1 shadow-sm shrink-0">
+                              <span className="rounded-full bg-[var(--accent-color)] px-3 py-1.5 text-xs font-bold text-black flex items-center gap-1.5 shadow-xs shrink-0">
                                 👑 Host
                               </span>
                             ) : isCurrentHost ? (
-                              <div className="flex items-center gap-1.5 shrink-0">
+                              <div className="flex items-center gap-2 shrink-0">
                                 <button
                                   type="button"
                                   onClick={() => handleTransferHost(memberId, member.name)}
-                                  className="rounded-[10px] border border-[var(--border-main)] bg-[var(--bg-primary)] px-2.5 py-1 text-[11px] font-bold text-[var(--text-primary)] whitespace-nowrap hover:border-[var(--accent-color)] hover:text-[var(--accent-color)] transition-colors shadow-xs"
+                                  className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-[var(--accent-color)]/40 text-[var(--accent-color)] bg-[var(--accent-color)]/10 hover:bg-[var(--accent-color)] hover:text-black transition-all duration-200 flex items-center gap-1.5 shadow-xs whitespace-nowrap cursor-pointer"
                                   title="Transfer Host privileges to this member"
                                 >
                                   👑 Make Host
@@ -920,7 +925,7 @@ export default function StudyGroupPage() {
                                 <button
                                   type="button"
                                   onClick={() => handleRemoveMember(memberId, member.name)}
-                                  className="rounded-[10px] border border-[var(--error-color)]/30 bg-[var(--bg-primary)] px-2.5 py-1 text-[11px] font-bold text-[var(--error-color)] whitespace-nowrap hover:bg-[var(--error-bg)] transition-colors shadow-xs"
+                                  className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-[var(--error-color)]/40 text-[var(--error-color)] bg-[var(--error-color)]/10 hover:bg-[var(--error-color)] hover:text-white transition-all duration-200 flex items-center gap-1.5 shadow-xs whitespace-nowrap cursor-pointer"
                                   title="Remove member from group"
                                 >
                                   ✕ Remove
@@ -1040,7 +1045,7 @@ export default function StudyGroupPage() {
                   const senderId = msg.sender?._id || msg.sender
                   const isSelf = senderId === currentUserId
                   const isAiMsg = msg.message?.startsWith('🤖') || senderId === 'ai'
-                  const isSystemMsg = msg.isSystem || msg.systemEventType || msg.message?.startsWith('🟢') || msg.message?.startsWith('🔴')
+                  const isSystemMsg = msg.isSystem || msg.systemEventType || msg.message?.startsWith('🟢') || msg.message?.startsWith('🔴') || msg.message?.startsWith('🚫') || msg.message?.startsWith('👑')
                   const formattedTime = new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 
                   if (isSystemMsg) {

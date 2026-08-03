@@ -532,7 +532,7 @@ export async function removeMember(req, res, next) {
         const systemMsg = await Message.create({
           groupId: group._id,
           sender: req.user._id,
-          message: `🚫 ${removedUser ? removedUser.name : 'A member'} was removed from the group by Host ${req.user.name}`,
+          message: `🔴 Host ${req.user.name} removed ${removedUser ? removedUser.name : 'a member'} from the study group`,
           isSystem: true,
           systemEventType: 'remove_member'
         })
