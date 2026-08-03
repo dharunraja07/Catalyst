@@ -80,8 +80,8 @@ export default function TopUtilityBar({ onOpenMobileDrawer, toggleCollapse, isCo
   }
 
   return (
-    <header className="sticky top-0 z-30 border-b border-[var(--border-main)]/60 bg-[var(--bg-nav)]/80 backdrop-blur-md shadow-sm transition-colors duration-200">
-      <div className="mx-auto flex w-full items-center justify-between gap-4 px-4 py-3 sm:px-6">
+    <header className="sticky top-0 z-30 border-b border-[var(--border-main)]/60 bg-[var(--bg-nav)]/80 backdrop-blur-md shadow-sm transition-colors duration-200 pt-[env(safe-area-inset-top)]">
+      <div className="mx-auto flex w-full items-center justify-between gap-2 sm:gap-4 px-3 sm:px-6 py-2.5 sm:py-3">
 
         {/* Left Side: Mobile Drawer Trigger / Desktop Sidebar Collapse Trigger */}
         <div className="flex items-center gap-3">
@@ -90,7 +90,7 @@ export default function TopUtilityBar({ onOpenMobileDrawer, toggleCollapse, isCo
             type="button"
             onClick={onOpenMobileDrawer}
             aria-label="Open Mobile Drawer"
-            className="md:hidden inline-flex items-center justify-center p-2 rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-secondary)] text-[var(--text-primary)] hover:border-[var(--accent-color)] transition"
+            className="md:hidden inline-flex items-center justify-center p-2 min-h-[44px] min-w-[44px] rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-secondary)] text-[var(--text-primary)] hover:border-[var(--accent-color)] transition cursor-pointer"
           >
             <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
@@ -98,8 +98,8 @@ export default function TopUtilityBar({ onOpenMobileDrawer, toggleCollapse, isCo
           </button>
 
           {/* Brand Logo displayed when sidebar is collapsed or on mobile */}
-          {(isCollapsed || window.innerWidth < 768) && (
-            <Link to="/" className="flex items-center gap-3 font-bold tracking-tight text-lg">
+          <div className={isCollapsed ? 'flex items-center' : 'flex md:hidden items-center'}>
+            <Link to="/" className="flex items-center gap-3 font-bold tracking-tight text-lg min-h-[44px]">
               <img
                 src="/favicon.png"
                 alt="Catalyst Logo"
@@ -112,7 +112,7 @@ export default function TopUtilityBar({ onOpenMobileDrawer, toggleCollapse, isCo
                 </span>
               </div>
             </Link>
-          )}
+          </div>
         </div>
 
         {/* Center: Search Component */}
@@ -130,7 +130,7 @@ export default function TopUtilityBar({ onOpenMobileDrawer, toggleCollapse, isCo
         </div>
 
         {/* Right Side Utilities: Notifications, Theme Toggle, Profile */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           {/* Notification Bell Icon */}
           <NotificationBell />
 
@@ -145,7 +145,7 @@ export default function TopUtilityBar({ onOpenMobileDrawer, toggleCollapse, isCo
               <button
                 type="button"
                 onClick={() => setProfileDropdownOpen((prev) => !prev)}
-                className="flex items-center gap-2 rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-1.5 sm:px-3 sm:py-1.5 hover:border-[var(--accent-color)] transition min-h-[44px] min-w-[44px] justify-center"
+                className="flex items-center gap-2 rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-1.5 sm:px-3 sm:py-1.5 hover:border-[var(--accent-color)] transition min-h-[44px] min-w-[44px] justify-center cursor-pointer"
               >
                 <span className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-[var(--bg-secondary)] text-xs font-bold shadow-sm shrink-0">
                   <AvatarVisual avatar={user.avatar} name={user.name} className="text-xs" />
@@ -160,7 +160,7 @@ export default function TopUtilityBar({ onOpenMobileDrawer, toggleCollapse, isCo
 
               {/* Profile Dropdown Menu */}
               {profileDropdownOpen && (
-                <div className="absolute right-0 mt-2 w-60 rounded-[18px] border border-[var(--border-main)] bg-[var(--bg-surface)] p-2 shadow-2xl z-50 divide-y divide-[var(--divider-main)]">
+                <div className="absolute right-0 mt-2 w-60 max-w-[calc(100vw-2rem)] rounded-[18px] border border-[var(--border-main)] bg-[var(--bg-surface)] p-2 shadow-2xl z-[60] divide-y divide-[var(--divider-main)]">
                   <div className="px-3 py-2.5">
                     <p className="text-xs text-[var(--text-muted)] font-medium">Signed in as</p>
                     <p className="text-sm font-bold text-[var(--text-primary)] truncate">{user.name}</p>

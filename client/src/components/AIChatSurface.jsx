@@ -289,7 +289,7 @@ export default function AIChatSurface({
         <div
           ref={scrollContainerRef}
           onScroll={handleScroll}
-          className="flex-1 min-h-0 overflow-y-auto rounded-[18px] border border-[var(--ai-bubble-border)] bg-[var(--ai-chat-bg)] p-3 sm:p-4 custom-scrollbar"
+          className="relative flex-1 min-h-0 overflow-y-auto rounded-[18px] border border-[var(--ai-bubble-border)] bg-[var(--ai-chat-bg)] p-3 sm:p-4 custom-scrollbar"
         >
           {loadingOlder && (
             <div className="flex justify-center py-2 text-xs text-amber-500 font-semibold items-center gap-2">

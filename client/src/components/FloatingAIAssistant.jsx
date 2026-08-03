@@ -56,6 +56,9 @@ export default function FloatingAIAssistant() {
 
   const selectConversation = (id) => {
     setActiveConversationId(id)
+    if (window.innerWidth < 640) {
+      setIsSidebarOpen(false)
+    }
   }
 
   const deleteConversation = async (id, event) => {
@@ -112,10 +115,10 @@ export default function FloatingAIAssistant() {
         type="button"
         onClick={() => setIsOpen(true)}
         style={{
-          bottom: 'max(20px, env(safe-area-inset-bottom))',
-          right: 'max(28px, env(safe-area-inset-right))'
+          bottom: 'max(16px, env(safe-area-inset-bottom))',
+          right: 'max(16px, env(safe-area-inset-right))'
         }}
-        className="fixed z-[60] flex h-14 w-14 min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-amber-400/40 bg-[var(--accent-color)] text-xl text-black font-bold shadow-2xl transition hover:scale-105 active:scale-95 cursor-pointer"
+        className="fixed z-[50] flex h-12 w-12 sm:h-14 sm:w-14 min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-amber-400/40 bg-[var(--accent-color)] text-xl text-black font-bold shadow-2xl transition hover:scale-105 active:scale-95 cursor-pointer"
         aria-label="Open AI assistant"
       >
         ✦
@@ -124,10 +127,10 @@ export default function FloatingAIAssistant() {
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-2 sm:p-4">
+    <div className="fixed inset-0 z-[50] flex items-center justify-center bg-black/60 backdrop-blur-sm p-2 sm:p-4">
       {/* Delete Confirmation Modal Overlay */}
       {deleteConfirmId && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-fadeIn">
+        <div className="fixed inset-0 z-[55] flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-fadeIn">
           <div className="w-full max-w-sm rounded-2xl border border-[var(--border-main)] bg-[var(--bg-secondary)] p-5 shadow-2xl text-[var(--text-primary)]">
             <h3 className="text-base font-bold text-[var(--text-primary)] mb-1.5 flex items-center gap-2">
               <span className="text-red-500 text-lg">⚠️</span> Delete Conversation?
@@ -139,7 +142,7 @@ export default function FloatingAIAssistant() {
               <button
                 type="button"
                 onClick={() => setDeleteConfirmId(null)}
-                className="px-3.5 py-1.5 rounded-xl border border-[var(--border-main)] bg-[var(--bg-surface)] text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--bg-elevated)] transition cursor-pointer"
+                className="px-3.5 py-2 min-h-[44px] rounded-xl border border-[var(--border-main)] bg-[var(--bg-surface)] text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--bg-elevated)] transition cursor-pointer"
               >
                 Cancel
               </button>
@@ -149,7 +152,7 @@ export default function FloatingAIAssistant() {
                   deleteConversation(deleteConfirmId)
                   setDeleteConfirmId(null)
                 }}
-                className="px-3.5 py-1.5 rounded-xl border border-red-500/30 bg-red-500/10 text-xs font-bold text-red-500 hover:bg-red-500 hover:text-white transition cursor-pointer shadow-xs"
+                className="px-3.5 py-2 min-h-[44px] rounded-xl border border-red-500/30 bg-red-500/10 text-xs font-bold text-red-500 hover:bg-red-500 hover:text-white transition cursor-pointer shadow-xs"
               >
                 Delete
               </button>
@@ -160,24 +163,24 @@ export default function FloatingAIAssistant() {
 
       <div
         style={{
-          paddingBottom: 'env(safe-area-inset-bottom)'
+          paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))'
         }}
-        className="flex h-[92vh] sm:h-[86vh] w-full max-w-6xl flex-col overflow-hidden rounded-[24px] border border-[var(--ai-bubble-border)] bg-[var(--ai-card-bg)] shadow-2xl text-[var(--ai-text-primary)]"
+        className="flex h-[94vh] sm:h-[86vh] w-full max-w-6xl flex-col overflow-hidden rounded-[24px] border border-[var(--ai-bubble-border)] bg-[var(--ai-card-bg)] shadow-2xl text-[var(--ai-text-primary)]"
       >
         {/* ChatGPT Style Compact Header Bar */}
-        <div className="flex items-center justify-between border-b border-[var(--ai-bubble-border)] bg-[var(--bg-secondary)] px-3 py-2.5 sm:px-5 select-none">
-          <div className="flex items-center gap-3 min-w-0">
+        <div className="flex items-center justify-between border-b border-[var(--ai-bubble-border)] bg-[var(--bg-secondary)] px-3 py-2 sm:px-5 select-none shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             {/* Sidebar Toggle Button */}
             <button
               type="button"
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="inline-flex items-center justify-center h-9 w-9 rounded-xl border border-[var(--ai-bubble-border)] bg-[var(--bg-surface)] text-[var(--ai-text-primary)] hover:border-amber-400/60 transition active:scale-95 cursor-pointer text-base font-bold shadow-xs"
+              className="inline-flex items-center justify-center min-h-[44px] min-w-[44px] rounded-xl border border-[var(--ai-bubble-border)] bg-[var(--bg-surface)] text-[var(--ai-text-primary)] hover:border-amber-400/60 transition active:scale-95 cursor-pointer text-base font-bold shadow-xs"
               title={isSidebarOpen ? 'Collapse sidebar' : 'Expand sidebar'}
             >
               ☰
             </button>
 
-            <div className="flex items-center gap-2.5 min-w-0">
+            <div className="flex items-center gap-2 min-w-0">
               <span className="text-amber-500 dark:text-amber-400 font-extrabold text-base sm:text-lg">✦</span>
               {editingId === activeConversation?._id ? (
                 <div className="flex items-center gap-1.5 min-w-0">
@@ -188,34 +191,34 @@ export default function FloatingAIAssistant() {
                       if (e.key === 'Enter') saveRename(activeConversation._id)
                       if (e.key === 'Escape') setEditingId(null)
                     }}
-                    className="saas-input min-h-[32px] px-2.5 py-0.5 text-xs w-36 sm:w-48 bg-[var(--bg-input)] border-[var(--border-main)] text-[var(--text-primary)]"
+                    className="saas-input min-h-[36px] px-2.5 py-0.5 text-xs w-32 sm:w-48 bg-[var(--bg-input)] border-[var(--border-main)] text-[var(--text-primary)]"
                     autoFocus
                   />
                   <button
                     type="button"
                     onClick={() => saveRename(activeConversation._id)}
-                    className="text-xs text-emerald-500 font-bold px-2 py-1 hover:bg-[var(--bg-elevated)] rounded"
+                    className="text-xs text-emerald-500 font-bold px-2 py-1 hover:bg-[var(--bg-elevated)] rounded min-h-[36px] cursor-pointer"
                   >
                     ✓
                   </button>
                   <button
                     type="button"
                     onClick={() => setEditingId(null)}
-                    className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] px-1.5 py-1"
+                    className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] px-1.5 py-1 min-h-[36px] cursor-pointer"
                   >
                     ✕
                   </button>
                 </div>
               ) : (
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="text-sm sm:text-base font-bold text-[var(--ai-bold-text)] truncate max-w-[140px] sm:max-w-[280px]">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="text-sm sm:text-base font-bold text-[var(--ai-bold-text)] truncate max-w-[110px] sm:max-w-[280px]">
                     {activeConversation?.title || 'Catalyst AI'}
                   </span>
                   {activeConversation && (
                     <button
                       type="button"
                       onClick={(e) => startRenaming(activeConversation, e)}
-                      className="text-xs text-[var(--ai-text-secondary)] hover:text-amber-400 p-1 cursor-pointer transition text-sm"
+                      className="text-xs text-[var(--ai-text-secondary)] hover:text-amber-400 p-1 min-h-[36px] min-w-[36px] flex items-center justify-center cursor-pointer transition text-sm"
                       title="Rename conversation"
                     >
                       ✏
@@ -227,7 +230,7 @@ export default function FloatingAIAssistant() {
           </div>
 
           {/* Action Icons Bar */}
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
             {activeConversation && (
               <button
                 type="button"
@@ -235,7 +238,7 @@ export default function FloatingAIAssistant() {
                   e.stopPropagation()
                   setDeleteConfirmId(activeConversation._id)
                 }}
-                className="inline-flex items-center justify-center gap-1.5 h-9 px-3 rounded-xl border border-[var(--ai-bubble-border)] bg-[var(--bg-surface)] text-xs font-semibold text-[var(--ai-text-primary)] hover:border-red-500/50 hover:text-red-500 transition cursor-pointer shadow-xs active:scale-95"
+                className="inline-flex items-center justify-center gap-1.5 min-h-[44px] px-2.5 sm:px-3 rounded-xl border border-[var(--ai-bubble-border)] bg-[var(--bg-surface)] text-xs font-semibold text-[var(--ai-text-primary)] hover:border-red-500/50 hover:text-red-500 transition cursor-pointer shadow-xs active:scale-95"
                 title="Delete current conversation"
               >
                 <span className="text-sm">🗑</span>
@@ -247,7 +250,7 @@ export default function FloatingAIAssistant() {
             <button
               type="button"
               onClick={startNewConversation}
-              className="inline-flex items-center justify-center gap-1.5 h-9 px-3.5 rounded-xl border border-[var(--border-main)] bg-[var(--bg-surface)] text-xs font-semibold text-[var(--text-primary)] hover:border-amber-400/50 hover:text-amber-500 dark:hover:text-amber-400 transition cursor-pointer shadow-xs active:scale-95"
+              className="inline-flex items-center justify-center gap-1.5 min-h-[44px] px-3 sm:px-3.5 rounded-xl border border-[var(--border-main)] bg-[var(--bg-surface)] text-xs font-semibold text-[var(--text-primary)] hover:border-amber-400/50 hover:text-amber-500 dark:hover:text-amber-400 transition cursor-pointer shadow-xs active:scale-95"
               title="Start new conversation"
             >
               <svg className="w-3.5 h-3.5 shrink-0 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -260,7 +263,7 @@ export default function FloatingAIAssistant() {
             <button
               type="button"
               onClick={() => setIsOpen(false)}
-              className="inline-flex items-center justify-center h-9 w-9 rounded-xl border border-[var(--ai-bubble-border)] bg-[var(--bg-surface)] text-[var(--ai-text-secondary)] hover:text-[var(--ai-text-primary)] hover:border-amber-400/50 transition cursor-pointer text-base active:scale-95 shadow-xs ml-1 sm:ml-2"
+              className="inline-flex items-center justify-center min-h-[44px] min-w-[44px] rounded-xl border border-[var(--ai-bubble-border)] bg-[var(--bg-surface)] text-[var(--ai-text-secondary)] hover:text-[var(--ai-text-primary)] hover:border-amber-400/50 transition cursor-pointer text-base active:scale-95 shadow-xs"
               title="Close modal"
             >
               ✕
@@ -272,13 +275,13 @@ export default function FloatingAIAssistant() {
         <div className="flex flex-1 overflow-hidden relative">
           {/* ChatGPT Style Collapsible History Sidebar */}
           {isSidebarOpen && (
-            <aside className="w-full sm:w-64 md:w-72 flex-col border-r border-[var(--ai-bubble-border)] bg-[var(--ai-sidebar-bg)] flex shrink-0 transition-all duration-200">
+            <aside className="absolute inset-y-0 left-0 z-20 w-72 max-w-[85vw] sm:relative sm:z-auto sm:w-64 md:w-72 flex-col border-r border-[var(--ai-bubble-border)] bg-[var(--ai-sidebar-bg)] flex shrink-0 transition-all duration-200 shadow-2xl sm:shadow-none">
               <div className="flex items-center justify-between border-b border-[var(--ai-bubble-border)] px-4 py-2.5">
                 <span className="text-xs font-bold uppercase tracking-wider text-[var(--ai-text-secondary)]">History</span>
                 <button
                   type="button"
                   onClick={startNewConversation}
-                  className="text-xs font-bold text-amber-600 dark:text-amber-400 hover:underline cursor-pointer"
+                  className="text-xs font-bold text-amber-600 dark:text-amber-400 hover:underline cursor-pointer min-h-[36px] flex items-center"
                 >
                   + New
                 </button>
@@ -294,7 +297,7 @@ export default function FloatingAIAssistant() {
                       <div
                         key={conversation._id}
                         onClick={() => selectConversation(conversation._id)}
-                        className={`group relative flex items-center justify-between rounded-xl px-3 py-2.5 text-xs font-medium cursor-pointer transition ${
+                        className={`group relative flex items-center justify-between rounded-xl px-3 py-2.5 min-h-[44px] text-xs font-medium cursor-pointer transition ${
                           isActive
                             ? 'bg-[var(--bg-elevated)] text-amber-600 dark:text-amber-400 border border-amber-400/40 shadow-xs font-semibold'
                             : 'text-[var(--ai-text-primary)] hover:bg-[var(--bg-surface)] border border-transparent'
@@ -311,7 +314,7 @@ export default function FloatingAIAssistant() {
                           <button
                             type="button"
                             onClick={(e) => startRenaming(conversation, e)}
-                            className="p-1.5 rounded-lg text-[var(--ai-text-secondary)] hover:text-amber-500 dark:hover:text-amber-400 hover:bg-[var(--bg-elevated)] text-sm transition cursor-pointer"
+                            className="p-1.5 min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg text-[var(--ai-text-secondary)] hover:text-amber-500 dark:hover:text-amber-400 hover:bg-[var(--bg-elevated)] text-sm transition cursor-pointer"
                             title="Rename chat"
                           >
                             ✏
@@ -322,7 +325,7 @@ export default function FloatingAIAssistant() {
                               e.stopPropagation()
                               setDeleteConfirmId(conversation._id)
                             }}
-                            className="p-1.5 rounded-lg text-[var(--ai-text-secondary)] hover:text-red-500 hover:bg-red-500/10 text-sm transition cursor-pointer"
+                            className="p-1.5 min-h-[36px] min-w-[36px] flex items-center justify-center rounded-lg text-[var(--ai-text-secondary)] hover:text-red-500 hover:bg-red-500/10 text-sm transition cursor-pointer"
                             title="Delete chat"
                           >
                             🗑
@@ -355,7 +358,7 @@ export default function FloatingAIAssistant() {
                 <button
                   type="button"
                   onClick={startNewConversation}
-                  className="saas-button-primary min-h-[38px] px-4 text-xs font-bold shadow-sm"
+                  className="saas-button-primary min-h-[44px] px-4 text-xs font-bold shadow-sm cursor-pointer"
                 >
                   + Start New Chat
                 </button>

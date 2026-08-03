@@ -5,9 +5,9 @@ dotenv.config()
 export const env = {
   NODE_ENV: process.env.NODE_ENV || 'development',
   PORT: Number(process.env.PORT || 4000),
-  MONGO_URI: process.env.MONGO_URI || process.env.MONGODB_URI || '',
-  JWT_SECRET: process.env.JWT_SECRET || '',
-  CLIENT_URL: process.env.CLIENT_URL || '',
+  MONGO_URI: process.env.MONGO_URI || process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/catalyst',
+  JWT_SECRET: process.env.JWT_SECRET || 'supersecretjwtkey',
+  CLIENT_URL: process.env.CLIENT_URL || 'http://localhost:5173',
 
   // AI Provider Keys
   GEMINI_API_KEY: process.env.GEMINI_API_KEY || '',
@@ -32,11 +32,14 @@ export function ensureRequiredEnv() {
   if (!env.MONGO_URI) missing.push('MONGO_URI')
   if (!env.JWT_SECRET) missing.push('JWT_SECRET')
 
-  // At least one AI key must be configured
   const hasAnyAIKey = env.GEMINI_API_KEY || env.GROQ_API_KEY
   if (!hasAnyAIKey) missing.push('GEMINI_API_KEY or GROQ_API_KEY')
 
-  if (missing.length > 0 && env.NODE_ENV !== 'test') {
-    throw new Error(`Missing required environment variables: ${missing.join(', ')}`)
+  if (missing.length > 0) {
+    if (env.NODE_ENV === 'production') {
+      throw new Error(`Missing required environment variables: ${missing.join(', ')}`)
+    } else {
+      console.warn(`[Env Warning] Missing environment variables: ${missing.join(', ')}. Running with development fallbacks.`)
+    }
   }
 }
