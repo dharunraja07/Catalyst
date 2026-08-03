@@ -47,7 +47,6 @@ function App() {
         <NotificationProvider>
           <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
             <Routes>
-              <Route path="/meet" element={<ProtectedRoute><MeetLobbyPage /></ProtectedRoute>} />
               <Route path="/meet/room/:roomCode" element={<ProtectedRoute><MeetRoomPage /></ProtectedRoute>} />
               <Route
                 path="*"
@@ -66,6 +65,7 @@ function App() {
                       <Route path="/progress" element={<ProtectedRoute><ProgressPage /></ProtectedRoute>} />
                       <Route path="/career" element={<ProtectedRoute><CareerPage /></ProtectedRoute>} />
                       <Route path="/study-group" element={<ProtectedRoute><StudyGroupPage /></ProtectedRoute>} />
+                      <Route path="/meet" element={<ProtectedRoute><MeetLobbyPage /></ProtectedRoute>} />
                       <Route path="/teacher" element={<ProtectedRoute><TeacherDashboardPage /></ProtectedRoute>} />
                     </Routes>
                   </AppLayout>

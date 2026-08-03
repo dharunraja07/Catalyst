@@ -6,6 +6,14 @@ const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '/api'
 })
 
+api.interceptors.request.use((config) => {
+  const currentToken = localStorage.getItem('ai_learning_token') || ''
+  if (currentToken) {
+    config.headers.Authorization = `Bearer ${currentToken}`
+  }
+  return config
+})
+
 function normalizeEmail(email) {
   return email?.trim().toLowerCase() || ''
 }
@@ -20,12 +28,6 @@ export function AuthProvider({ children }) {
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    const requestInterceptor = api.interceptors.request.use((config) => {
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`
-      }
-      return config
-    })
     const responseInterceptor = api.interceptors.response.use(
       (res) => res,
       (err) => {
@@ -36,10 +38,9 @@ export function AuthProvider({ children }) {
       }
     )
     return () => {
-      api.interceptors.request.eject(requestInterceptor)
       api.interceptors.response.eject(responseInterceptor)
     }
-  }, [token])
+  }, [])
 
   useEffect(() => {
     if (token) {
