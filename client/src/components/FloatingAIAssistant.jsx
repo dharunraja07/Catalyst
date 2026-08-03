@@ -109,13 +109,17 @@ export default function FloatingAIAssistant() {
     })
   }
 
+  const isStudyGroupPage = location.pathname.startsWith('/study-group')
+
   if (!isOpen) {
     return (
       <button
         type="button"
         onClick={() => setIsOpen(true)}
         style={{
-          bottom: 'max(16px, env(safe-area-inset-bottom))',
+          bottom: isStudyGroupPage
+            ? 'max(88px, calc(80px + env(safe-area-inset-bottom)))'
+            : 'max(16px, env(safe-area-inset-bottom))',
           right: 'max(16px, env(safe-area-inset-right))'
         }}
         className="fixed z-[50] flex h-12 w-12 sm:h-14 sm:w-14 min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-amber-400/40 bg-[var(--accent-color)] text-xl text-black font-bold shadow-2xl transition hover:scale-105 active:scale-95 cursor-pointer"

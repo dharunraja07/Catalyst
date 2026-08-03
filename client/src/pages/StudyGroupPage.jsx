@@ -677,9 +677,9 @@ export default function StudyGroupPage() {
     <main className="h-[calc(100vh-90px)] min-h-0 bg-[var(--bg-primary)] text-[var(--text-primary)] overflow-hidden flex flex-col">
       {selectedGroupId && selectedGroup ? (
         <div className="mx-auto flex h-full max-w-[1280px] w-full flex-col p-2 sm:p-4 min-h-0 overflow-hidden space-y-3">
-          {/* Compressed Study Group Workspace Header (Target height 80-100px) */}
-          <div className="flex-none py-2.5 px-3 sm:px-4 rounded-[18px] border border-[var(--border-main)] bg-[var(--bg-surface)] shadow-sm">
-            <div className="flex flex-wrap items-center justify-between gap-3">
+          {/* Compressed Study Group Workspace Header */}
+          <div className="flex-none py-2.5 px-3 sm:px-4 rounded-[18px] border border-[var(--border-main)] bg-[var(--bg-surface)] shadow-sm z-30 relative">
+            <div className="flex flex-col gap-2.5 md:flex-row md:items-center md:justify-between">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   {isEditingGroupName && hostUserId === currentUserId ? (
@@ -700,7 +700,7 @@ export default function StudyGroupPage() {
                       autoFocus
                     />
                   ) : (
-                    <h1 className="text-lg sm:text-xl font-extrabold text-[var(--text-primary)] truncate">{selectedGroup.groupName || 'Study Group'}</h1>
+                    <h1 className="text-base sm:text-xl font-extrabold text-[var(--text-primary)] truncate">{selectedGroup.groupName || 'Study Group'}</h1>
                   )}
                   {hostUserId === currentUserId && !isEditingGroupName && (
                     <button
@@ -742,12 +742,12 @@ export default function StudyGroupPage() {
                 </div>
               </div>
 
-              {/* Action Buttons Header Row */}
-              <div className="flex flex-wrap items-center gap-2 shrink-0">
+              {/* Action Buttons Header Strip (Scrollable row on mobile without wrapping collision) */}
+              <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar no-scrollbar py-0.5 shrink-0 max-w-full">
                 <button
                   type="button"
                   onClick={() => setShowAiModal(true)}
-                  className="saas-button-primary min-h-[38px] px-3.5 text-xs font-bold flex items-center gap-1.5 shadow-sm"
+                  className="saas-button-primary min-h-[40px] px-3.5 text-xs font-bold flex items-center gap-1.5 shadow-sm whitespace-nowrap cursor-pointer shrink-0"
                 >
                   <svg className="w-4 h-4 text-black shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
@@ -757,7 +757,7 @@ export default function StudyGroupPage() {
                 <button
                   type="button"
                   onClick={() => setShowInviteModal(true)}
-                  className="saas-button-primary min-h-[38px] px-3.5 text-xs font-bold"
+                  className="saas-button-primary min-h-[40px] px-3.5 text-xs font-bold whitespace-nowrap cursor-pointer shrink-0"
                   disabled={(selectedGroup.members?.length || 0) >= (selectedGroup.maxMembers || MAX_MEMBERS)}
                 >
                   Invite
@@ -765,14 +765,14 @@ export default function StudyGroupPage() {
                 <button
                   type="button"
                   onClick={() => setShowMembersModal(true)}
-                  className="saas-button-secondary min-h-[38px] px-3.5 text-xs font-semibold"
+                  className="saas-button-secondary min-h-[40px] px-3.5 text-xs font-semibold whitespace-nowrap cursor-pointer shrink-0"
                 >
                   Members
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowSettingsPopover((prev) => !prev)}
-                  className="saas-button-secondary min-h-[38px] px-3.5 text-xs font-bold flex items-center gap-1.5"
+                  className="saas-button-secondary min-h-[40px] px-3.5 text-xs font-bold flex items-center gap-1.5 whitespace-nowrap cursor-pointer shrink-0"
                 >
                   <svg className="w-4 h-4 text-[var(--text-secondary)] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
@@ -783,7 +783,7 @@ export default function StudyGroupPage() {
                   <button
                     type="button"
                     onClick={() => setConfirmModal({ open: true, type: 'delete', groupId: selectedGroup._id, groupName: selectedGroup.groupName })}
-                    className="saas-button-secondary min-h-[38px] px-3 text-xs font-semibold text-[var(--error-color)] border-[var(--error-color)]/30 hover:bg-[var(--error-bg)] flex items-center gap-1.5"
+                    className="saas-button-secondary min-h-[40px] px-3 text-xs font-semibold text-[var(--error-color)] border-[var(--error-color)]/30 hover:bg-[var(--error-bg)] flex items-center gap-1.5 whitespace-nowrap cursor-pointer shrink-0"
                   >
                     <svg className="w-4 h-4 text-[var(--error-color)] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -794,7 +794,7 @@ export default function StudyGroupPage() {
                   <button
                     type="button"
                     onClick={() => setConfirmModal({ open: true, type: 'leave', groupId: selectedGroup._id, groupName: selectedGroup.groupName })}
-                    className="saas-button-secondary min-h-[38px] px-3 text-xs font-semibold hover:text-[var(--error-color)] hover:border-[var(--error-color)] flex items-center gap-1.5"
+                    className="saas-button-secondary min-h-[40px] px-3 text-xs font-semibold hover:text-[var(--error-color)] hover:border-[var(--error-color)] flex items-center gap-1.5 whitespace-nowrap cursor-pointer shrink-0"
                   >
                     <svg className="w-4 h-4 text-[var(--text-secondary)] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -805,7 +805,7 @@ export default function StudyGroupPage() {
                 <button
                   type="button"
                   onClick={() => setSelectedGroupId(null)}
-                  className="saas-button-secondary min-h-[38px] px-3 text-xs font-semibold"
+                  className="saas-button-secondary min-h-[40px] px-3 text-xs font-semibold whitespace-nowrap cursor-pointer shrink-0"
                 >
                   ✕ Exit
                 </button>
@@ -815,177 +815,177 @@ export default function StudyGroupPage() {
 
           {/* Modals */}
           {showInviteModal && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn">
-                <div className="saas-card max-w-md w-full shadow-2xl">
-                  <div className="mb-6">
-                    <h2 className="section-title">Invite a member</h2>
-                    <p className="small-text mt-1">Search for a student and send them a group invite.</p>
-                  </div>
-                  <form onSubmit={searchInviteUsers} className="mb-6 flex flex-col gap-3">
-                    <input
-                      type="text"
-                      value={inviteQuery}
-                      onChange={(event) => setInviteQuery(event.target.value)}
-                      placeholder="Search by name or email"
-                      className="saas-input w-full"
-                    />
-                    <button type="submit" className="saas-button-primary">Search</button>
-                  </form>
-                  {inviteResults.length > 0 && (
-                    <div className="mb-6 max-h-64 space-y-3 overflow-y-auto custom-scrollbar">
-                      {inviteResults.map((u) => (
-                        <div key={u._id} className="flex items-center justify-between rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-4">
-                          <div className="flex-1">
-                            <p className="card-title text-base">{u.name}</p>
-                            <p className="caption-text">{u.email}</p>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => inviteToGroup(u._id)}
-                            disabled={inviting}
-                            className="saas-button-primary min-h-[36px] px-3 text-xs disabled:opacity-50"
-                          >
-                            Invite
-                          </button>
+            <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 backdrop-blur-md p-3 sm:p-4 overflow-y-auto animate-fadeIn">
+              <div className="saas-card max-w-md w-full shadow-2xl max-h-[90vh] flex flex-col p-4 sm:p-6 overflow-hidden">
+                <div className="mb-4 sm:mb-6">
+                  <h2 className="section-title text-lg font-bold">Invite a member</h2>
+                  <p className="small-text mt-1 text-xs text-[var(--text-secondary)]">Search for a student and send them a group invite.</p>
+                </div>
+                <form onSubmit={searchInviteUsers} className="mb-4 flex flex-col gap-2.5 sm:gap-3">
+                  <input
+                    type="text"
+                    value={inviteQuery}
+                    onChange={(event) => setInviteQuery(event.target.value)}
+                    placeholder="Search by name or email"
+                    className="saas-input w-full min-h-[46px] px-3.5 text-sm"
+                  />
+                  <button type="submit" className="saas-button-primary min-h-[46px] font-bold cursor-pointer">Search</button>
+                </form>
+                {inviteResults.length > 0 && (
+                  <div className="mb-4 max-h-64 space-y-2.5 overflow-y-auto custom-scrollbar pr-1">
+                    {inviteResults.map((u) => (
+                      <div key={u._id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-3.5 sm:p-4">
+                        <div className="flex-1 min-w-0">
+                          <p className="card-title text-sm font-bold truncate">{u.name}</p>
+                          <p className="caption-text text-xs text-[var(--text-muted)] truncate">{u.email}</p>
                         </div>
-                      ))}
-                    </div>
-                  )}
-                  <div className="flex gap-3">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setShowInviteModal(false)
-                        setInviteQuery('')
-                        setInviteResults([])
-                      }}
-                      className="saas-button-secondary w-full"
-                    >
-                      Close
-                    </button>
+                        <button
+                          type="button"
+                          onClick={() => inviteToGroup(u._id)}
+                          disabled={inviting}
+                          className="saas-button-primary min-h-[44px] px-4 text-xs font-bold w-full sm:w-auto cursor-pointer disabled:opacity-50"
+                        >
+                          Invite
+                        </button>
+                      </div>
+                    ))}
                   </div>
+                )}
+                <div className="mt-auto pt-2 flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowInviteModal(false)
+                      setInviteQuery('')
+                      setInviteResults([])
+                    }}
+                    className="saas-button-secondary w-full min-h-[46px] font-bold cursor-pointer"
+                  >
+                    Close
+                  </button>
                 </div>
               </div>
-            )}
+            </div>
+          )}
 
-            {showMembersModal && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn">
-                <div className="saas-card max-w-lg w-full shadow-2xl">
-                  <div className="mb-6 flex items-center justify-between">
-                    <div>
-                      <h2 className="section-title">Group members</h2>
-                      <p className="small-text mt-1">Everyone currently in this study group.</p>
-                    </div>
-                    <span className="rounded-full bg-[var(--accent-light)] px-3 py-1 text-xs font-bold text-[var(--accent-color)] border border-[var(--accent-color)]/20">
-                      {uniqueGroupMembers.length} {uniqueGroupMembers.length === 1 ? 'member' : 'members'}
-                    </span>
+          {showMembersModal && (
+            <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 backdrop-blur-md p-3 sm:p-4 overflow-y-auto animate-fadeIn">
+              <div className="saas-card max-w-lg w-full shadow-2xl max-h-[90vh] flex flex-col p-4 sm:p-6 overflow-hidden">
+                <div className="mb-4 sm:mb-6 flex items-center justify-between gap-2">
+                  <div>
+                    <h2 className="section-title text-lg font-bold">Group members</h2>
+                    <p className="small-text mt-1 text-xs text-[var(--text-secondary)]">Everyone currently in this study group.</p>
                   </div>
-                  <div className="space-y-3 max-h-80 overflow-y-auto custom-scrollbar pr-1">
-                    {uniqueGroupMembers.map((member) => {
-                      const memberId = (member._id || member).toString()
-                      const isOnline = onlineMembers.some((u) => (u.userId || u._id || u).toString() === memberId)
-                      const isHost = hostUserId === memberId
+                  <span className="rounded-full bg-[var(--accent-light)] px-3 py-1 text-xs font-bold text-[var(--accent-color)] border border-[var(--accent-color)]/20 shrink-0">
+                    {uniqueGroupMembers.length} {uniqueGroupMembers.length === 1 ? 'member' : 'members'}
+                  </span>
+                </div>
+                <div className="space-y-3 max-h-[60vh] overflow-y-auto custom-scrollbar pr-1 flex-1">
+                  {uniqueGroupMembers.map((member) => {
+                    const memberId = (member._id || member).toString()
+                    const isOnline = onlineMembers.some((u) => (u.userId || u._id || u).toString() === memberId)
+                    const isHost = hostUserId === memberId
 
-                      return (
-                        <div key={memberId} className="flex items-center justify-between gap-3 rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-3.5 sm:p-4 transition-colors hover:border-[var(--border-hover)]">
-                          <div className="flex items-center gap-3 min-w-0 flex-1">
-                            <div className="relative shrink-0">
-                              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--accent-light)] font-bold text-[var(--accent-color)] text-sm shadow-xs">
-                                {member.name?.[0]?.toUpperCase() || 'U'}
-                              </div>
+                    return (
+                      <div key={memberId} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-3.5 sm:p-4 transition-colors hover:border-[var(--border-hover)]">
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <div className="relative shrink-0">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--accent-light)] font-bold text-[var(--accent-color)] text-sm shadow-xs">
+                              {member.name?.[0]?.toUpperCase() || 'U'}
+                            </div>
+                            {isOnline && (
+                              <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-[var(--success-color)] ring-2 ring-[var(--bg-secondary)]" title="Online" />
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <p className="card-title text-sm sm:text-base font-semibold truncate" title={member.name}>{member.name}</p>
                               {isOnline && (
-                                <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-[var(--success-color)] ring-2 ring-[var(--bg-secondary)]" title="Online" />
+                                <span className="text-[10px] uppercase font-semibold text-[var(--success-color)] shrink-0 bg-[var(--success-color)]/10 px-1.5 py-0.5 rounded">Online</span>
                               )}
                             </div>
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-2">
-                                <p className="card-title text-sm sm:text-base font-semibold truncate" title={member.name}>{member.name}</p>
-                                {isOnline && (
-                                  <span className="text-[10px] uppercase font-semibold text-[var(--success-color)] shrink-0 bg-[var(--success-color)]/10 px-1.5 py-0.5 rounded">Online</span>
-                                )}
-                              </div>
-                              <p className="caption-text text-xs text-[var(--text-muted)] truncate" title={member.email}>{member.email}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2 shrink-0">
-                            {isHost ? (
-                              <span className="rounded-full bg-[var(--accent-color)] px-3 py-1.5 text-xs font-bold text-black flex items-center gap-1.5 shadow-xs shrink-0">
-                                👑 Host
-                              </span>
-                            ) : isCurrentHost ? (
-                              <div className="flex items-center gap-2 shrink-0">
-                                <button
-                                  type="button"
-                                  onClick={() => handleTransferHost(memberId, member.name)}
-                                  className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-[var(--accent-color)]/40 text-[var(--accent-color)] bg-[var(--accent-color)]/10 hover:bg-[var(--accent-color)] hover:text-black transition-all duration-200 flex items-center gap-1.5 shadow-xs whitespace-nowrap cursor-pointer"
-                                  title="Transfer Host privileges to this member"
-                                >
-                                  👑 Make Host
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemoveMember(memberId, member.name)}
-                                  className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-[var(--error-color)]/40 text-[var(--error-color)] bg-[var(--error-color)]/10 hover:bg-[var(--error-color)] hover:text-white transition-all duration-200 flex items-center gap-1.5 shadow-xs whitespace-nowrap cursor-pointer"
-                                  title="Remove member from group"
-                                >
-                                  ✕ Remove
-                                </button>
-                              </div>
-                            ) : null}
+                            <p className="caption-text text-xs text-[var(--text-muted)] truncate" title={member.email}>{member.email}</p>
                           </div>
                         </div>
-                      )
-                    })}
-                  </div>
-                  <div className="mt-6 flex gap-3">
-                    <button type="button" onClick={() => setShowMembersModal(false)} className="saas-button-secondary w-full">Close</button>
-                  </div>
+                        <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
+                          {isHost ? (
+                            <span className="rounded-full bg-[var(--accent-color)] px-3 py-1.5 text-xs font-bold text-black flex items-center gap-1.5 shadow-xs shrink-0">
+                              👑 Host
+                            </span>
+                          ) : isCurrentHost ? (
+                            <div className="flex flex-wrap items-center gap-2 shrink-0 w-full sm:w-auto">
+                              <button
+                                type="button"
+                                onClick={() => handleTransferHost(memberId, member.name)}
+                                className="min-h-[44px] px-3 py-2 text-xs font-semibold rounded-lg border border-[var(--accent-color)]/40 text-[var(--accent-color)] bg-[var(--accent-color)]/10 hover:bg-[var(--accent-color)] hover:text-black transition-all duration-200 flex items-center gap-1.5 shadow-xs whitespace-nowrap cursor-pointer"
+                                title="Transfer Host privileges to this member"
+                              >
+                                👑 Make Host
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveMember(memberId, member.name)}
+                                className="min-h-[44px] px-3 py-2 text-xs font-semibold rounded-lg border border-[var(--error-color)]/40 text-[var(--error-color)] bg-[var(--error-color)]/10 hover:bg-[var(--error-color)] hover:text-white transition-all duration-200 flex items-center gap-1.5 shadow-xs whitespace-nowrap cursor-pointer"
+                                title="Remove member from group"
+                              >
+                                ✕ Remove
+                              </button>
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+                <div className="mt-4 pt-2 flex gap-3">
+                  <button type="button" onClick={() => setShowMembersModal(false)} className="saas-button-secondary w-full min-h-[46px] font-bold cursor-pointer">Close</button>
                 </div>
               </div>
-            )}
+            </div>
+          )}
 
-            {showAiModal && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-3 sm:p-6 animate-fadeIn">
-                <div className="saas-card max-w-2xl w-full h-[85vh] flex flex-col shadow-2xl relative border-2 border-[var(--accent-color)]/40 rounded-[2rem]">
-                  <div className="flex items-center justify-between border-b border-[var(--divider-main)] pb-3 mb-2">
-                    <div className="flex items-center gap-2.5">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--accent-color)] text-black font-bold text-base shadow-sm">
-                        🤖
-                      </div>
-                      <div>
-                        <h2 className="section-title text-lg font-bold">Group AI Companion</h2>
-                        <p className="caption-text">Instant explanations & study notes for your team</p>
-                      </div>
+          {showAiModal && (
+            <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 backdrop-blur-md p-2 sm:p-6 animate-fadeIn">
+              <div className="saas-card max-w-2xl w-full h-[90vh] sm:h-[85vh] max-h-[90vh] flex flex-col shadow-2xl relative border-2 border-[var(--accent-color)]/40 rounded-2xl sm:rounded-[2rem] p-4 sm:p-6 overflow-hidden">
+                <div className="flex items-center justify-between border-b border-[var(--divider-main)] pb-3 mb-2">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--accent-color)] text-black font-bold text-base shadow-sm shrink-0">
+                      🤖
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setShowAiModal(false)}
-                      className="rounded-full border border-[var(--border-main)] bg-[var(--bg-secondary)] px-3.5 py-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-                    >
-                      ✕ Close
-                    </button>
+                    <div>
+                      <h2 className="section-title text-base sm:text-lg font-bold">Group AI Companion</h2>
+                      <p className="caption-text text-xs text-[var(--text-secondary)]">Instant explanations & study notes for your team</p>
+                    </div>
                   </div>
-                  <div className="flex-1 min-h-0">
-                    <GroupChatAI
-                      groupId={selectedGroupId}
-                      api={api}
-                      onShareToGroup={(content) => {
-                        const socket = getSocket()
-                        if (socket && socket.connected) {
-                          socket.emit('send_message', {
-                            groupId: selectedGroupId,
-                            message: `🤖 [AI Assistant Note]\n${content}`
-                          })
-                          setShowAiModal(false)
-                          setStatus('AI response shared with the group chat!')
-                          clearTransientMessage()
-                        }
-                      }}
-                    />
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowAiModal(false)}
+                    className="rounded-full border border-[var(--border-main)] bg-[var(--bg-secondary)] px-3.5 py-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] min-h-[36px] cursor-pointer"
+                  >
+                    ✕ Close
+                  </button>
+                </div>
+                <div className="flex-1 min-h-0">
+                  <GroupChatAI
+                    groupId={selectedGroupId}
+                    api={api}
+                    onShareToGroup={(content) => {
+                      const socket = getSocket()
+                      if (socket && socket.connected) {
+                        socket.emit('send_message', {
+                          groupId: selectedGroupId,
+                          message: `🤖 [AI Assistant Note]\n${content}`
+                        })
+                        setShowAiModal(false)
+                        setStatus('AI response shared with the group chat!')
+                        clearTransientMessage()
+                      }
+                    }}
+                  />
                 </div>
               </div>
-            )}
+            </div>
+          )}
 
           {/* Study Group Collaboration Workspace Chat Area (Occupies 75-80% of Viewport) */}
           <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
@@ -1024,11 +1024,11 @@ export default function StudyGroupPage() {
               </div>
             )}
 
-            {/* Scrollable Messages Stream (Reverse Infinite Scroll, 75-80% height) */}
+            {/* Scrollable Messages Stream (Reverse Infinite Scroll) */}
             <div
               ref={scrollContainerRef}
               onScroll={handleScroll}
-              className="relative flex-1 min-h-0 overflow-y-auto py-2 px-1 custom-scrollbar space-y-3"
+              className="relative flex-1 min-h-0 overflow-y-auto pt-2 pb-8 sm:pb-6 px-1 custom-scrollbar space-y-2.5 sm:space-y-3"
             >
               {loadingOlder && (
                 <div className="flex justify-center py-2 text-xs text-[var(--accent-color)] font-semibold items-center gap-2 animate-fadeIn">
@@ -1050,8 +1050,8 @@ export default function StudyGroupPage() {
 
                   if (isSystemMsg) {
                     return (
-                      <div key={msg._id} className="w-full flex justify-center my-3 animate-fadeIn">
-                        <div className="inline-flex items-center gap-2 rounded-full border border-[var(--border-main)] bg-[var(--bg-secondary)]/90 px-4 py-1.5 text-xs font-semibold text-[var(--text-muted)] shadow-sm">
+                      <div key={msg._id} className="w-full flex justify-center my-2 sm:my-3 animate-fadeIn">
+                        <div className="inline-flex items-center gap-2 rounded-full border border-[var(--border-main)] bg-[var(--bg-secondary)]/90 px-3.5 sm:px-4 py-1 sm:py-1.5 text-xs font-semibold text-[var(--text-muted)] shadow-sm">
                           <span>{msg.message}</span>
                           <span className="text-[10px] text-[var(--text-muted)] opacity-80 border-l border-[var(--border-main)] pl-2">
                             {formattedTime}
@@ -1063,14 +1063,14 @@ export default function StudyGroupPage() {
 
                   if (isAiMsg) {
                     return (
-                      <div key={msg._id} className="w-full flex justify-center my-3 animate-fadeIn min-w-0">
+                      <div key={msg._id} className="w-full flex justify-center my-2 sm:my-3 animate-fadeIn min-w-0">
                         <div
                           style={{
                             boxShadow: 'var(--ai-bubble-shadow, 0 4px 16px rgba(15,23,42,0.06))'
                           }}
-                          className="w-fit max-w-[92%] sm:max-w-[85%] md:max-w-[80%] lg:max-w-[75%] rounded-2xl bg-[var(--ai-bubble-bg)] border border-[var(--ai-bubble-border)] p-4 text-[var(--ai-text-primary)] min-w-0 overflow-hidden"
+                          className="w-fit max-w-[92%] sm:max-w-[85%] md:max-w-[80%] lg:max-w-[75%] rounded-2xl bg-[var(--ai-bubble-bg)] border border-[var(--ai-bubble-border)] p-3 sm:p-4 text-[var(--ai-text-primary)] min-w-0 overflow-hidden"
                         >
-                          <div className="flex items-center justify-between gap-4 mb-2 border-b border-[var(--ai-bubble-border)] pb-1.5">
+                          <div className="flex items-center justify-between gap-3 mb-1.5 sm:mb-2 border-b border-[var(--ai-bubble-border)] pb-1 sm:pb-1.5">
                             <span className="text-xs font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
                               <svg className="w-4 h-4 text-amber-500 dark:text-amber-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -1090,14 +1090,14 @@ export default function StudyGroupPage() {
 
                   if (isSelf) {
                     return (
-                      <div key={msg._id} className="w-full flex justify-end my-1.5 min-w-0">
+                      <div key={msg._id} className="w-full flex justify-end my-1 sm:my-1.5 min-w-0">
                         <div
                           style={{
                             boxShadow: 'var(--ai-user-shadow, 0 4px 14px rgba(0,0,0,0.05))'
                           }}
-                          className="w-fit max-w-[85%] sm:max-w-[75%] md:max-w-[68%] lg:max-w-[62%] min-w-0 rounded-2xl rounded-tr-none bg-[var(--ai-user-bubble-bg)] border border-[var(--ai-user-bubble-border)] p-3.5 text-[var(--ai-user-text)] overflow-hidden"
+                          className="w-fit max-w-[88%] sm:max-w-[75%] md:max-w-[68%] lg:max-w-[62%] min-w-0 rounded-2xl rounded-tr-none bg-[var(--ai-user-bubble-bg)] border border-[var(--ai-user-bubble-border)] p-2.5 sm:p-3.5 text-[var(--ai-user-text)] overflow-hidden"
                         >
-                          <div className="flex items-center justify-between gap-3 mb-1 border-b border-[var(--ai-user-bubble-border)] pb-1">
+                          <div className="flex items-center justify-between gap-3 mb-1 border-b border-[var(--ai-user-bubble-border)] pb-0.5 sm:pb-1">
                             <span className="text-xs font-bold text-amber-600 dark:text-amber-400">You</span>
                             <span className="text-[10px] text-[var(--text-muted)]">{formattedTime}</span>
                           </div>
@@ -1109,8 +1109,8 @@ export default function StudyGroupPage() {
 
                   return (
                     <div key={msg._id} className="w-full flex justify-start my-1 min-w-0">
-                      <div className="w-fit max-w-[85%] sm:max-w-[75%] md:max-w-[68%] lg:max-w-[62%] min-w-0 rounded-2xl rounded-tl-none bg-[var(--bg-secondary)] border border-[var(--border-main)] p-3 shadow-sm text-[var(--text-primary)]">
-                        <div className="flex items-center justify-between gap-3 mb-1 border-b border-[var(--border-main)] pb-1">
+                      <div className="w-fit max-w-[88%] sm:max-w-[75%] md:max-w-[68%] lg:max-w-[62%] min-w-0 rounded-2xl rounded-tl-none bg-[var(--bg-secondary)] border border-[var(--border-main)] p-2.5 sm:p-3 shadow-sm text-[var(--text-primary)]">
+                        <div className="flex items-center justify-between gap-3 mb-1 border-b border-[var(--border-main)] pb-0.5 sm:pb-1">
                           <span className="text-xs font-bold text-[var(--accent-color)]">{msg.sender?.name || 'Member'}</span>
                           <span className="text-[10px] text-[var(--text-muted)]">{formattedTime}</span>
                         </div>
@@ -1121,11 +1121,14 @@ export default function StudyGroupPage() {
                 })
               ) : (
                 <div className="flex h-full items-center justify-center">
-                  <p className="text-center body-text text-sm text-[var(--text-muted)] italic">
+                  <p className="text-center body-text text-xs sm:text-sm text-[var(--text-muted)] italic">
                     No messages yet. Send a message or start with @ai to chat with the companion!
                   </p>
                 </div>
               )}
+
+              {/* Dedicated bottom spacer to ensure the last bubble is 100% visible */}
+              <div className="h-6 sm:h-4 shrink-0" />
               <div ref={messagesEndRef} />
 
               {/* Floating "↓ Scroll to Latest" Button */}
@@ -1165,8 +1168,8 @@ export default function StudyGroupPage() {
             {error && <p className="flex-none my-1.5 rounded-[14px] bg-[var(--error-bg)] border border-[var(--error-color)]/30 px-3 py-1.5 text-xs text-[var(--error-color)]">{error}</p>}
             {status && <p className="flex-none my-1.5 rounded-[14px] bg-[var(--success-bg)] border border-[var(--success-color)]/30 px-3 py-1.5 text-xs text-[var(--success-color)]">{status}</p>}
 
-            {/* Anchored Bottom Message Composer */}
-            <div className="flex-none pt-2.5 border-t border-[var(--border-main)]">
+            {/* Anchored Bottom Message Composer Container (z-20 relative) */}
+            <div className="flex-none pt-2.5 pb-1 border-t border-[var(--border-main)] bg-[var(--bg-surface)] z-20 relative">
               {typingUsers.length > 0 && (
                 <div className="mb-1.5 flex items-center gap-2 text-xs text-[var(--text-secondary)] italic animate-pulse">
                   <span className="h-2 w-2 rounded-full bg-[var(--accent-color)]" />
@@ -1181,7 +1184,7 @@ export default function StudyGroupPage() {
                   <span>AI Companion is generating a response...</span>
                 </div>
               )}
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center pr-14 sm:pr-16">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                 <textarea
                   value={messageText}
                   onChange={handleInputChange}
@@ -1195,7 +1198,7 @@ export default function StudyGroupPage() {
                   rows="2"
                   className="saas-input w-full min-h-[46px] max-h-24 resize-none p-3 text-sm font-medium flex-1"
                 />
-                <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                <div className="flex items-center gap-2 shrink-0 self-end sm:self-center w-full sm:w-auto">
                   <select
                     value={groupSelectedProvider}
                     onChange={(e) => {
@@ -1203,7 +1206,7 @@ export default function StudyGroupPage() {
                       setGroupSelectedProvider(val)
                       localStorage.setItem('ai_provider', val)
                     }}
-                    className="saas-input text-xs font-semibold px-2.5 min-h-[46px] cursor-pointer bg-[var(--bg-secondary)] border-[var(--border-main)] rounded-[12px] text-[var(--text-primary)]"
+                    className="saas-input text-xs font-semibold px-2.5 min-h-[46px] cursor-pointer bg-[var(--bg-secondary)] border-[var(--border-main)] rounded-[12px] text-[var(--text-primary)] flex-1 sm:flex-none"
                     title="Select AI Model Provider for @ai group chat"
                   >
                     <option value="gemini">Gemini</option>
@@ -1212,7 +1215,7 @@ export default function StudyGroupPage() {
                   <button
                     type="button"
                     onClick={sendMessage}
-                    className="saas-button-primary min-h-[46px] px-6 font-bold shadow-sm"
+                    className="saas-button-primary min-h-[46px] px-6 font-bold shadow-sm flex-1 sm:flex-none cursor-pointer"
                   >
                     Send
                   </button>
@@ -1223,65 +1226,65 @@ export default function StudyGroupPage() {
         </div>
       ) : (
         /* Canvas-First Study Group Overview Dashboard */
-        <div className="overflow-y-auto px-4 py-8 sm:px-6 lg:px-8 lg:h-full custom-scrollbar">
-          <div className="mx-auto max-w-[1280px] space-y-8">
+        <div className="overflow-y-auto px-3 py-6 sm:px-6 lg:px-8 lg:h-full custom-scrollbar">
+          <div className="mx-auto max-w-[1280px] max-w-full overflow-x-hidden space-y-6 sm:space-y-8">
             {/* Header */}
             <div>
               <p className="page-label">Study Groups</p>
-              <h1 className="page-title mb-2">Study Group Collaboration</h1>
-              <p className="page-description">Search peers, join groups with code, and chat in real-time.</p>
+              <h1 className="page-title mb-1.5 text-2xl sm:text-3xl font-extrabold">Study Group Collaboration</h1>
+              <p className="page-description text-xs sm:text-sm text-[var(--text-secondary)]">Search peers, join groups with code, and chat in real-time.</p>
             </div>
 
-            <hr className="canvas-divider" />
+            <hr className="canvas-divider opacity-60" />
 
-            {error && <p className="rounded-[14px] bg-[var(--error-bg)] border border-[var(--error-color)]/30 px-4 py-3 text-sm text-[var(--error-color)]">{error}</p>}
-            {status && <p className="rounded-[14px] bg-[var(--success-bg)] border border-[var(--success-color)]/30 px-4 py-3 text-sm text-[var(--success-color)]">{status}</p>}
+            {error && <p className="rounded-[14px] bg-[var(--error-bg)] border border-[var(--error-color)]/30 px-4 py-3 text-xs sm:text-sm text-[var(--error-color)] break-words">{error}</p>}
+            {status && <p className="rounded-[14px] bg-[var(--success-bg)] border border-[var(--success-color)]/30 px-4 py-3 text-xs sm:text-sm text-[var(--success-color)] break-words">{status}</p>}
 
             {/* Forms */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <form onSubmit={joinGroupByCode} className="flex gap-3 items-center">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+              <form onSubmit={joinGroupByCode} className="flex flex-col sm:flex-row gap-2.5 sm:gap-3 items-center">
                 <input
                   value={joinCodeInput}
                   onChange={(event) => setJoinCodeInput(event.target.value)}
                   placeholder="Enter group code to join..."
-                  className="saas-input w-full min-h-[48px]"
+                  className="saas-input w-full min-h-[48px] px-3.5 text-sm"
                 />
-                <button className="saas-button-primary font-bold px-6 shrink-0 min-h-[48px]">Join</button>
+                <button className="saas-button-primary font-bold px-6 shrink-0 min-h-[48px] w-full sm:w-auto cursor-pointer">Join</button>
               </form>
 
-              <form onSubmit={handleSearch} className="flex gap-3 items-center">
+              <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-2.5 sm:gap-3 items-center">
                 <input
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
                   placeholder="Search peers by name or email..."
-                  className="saas-input w-full min-h-[48px]"
+                  className="saas-input w-full min-h-[48px] px-3.5 text-sm"
                 />
-                <button className="saas-button-primary font-bold px-6 shrink-0 min-h-[48px]">
+                <button className="saas-button-primary font-bold px-6 shrink-0 min-h-[48px] w-full sm:w-auto cursor-pointer">
                   Search
                 </button>
               </form>
             </div>
 
             {searchResults.length > 0 && (
-              <div className="space-y-4 pt-4">
-                <h2 className="section-title">Search Results</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-4 pt-2">
+                <h2 className="section-title text-xl sm:text-2xl font-extrabold">Search Results</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4">
                   {searchResults.map((student) => (
-                    <div key={student._id} className="rounded-[16px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-4 shadow-sm">
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <h3 className="card-title font-bold">{student.name}</h3>
-                          <p className="caption-text">{student.email}</p>
+                    <div key={student._id} className="rounded-2xl sm:rounded-[16px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-4 shadow-sm space-y-3">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <h3 className="card-title font-bold text-sm sm:text-base truncate">{student.name}</h3>
+                          <p className="caption-text text-xs text-[var(--text-muted)] truncate">{student.email}</p>
                         </div>
                         <button
                           type="button"
                           onClick={() => sendRequest(student._id)}
-                          className="saas-button-primary min-h-[38px] px-4 text-xs font-bold"
+                          className="saas-button-primary min-h-[44px] px-4 text-xs font-bold w-full sm:w-auto cursor-pointer shrink-0"
                         >
                           Send Request
                         </button>
                       </div>
-                      <p className="body-text mt-2 text-xs">
+                      <p className="body-text text-xs text-[var(--text-secondary)] truncate">
                         Subjects: {student.interestedSubjects?.join(', ') || 'N/A'}
                       </p>
                     </div>
@@ -1290,12 +1293,12 @@ export default function StudyGroupPage() {
               </div>
             )}
 
-            <hr className="canvas-divider" />
+            <hr className="canvas-divider opacity-60" />
 
             <div className="space-y-4">
-              <h2 className="section-title">My Study Groups ({groups.length})</h2>
+              <h2 className="section-title text-xl sm:text-2xl font-extrabold">My Study Groups ({groups.length})</h2>
                 {groups.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
                     {groups.map((group) => {
                       const isHost = group.createdBy?._id === currentUserId || group.createdBy === currentUserId
                       const uniqueMembers = getUniqueMembers(group.members)
@@ -1303,17 +1306,17 @@ export default function StudyGroupPage() {
                       return (
                         <div
                           key={group._id}
-                          className="rounded-[18px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-5 text-left transition hover:border-[var(--accent-color)] shadow-sm space-y-3 w-full flex flex-col justify-between"
+                          className="rounded-2xl sm:rounded-[18px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-4 sm:p-5 text-left transition hover:border-[var(--accent-color)] shadow-sm space-y-3 w-full flex flex-col justify-between"
                         >
                           <div>
                             <div className="flex items-center justify-between gap-3 mb-2">
                               <div className="flex items-center gap-2 min-w-0">
-                                <p className="card-title font-bold text-base truncate">{group.groupName || 'Study Group'}</p>
+                                <p className="card-title font-bold text-sm sm:text-base truncate">{group.groupName || 'Study Group'}</p>
                                 {isHost && (
                                   <span className="rounded-full bg-[var(--accent-color)] px-2 py-0.5 text-[10px] font-bold text-black shadow-sm shrink-0">👑 Host</span>
                                 )}
                               </div>
-                              <span className="rounded-full border border-[var(--border-main)] bg-[var(--bg-primary)] px-3 py-1 text-xs font-bold text-[var(--text-secondary)] shrink-0">
+                              <span className="rounded-full border border-[var(--border-main)] bg-[var(--bg-primary)] px-2.5 py-1 text-xs font-bold text-[var(--text-secondary)] shrink-0">
                                 {uniqueMembers.length}/{group.maxMembers || MAX_MEMBERS}
                               </span>
                             </div>
@@ -1322,11 +1325,11 @@ export default function StudyGroupPage() {
                             </p>
                           </div>
 
-                          <div className="flex items-center justify-between gap-2 pt-3 border-t border-[var(--border-main)]">
+                          <div className="flex flex-wrap items-center justify-between gap-2.5 pt-3 border-t border-[var(--border-main)]">
                             <button
                               type="button"
                               onClick={() => setSelectedGroupId(group._id)}
-                              className="saas-button-primary min-h-[36px] px-4 text-xs font-bold"
+                              className="saas-button-primary min-h-[44px] px-4 text-xs font-bold flex-1 sm:flex-none cursor-pointer"
                             >
                               Open Chat
                             </button>
@@ -1334,7 +1337,7 @@ export default function StudyGroupPage() {
                               <button
                                 type="button"
                                 onClick={() => setConfirmModal({ open: true, type: 'delete', groupId: group._id, groupName: group.groupName })}
-                                className="saas-button-secondary min-h-[36px] px-3 text-xs font-semibold text-[var(--error-color)] border-[var(--error-color)]/30 hover:bg-[var(--error-bg)] flex items-center gap-1.5"
+                                className="saas-button-secondary min-h-[44px] px-3.5 text-xs font-semibold text-[var(--error-color)] border-[var(--error-color)]/30 hover:bg-[var(--error-bg)] flex items-center justify-center gap-1.5 cursor-pointer"
                               >
                                 <svg className="w-3.5 h-3.5 text-[var(--error-color)] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -1345,7 +1348,7 @@ export default function StudyGroupPage() {
                               <button
                                 type="button"
                                 onClick={() => setConfirmModal({ open: true, type: 'leave', groupId: group._id, groupName: group.groupName })}
-                                className="saas-button-secondary min-h-[36px] px-3 text-xs font-semibold hover:text-[var(--error-color)] hover:border-[var(--error-color)] flex items-center gap-1.5"
+                                className="saas-button-secondary min-h-[44px] px-3.5 text-xs font-semibold hover:text-[var(--error-color)] hover:border-[var(--error-color)] flex items-center justify-center gap-1.5 cursor-pointer"
                               >
                                 <svg className="w-3.5 h-3.5 text-[var(--text-secondary)] shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -1359,7 +1362,7 @@ export default function StudyGroupPage() {
                     })}
                   </div>
                 ) : (
-                  <p className="body-text text-[var(--text-muted)] italic">No study groups created or joined yet.</p>
+                  <p className="body-text text-xs sm:text-sm text-[var(--text-muted)] italic">No study groups created or joined yet.</p>
                 )}
             </div>
           </div>
@@ -1368,38 +1371,38 @@ export default function StudyGroupPage() {
 
       {/* Real Confirmation Popup Modal (Center Screen) */}
       {confirmModal.open && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/70 backdrop-blur-md p-4 animate-fadeIn">
-          <div className="saas-card max-w-md w-full shadow-2xl space-y-4 border-2 border-[var(--error-color)]/30">
+        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/70 backdrop-blur-md p-3 sm:p-4 animate-fadeIn">
+          <div className="saas-card max-w-md w-full shadow-2xl space-y-4 border-2 border-[var(--error-color)]/30 p-4 sm:p-6">
             <div className="flex items-center gap-3">
               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--error-bg)] text-lg font-bold text-[var(--error-color)]">
                 ⚠️
               </span>
               <div>
-                <h3 className="section-title text-lg font-bold text-[var(--text-primary)]">
+                <h3 className="section-title text-base sm:text-lg font-bold text-[var(--text-primary)]">
                   {confirmModal.type === 'delete' ? 'Delete Group Chat?' : 'Leave Group Chat?'}
                 </h3>
-                <p className="caption-text mt-0.5">Confirmation required</p>
+                <p className="caption-text text-xs text-[var(--text-muted)] mt-0.5">Confirmation required</p>
               </div>
             </div>
 
-            <p className="body-text text-sm text-[var(--text-secondary)] leading-relaxed">
+            <p className="body-text text-xs sm:text-sm text-[var(--text-secondary)] leading-relaxed break-words">
               {confirmModal.type === 'delete'
                 ? `Do you really want to delete "${confirmModal.groupName || 'this study group'}"? All group chat history and member access will be permanently removed.`
                 : `Do you really want to leave "${confirmModal.groupName || 'this study group'}"? You will need an invite or join code to re-join.`}
             </p>
 
-            <div className="flex items-center justify-end gap-3 pt-3 border-t border-[var(--border-main)]">
+            <div className="flex flex-col sm:flex-row items-center justify-end gap-2.5 sm:gap-3 pt-3 border-t border-[var(--border-main)]">
               <button
                 type="button"
                 onClick={() => setConfirmModal({ open: false, type: null, groupId: null, groupName: '' })}
-                className="saas-button-secondary min-h-[40px] px-4 text-xs font-semibold"
+                className="saas-button-secondary min-h-[46px] w-full sm:w-auto px-5 text-xs font-semibold cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={executeConfirmAction}
-                className="saas-button-primary min-h-[40px] px-5 text-xs font-bold bg-[var(--error-color)] text-white hover:bg-[var(--error-color)]/90 shadow-md"
+                className="saas-button-primary min-h-[46px] w-full sm:w-auto px-5 text-xs font-bold bg-[var(--error-color)] text-white hover:bg-[var(--error-color)]/90 shadow-md cursor-pointer"
               >
                 {confirmModal.type === 'delete' ? 'Yes, Delete Group' : 'Yes, Leave Group'}
               </button>
