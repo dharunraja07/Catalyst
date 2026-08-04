@@ -72,7 +72,8 @@ export default function QuestionsPage() {
       const response = await api.post('/ai/generate-practice', {
         studentType,
         syllabus: syllabus.trim(),
-        provider: selectedProvider
+        provider: selectedProvider,
+        documentIds: documents.map((d) => d._id || d.id).filter(Boolean)
       })
       setPracticeData(response.data)
       setVisibleAnswers({}) // Reset visible answers
@@ -264,6 +265,7 @@ export default function QuestionsPage() {
                 onPreview={setPreviewFile}
                 onDelete={handleDeleteDocument}
                 canDelete={isInstructorOrAdmin || doc.uploadedBy?._id === user?.id || doc.uploadedBy === user?.id}
+                showDownload={false}
               />
             ))}
           </div>

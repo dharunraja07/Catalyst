@@ -1,7 +1,58 @@
+import fs from 'fs'
+import path from 'path'
 import mongoose from 'mongoose'
 import AiConversation from '../models/AiConversation.js'
 import AiMessage from '../models/AiMessage.js'
+import Document from '../models/Document.js'
 import { generateJSON, chatCompletion, AIProviderError, getAvailableProviderNames } from '../services/ai/aiService.js'
+
+const UPLOAD_DIR = path.resolve(process.cwd(), 'uploads')
+
+/**
+ * Extract readable text from uploaded documents.
+ * Supports: PDF (via pdf-parse), TXT, CSV (direct read).
+ * For other binary formats (DOC, DOCX, PPT, XLS etc.) we include the filename as a hint.
+ */
+async function extractDocumentText(documentIds) {
+  if (!documentIds || documentIds.length === 0) return ''
+
+  const docs = await Document.find({ _id: { $in: documentIds } }).lean()
+  if (!docs.length) return ''
+
+  const textParts = []
+
+  for (const doc of docs) {
+    const filePath = path.join(UPLOAD_DIR, path.basename(doc.filename))
+    const ext = path.extname(doc.filename).toLowerCase()
+    const label = doc.originalName || doc.filename
+
+    if (!fs.existsSync(filePath)) {
+      textParts.push(`[Document: ${label}]`)
+      continue
+    }
+
+    try {
+      if (ext === '.pdf') {
+        const pdfParse = (await import('pdf-parse')).default
+        const buffer = fs.readFileSync(filePath)
+        const parsed = await pdfParse(buffer)
+        const text = (parsed.text || '').trim().slice(0, 6000)
+        if (text) textParts.push(`--- Document: ${label} ---\n${text}`)
+        else textParts.push(`[PDF Document: ${label}]`)
+      } else if (['.txt', '.csv'].includes(ext)) {
+        const text = fs.readFileSync(filePath, 'utf8').trim().slice(0, 6000)
+        if (text) textParts.push(`--- Document: ${label} ---\n${text}`)
+      } else {
+        // For binary Office files we include the filename as a context hint
+        textParts.push(`[Document: ${label}]`)
+      }
+    } catch (e) {
+      textParts.push(`[Document: ${label} — could not extract text]`)
+    }
+  }
+
+  return textParts.join('\n\n')
+}
 
 function buildMappedQuestion(item, defaultDiff = 'Medium') {
     let topicName = item.topic
@@ -57,7 +108,7 @@ function validatePracticePayload(payload) {
 
 export async function generateAssessment(req, res, next) {
     try {
-        const { syllabus, provider, difficulty = 'adaptive' } = req.body
+        const { syllabus, provider, difficulty = 'adaptive', documentIds = [] } = req.body
         if (!syllabus || !syllabus.trim()) {
             return res.status(400).json({ error: 'Syllabus is required' })
         }
@@ -83,7 +134,18 @@ export async function generateAssessment(req, res, next) {
             difficultyInstruction = '15 ADAPTIVE targeted diagnostic questions focusing specifically on unlearned, weak, or unmastered topics from previous attempts'
         }
 
-        const prompt = `Create 15 multiple-choice questions based on the following syllabus. Difficulty Directive: ${difficultyInstruction}. Return only valid JSON in this exact shape: {"questions":[{"question":"...","options":["...","...","...","..."],"correctAnswer":"...","explanation":"...","difficulty":"${difficultyLabel}"}]}. Every question must have exactly 4 options, and the correctAnswer must match one of the options. Syllabus: ${syllabus}`
+        // Extract text from uploaded reference documents if provided
+        let documentContext = ''
+        if (Array.isArray(documentIds) && documentIds.length > 0) {
+            documentContext = await extractDocumentText(documentIds)
+        }
+
+        let syllabusSection = syllabus.trim()
+        if (documentContext) {
+            syllabusSection = `The following reference documents have been uploaded by the user. Generate questions STRICTLY based on the content of these documents:\n\n${documentContext}\n\nAdditional syllabus/topic context: ${syllabusSection}`
+        }
+
+        const prompt = `Create 15 multiple-choice questions based on the following syllabus. Difficulty Directive: ${difficultyInstruction}. Return only valid JSON in this exact shape: {"questions":[{"question":"...","options":["...","...","...","..."],"correctAnswer":"...","explanation":"...","difficulty":"${difficultyLabel}"}]}. Every question must have exactly 4 options, and the correctAnswer must match one of the options. Syllabus: ${syllabusSection}`
 
         let payload
         try {
@@ -108,7 +170,7 @@ export async function generateAssessment(req, res, next) {
 
 export async function generatePractice(req, res, next) {
     try {
-        const { studentType = '', syllabus, provider } = req.body
+        const { studentType = '', syllabus, provider, documentIds = [] } = req.body
         if (!syllabus || !syllabus.trim()) {
             return res.status(400).json({ error: 'Syllabus is required' })
         }
@@ -125,7 +187,18 @@ export async function generatePractice(req, res, next) {
             longAnswerMarks: isSchool ? 5 : 14
         }
 
-        const prompt = `Create practice questions based on this syllabus for ${studentType || 'a general student'}. Return only valid JSON with exactly this shape: {"twoMarkQuestions":[{"question":"...","expectedAnswer":"...","marks":2}],"longAnswerQuestions":[{"question":"...","expectedAnswer":"...","marks":${expectedCounts.longAnswerMarks}}]}. Provide 10 short 2-mark questions and ${expectedCounts.longAnswerQuestions} long answer questions. Syllabus: ${syllabus}`
+        // Extract text from uploaded reference documents if provided
+        let documentContext = ''
+        if (Array.isArray(documentIds) && documentIds.length > 0) {
+            documentContext = await extractDocumentText(documentIds)
+        }
+
+        let syllabusSection = syllabus.trim()
+        if (documentContext) {
+            syllabusSection = `The following reference documents have been uploaded by the user. Generate practice questions STRICTLY based on the content of these documents:\n\n${documentContext}\n\nAdditional syllabus/topic context: ${syllabusSection}`
+        }
+
+        const prompt = `Create practice questions based on this syllabus for ${studentType || 'a general student'}. Return only valid JSON with exactly this shape: {"twoMarkQuestions":[{"question":"...","expectedAnswer":"...","marks":2}],"longAnswerQuestions":[{"question":"...","expectedAnswer":"...","marks":${expectedCounts.longAnswerMarks}}]}. Provide 10 short 2-mark questions and ${expectedCounts.longAnswerQuestions} long answer questions. Syllabus: ${syllabusSection}`
 
         let payload
         try {

@@ -26,7 +26,8 @@ export default function FileCard({
   onPreview,
   onDelete,
   canDelete = false,
-  compact = false
+  compact = false,
+  showDownload = true
 }) {
   const [downloading, setDownloading] = useState(false)
 
@@ -81,15 +82,17 @@ export default function FileCard({
               👁️
             </button>
           )}
-          <button
-            type="button"
-            onClick={handleDownload}
-            disabled={downloading}
-            className="p-1 rounded-[6px] text-xs hover:bg-[var(--accent-color)]/20 text-[var(--accent-color)] transition cursor-pointer disabled:opacity-50"
-            title="Download file"
-          >
-            {downloading ? '⌛' : '⬇️'}
-          </button>
+          {showDownload && (
+            <button
+              type="button"
+              onClick={handleDownload}
+              disabled={downloading}
+              className="p-1 rounded-[6px] text-xs hover:bg-[var(--accent-color)]/20 text-[var(--accent-color)] transition cursor-pointer disabled:opacity-50"
+              title="Download file"
+            >
+              {downloading ? '⌛' : '⬇️'}
+            </button>
+          )}
           {canDelete && onDelete && (
             <button
               type="button"
@@ -141,15 +144,17 @@ export default function FileCard({
           </button>
         )}
 
-        <button
-          type="button"
-          onClick={handleDownload}
-          disabled={downloading}
-          className="saas-button-primary py-1.5 px-3 text-xs font-bold flex items-center gap-1 cursor-pointer disabled:opacity-50"
-        >
-          <span>{downloading ? '⌛' : '⬇️'}</span>
-          <span>{downloading ? 'Downloading...' : 'Download'}</span>
-        </button>
+        {showDownload && (
+          <button
+            type="button"
+            onClick={handleDownload}
+            disabled={downloading}
+            className="saas-button-primary py-1.5 px-3 text-xs font-bold flex items-center gap-1 cursor-pointer disabled:opacity-50"
+          >
+            <span>{downloading ? '⌛' : '⬇️'}</span>
+            <span>{downloading ? 'Downloading...' : 'Download'}</span>
+          </button>
+        )}
 
         {canDelete && onDelete && (
           <button

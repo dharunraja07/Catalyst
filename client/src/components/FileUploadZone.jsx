@@ -66,7 +66,7 @@ export default function FileUploadZone({
 
     try {
       // Use XMLHttpRequest for precise upload progress tracking
-      const token = localStorage.getItem('catalyst_token') || sessionStorage.getItem('catalyst_token')
+      const token = localStorage.getItem('ai_learning_token') || sessionStorage.getItem('ai_learning_token')
       const xhr = new XMLHttpRequest()
       xhrRef.current = xhr
 

@@ -129,7 +129,8 @@ export default function AssessmentPage() {
       const response = await api.post('/ai/generate-assessment', {
         syllabus: targetSyllabus,
         provider,
-        difficulty: selectedDifficulty
+        difficulty: selectedDifficulty,
+        documentIds: documents.map((d) => d._id || d.id).filter(Boolean)
       })
       setQuestions(response.data.questions || [])
     } catch (err) {
@@ -271,6 +272,7 @@ export default function AssessmentPage() {
                 onPreview={setPreviewFile}
                 onDelete={handleDeleteDocument}
                 canDelete={isInstructorOrAdmin || doc.uploadedBy?._id === user?.id || doc.uploadedBy === user?.id}
+                showDownload={false}
               />
             ))}
           </div>
@@ -327,7 +329,7 @@ export default function AssessmentPage() {
                   {question.options.map((option) => (
                     <label
                       key={option}
-                      className={`flex cursor-pointer items-start gap-3 sm:gap-4 rounded-xl sm:rounded-[14px] border p-3 sm:p-4 transition min-h-[48px] w-full break-words select-none ${
+                      className={`flex cursor-pointer items-center gap-3 sm:gap-4 rounded-xl sm:rounded-[14px] border p-3 sm:p-4 transition min-h-[48px] w-full break-words select-none ${
                         answers[question._id]?.selected === option
                           ? 'border-[var(--accent-color)] bg-[var(--accent-light)]/20 ring-1 ring-[var(--accent-color)]/40'
                           : 'border-[var(--border-main)] bg-[var(--bg-primary)] hover:border-[var(--accent-color)]/60'
@@ -339,7 +341,7 @@ export default function AssessmentPage() {
                         value={option}
                         onChange={() => handleOption(question._id, option, question)}
                         checked={answers[question._id]?.selected === option}
-                        className="h-4.5 w-4.5 text-[var(--accent-color)] shrink-0 mt-0.5 cursor-pointer"
+                        className="h-4 w-4 shrink-0 cursor-pointer accent-[var(--accent-color)]"
                       />
                       <span className="body-text text-xs sm:text-sm text-[var(--text-primary)] font-medium break-words leading-relaxed">
                         {option}
