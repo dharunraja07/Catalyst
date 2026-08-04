@@ -350,6 +350,53 @@ export function setupChatSocket(io) {
       }
     })
 
+    // delete_message
+    socket.on('delete_message', async ({ groupId, messageId, deleteType }) => {
+      if (!groupId || !messageId) return
+      try {
+        const group = await StudyGroup.findOne({ _id: groupId, members: socket.user._id })
+        if (!group) return
+
+        const msg = await Message.findOne({ _id: messageId, groupId: group._id })
+        if (!msg) return
+
+        if (deleteType === 'me') {
+          if (!msg.deletedForUsers.some((id) => id.toString() === socket.user._id.toString())) {
+            msg.deletedForUsers.push(socket.user._id)
+            await msg.save()
+          }
+          socket.emit('message_deleted', { messageId, deleteType: 'me' })
+        } else if (deleteType === 'everyone') {
+          const isSender = msg.sender.toString() === socket.user._id.toString()
+          const isAdmin = group.createdBy.toString() === socket.user._id.toString()
+          if (!isSender && !isAdmin) {
+            return socket.emit('delete_error', { error: 'Unauthorized to delete for everyone' })
+          }
+
+          msg.isDeleted = true
+          msg.deletedForEveryone = true
+          msg.deletedAt = new Date()
+          msg.deletedBy = socket.user._id
+          msg.message = 'This message was deleted.'
+          await msg.save()
+          await msg.populate('sender', 'name email')
+
+          io.to(groupId.toString()).emit('message_deleted', {
+            messageId: msg._id.toString(),
+            groupId: groupId.toString(),
+            deleteType: 'everyone',
+            isDeleted: true,
+            deletedForEveryone: true,
+            message: 'This message was deleted.',
+            deletedAt: msg.deletedAt,
+            sender: msg.sender
+          })
+        }
+      } catch (error) {
+        console.error('Socket delete_message error:', error)
+      }
+    })
+
     // typing
     socket.on('typing', ({ groupId }) => {
       if (!groupId) return

@@ -20,7 +20,8 @@ import {
 } from '../controllers/studyRequestController.js'
 import {
   getGroupMessages,
-  postGroupMessage
+  postGroupMessage,
+  deleteGroupMessage
 } from '../controllers/messageController.js'
 import authMiddleware from '../middleware/authMiddleware.js'
 
@@ -47,5 +48,6 @@ router.post('/groups/:groupId/leave', leaveGroup)
 router.delete('/groups/:groupId', deleteGroup)
 router.get('/groups/:groupId/messages', getGroupMessages)
 router.post('/groups/:groupId/messages', postGroupMessage)
+router.delete('/groups/:groupId/messages/:messageId', deleteGroupMessage)
 
 export default router

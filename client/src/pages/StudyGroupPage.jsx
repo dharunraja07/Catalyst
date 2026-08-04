@@ -109,10 +109,63 @@ export default function StudyGroupPage() {
   const [loadingOlder, setLoadingOlder] = useState(false)
   const [hasUnreadNew, setHasUnreadNew] = useState(false)
   const [confirmModal, setConfirmModal] = useState({ open: false, type: null, groupId: null, groupName: '' })
+  const [activeActionMsg, setActiveActionMsg] = useState(null)
 
   const messagesEndRef = useRef(null)
   const scrollContainerRef = useRef(null)
   const typingTimeoutRef = useRef(null)
+  const longPressTimerRef = useRef(null)
+
+  const handleTouchStartMsg = (msg) => {
+    longPressTimerRef.current = setTimeout(() => {
+      setActiveActionMsg(msg)
+    }, 450)
+  }
+
+  const handleTouchEndMsg = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current)
+    }
+  }
+
+  const handleContextMenuMsg = (e, msg) => {
+    e.preventDefault()
+    setActiveActionMsg(msg)
+  }
+
+  const handleDeleteForMe = async (msgId) => {
+    if (!selectedGroupId || !msgId) return
+    setActiveActionMsg(null)
+    setMessages((prev) => prev.filter((m) => m._id !== msgId))
+    const socket = getSocket()
+    if (socket && socket.connected) {
+      socket.emit('delete_message', { groupId: selectedGroupId, messageId: msgId, deleteType: 'me' })
+    }
+    try {
+      await api.delete(`/study-groups/groups/${selectedGroupId}/messages/${msgId}?deleteType=me`)
+    } catch {
+      // Ignored
+    }
+  }
+
+  const handleDeleteForEveryone = async (msgId) => {
+    if (!selectedGroupId || !msgId) return
+    setActiveActionMsg(null)
+    setMessages((prev) =>
+      prev.map((m) =>
+        m._id === msgId ? { ...m, isDeleted: true, deletedForEveryone: true, message: 'This message was deleted.' } : m
+      )
+    )
+    const socket = getSocket()
+    if (socket && socket.connected) {
+      socket.emit('delete_message', { groupId: selectedGroupId, messageId: msgId, deleteType: 'everyone' })
+    }
+    try {
+      await api.delete(`/study-groups/groups/${selectedGroupId}/messages/${msgId}?deleteType=everyone`)
+    } catch {
+      // Ignored
+    }
+  }
 
   const executeConfirmAction = async () => {
     if (!confirmModal.groupId) return
@@ -448,8 +501,28 @@ export default function StudyGroupPage() {
       setTypingUsers((prev) => prev.filter((u) => u.userId !== userObj.userId))
     }
 
+    const handleMessageDeleted = ({ messageId, deleteType, isDeleted, message: newContent }) => {
+      setMessages((prevMsgs) => {
+        if (deleteType === 'me') {
+          return prevMsgs.filter((m) => m._id !== messageId)
+        }
+        return prevMsgs.map((m) => {
+          if (m._id === messageId) {
+            return {
+              ...m,
+              isDeleted: true,
+              deletedForEveryone: true,
+              message: newContent || 'This message was deleted.'
+            }
+          }
+          return m
+        })
+      })
+    }
+
     socket.on('connect', handleConnect)
     socket.on('receive_message', handleReceiveMessage)
+    socket.on('message_deleted', handleMessageDeleted)
     socket.on('presence_update', handlePresenceUpdate)
     socket.on('member_joined', handleMemberJoined)
     socket.on('member_left', handleMemberLeft)
@@ -465,6 +538,7 @@ export default function StudyGroupPage() {
       socket.emit('leave_group', { groupId: selectedGroupId })
       socket.off('connect', handleConnect)
       socket.off('receive_message', handleReceiveMessage)
+      socket.off('message_deleted', handleMessageDeleted)
       socket.off('presence_update', handlePresenceUpdate)
       socket.off('member_joined', handleMemberJoined)
       socket.off('member_left', handleMemberLeft)
@@ -987,6 +1061,78 @@ export default function StudyGroupPage() {
             </div>
           )}
 
+          {/* Professional Message Actions Modal / Context Menu */}
+          {activeActionMsg && (
+            <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-fadeIn">
+              <div className="saas-card max-w-sm w-full p-4 sm:p-5 rounded-2xl shadow-2xl space-y-4 border border-[var(--border-main)] bg-[var(--bg-surface)]">
+                <div className="flex items-center justify-between border-b border-[var(--border-main)] pb-2.5">
+                  <h3 className="text-sm font-bold text-[var(--text-primary)] flex items-center gap-1.5">
+                    <span>💬</span>
+                    <span>Message Options</span>
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => setActiveActionMsg(null)}
+                    className="text-xs font-bold text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div className="space-y-2">
+                  {!(activeActionMsg.isDeleted || activeActionMsg.deletedForEveryone) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (activeActionMsg.message) {
+                          navigator.clipboard?.writeText(activeActionMsg.message)
+                          setStatus('Message copied to clipboard!')
+                          setCopiedToast(true)
+                          clearTransientMessage()
+                          setTimeout(() => setCopiedToast(false), 3000)
+                        }
+                        setActiveActionMsg(null)
+                      }}
+                      className="w-full flex items-center gap-2.5 p-2.5 rounded-[10px] text-xs font-semibold bg-[var(--bg-secondary)] hover:bg-[var(--accent-color)]/10 hover:text-[var(--accent-color)] border border-[var(--border-main)] transition cursor-pointer"
+                    >
+                      <span className="text-sm">📋</span>
+                      <span>Copy Message</span>
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteForMe(activeActionMsg._id)}
+                    className="w-full flex items-center gap-2.5 p-2.5 rounded-[10px] text-xs font-semibold bg-[var(--bg-secondary)] hover:bg-amber-500/10 hover:text-amber-400 border border-[var(--border-main)] transition cursor-pointer"
+                  >
+                    <span className="text-sm">🗑️</span>
+                    <span>Delete for Me</span>
+                  </button>
+
+                  {((activeActionMsg.sender?._id || activeActionMsg.sender)?.toString() === currentUserId || isCurrentHost) &&
+                    !(activeActionMsg.isDeleted || activeActionMsg.deletedForEveryone) && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteForEveryone(activeActionMsg._id)}
+                        className="w-full flex items-center gap-2.5 p-2.5 rounded-[10px] text-xs font-bold text-red-400 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 transition cursor-pointer"
+                      >
+                        <span className="text-sm">🚫</span>
+                        <span>Delete for Everyone</span>
+                      </button>
+                    )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveActionMsg(null)}
+                  className="saas-button-secondary w-full min-h-[38px] text-xs font-bold cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Study Group Collaboration Workspace Chat Area (Occupies 75-80% of Viewport) */}
           <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
             {/* Floating Toast Notification Popup */}
@@ -1089,32 +1235,82 @@ export default function StudyGroupPage() {
                   }
 
                   if (isSelf) {
+                    const isMsgDeleted = msg.isDeleted || msg.deletedForEveryone
                     return (
-                      <div key={msg._id} className="w-full flex justify-end my-1 sm:my-1.5 min-w-0">
+                      <div
+                        key={msg._id}
+                        onContextMenu={(e) => handleContextMenuMsg(e, msg)}
+                        onTouchStart={() => handleTouchStartMsg(msg)}
+                        onTouchEnd={handleTouchEndMsg}
+                        onTouchMove={handleTouchEndMsg}
+                        className="group w-full flex justify-end my-1 sm:my-1.5 min-w-0 relative select-none"
+                      >
                         <div
                           style={{
                             boxShadow: 'var(--ai-user-shadow, 0 4px 14px rgba(0,0,0,0.05))'
                           }}
-                          className="w-fit max-w-[88%] sm:max-w-[75%] md:max-w-[68%] lg:max-w-[62%] min-w-0 rounded-2xl rounded-tr-none bg-[var(--ai-user-bubble-bg)] border border-[var(--ai-user-bubble-border)] p-2.5 sm:p-3.5 text-[var(--ai-user-text)] overflow-hidden"
+                          className="relative w-fit max-w-[88%] sm:max-w-[75%] md:max-w-[68%] lg:max-w-[62%] min-w-0 rounded-2xl rounded-tr-none bg-[var(--ai-user-bubble-bg)] border border-[var(--ai-user-bubble-border)] p-2.5 sm:p-3.5 text-[var(--ai-user-text)] overflow-hidden"
                         >
                           <div className="flex items-center justify-between gap-3 mb-1 border-b border-[var(--ai-user-bubble-border)] pb-0.5 sm:pb-1">
                             <span className="text-xs font-bold text-amber-600 dark:text-amber-400">You</span>
-                            <span className="text-[10px] text-[var(--text-muted)]">{formattedTime}</span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[10px] text-[var(--text-muted)]">{formattedTime}</span>
+                              <button
+                                type="button"
+                                onClick={() => setActiveActionMsg(msg)}
+                                className="opacity-70 sm:opacity-0 group-hover:opacity-100 focus:opacity-100 px-1 rounded text-[11px] hover:bg-black/20 text-[var(--text-muted)] hover:text-white transition-opacity cursor-pointer font-bold"
+                                title="Message options"
+                              >
+                                •••
+                              </button>
+                            </div>
                           </div>
-                          <MarkdownRenderer>{msg.message}</MarkdownRenderer>
+                          {isMsgDeleted ? (
+                            <div className="flex items-center gap-1.5 py-1 text-xs text-[var(--text-muted)] italic opacity-80">
+                              <span>🚫</span>
+                              <span>This message was deleted.</span>
+                            </div>
+                          ) : (
+                            <MarkdownRenderer>{msg.message}</MarkdownRenderer>
+                          )}
                         </div>
                       </div>
                     )
                   }
 
+                  const isMsgDeleted = msg.isDeleted || msg.deletedForEveryone
                   return (
-                    <div key={msg._id} className="w-full flex justify-start my-1 min-w-0">
-                      <div className="w-fit max-w-[88%] sm:max-w-[75%] md:max-w-[68%] lg:max-w-[62%] min-w-0 rounded-2xl rounded-tl-none bg-[var(--bg-secondary)] border border-[var(--border-main)] p-2.5 sm:p-3 shadow-sm text-[var(--text-primary)]">
+                    <div
+                      key={msg._id}
+                      onContextMenu={(e) => handleContextMenuMsg(e, msg)}
+                      onTouchStart={() => handleTouchStartMsg(msg)}
+                      onTouchEnd={handleTouchEndMsg}
+                      onTouchMove={handleTouchEndMsg}
+                      className="group w-full flex justify-start my-1 min-w-0 relative select-none"
+                    >
+                      <div className="relative w-fit max-w-[88%] sm:max-w-[75%] md:max-w-[68%] lg:max-w-[62%] min-w-0 rounded-2xl rounded-tl-none bg-[var(--bg-secondary)] border border-[var(--border-main)] p-2.5 sm:p-3 shadow-sm text-[var(--text-primary)]">
                         <div className="flex items-center justify-between gap-3 mb-1 border-b border-[var(--border-main)] pb-0.5 sm:pb-1">
                           <span className="text-xs font-bold text-[var(--accent-color)]">{msg.sender?.name || 'Member'}</span>
-                          <span className="text-[10px] text-[var(--text-muted)]">{formattedTime}</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] text-[var(--text-muted)]">{formattedTime}</span>
+                            <button
+                              type="button"
+                              onClick={() => setActiveActionMsg(msg)}
+                              className="opacity-70 sm:opacity-0 group-hover:opacity-100 focus:opacity-100 px-1 rounded text-[11px] hover:bg-black/20 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-opacity cursor-pointer font-bold"
+                              title="Message options"
+                            >
+                              •••
+                            </button>
+                          </div>
                         </div>
-                        <MarkdownRenderer>{msg.message}</MarkdownRenderer>
+                        {isMsgDeleted ? (
+                          <div className="flex items-center gap-1.5 py-1 text-xs text-[var(--text-muted)] italic opacity-80">
+                            <span>🚫</span>
+                            <span>This message was deleted.</span>
+                          </div>
+                        ) : (
+                          <MarkdownRenderer>{msg.message}</MarkdownRenderer>
+                        )}
                       </div>
                     </div>
                   )
