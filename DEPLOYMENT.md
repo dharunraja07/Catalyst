@@ -3,7 +3,25 @@
 This guide covers deploying the project so it works correctly on Vercel, including the
 fix for the "404 on page refresh" issue.
 
-## What was fixed in this package
+## Changelog — this round (Catalyst-mobile)
+
+- **Fixed a real functional bug in Study Groups:** incoming study-partner requests were
+  being fetched from the backend (`GET /api/study-groups/requests/incoming`) and a full
+  accept/reject handler existed (`respondToRequest`), but there was **no UI anywhere**
+  displaying them — so a user could send a study request, but the recipient had no way
+  to see or respond to it. Added an "Incoming Requests" section to the Study Group
+  dashboard with Accept/Reject buttons wired to the existing (working) backend endpoints.
+- Verified the full client build (2,486 modules, including the new `framer-motion` /
+  `lucide-react` mobile-UI dependencies) compiles cleanly with no errors.
+- Verified the server boots cleanly with no import/runtime errors across all 54 backend
+  source files.
+- Removed the same stale duplicate nested `Catalyst/` folder that reappeared in this
+  upload (leftover incomplete copy, not used anywhere).
+- Deployment configuration (`vercel.json`, root `package.json`, `.gitignore`,
+  `.env.example` files) was already carried over correctly from the previous round and
+  still applies as-is — see below.
+
+## What was fixed in the previous package (still applies)
 
 1. **404 on refresh** — `vercel.json` now explicitly tells Vercel where the built app
    lives (`outputDirectory: client/dist`) and rewrites every non-`/api` route to

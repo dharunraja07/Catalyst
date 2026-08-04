@@ -315,17 +315,17 @@ export default function RoadmapPage() {
   const progressPercent = totalSteps > 0 ? Math.round((completedCount / totalSteps) * 100) : 0
 
   return (
-    <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6 sm:space-y-8 text-[var(--text-primary)]">
-      {/* 🚀 Monochromatic Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-[var(--border-main)] pb-6">
+    <main className="mx-auto max-w-7xl max-w-full overflow-x-hidden px-3 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6 sm:space-y-8 text-[var(--text-primary)]">
+      {/* 🚀 Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-[var(--border-main)] pb-5 sm:pb-6">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-[11px] font-extrabold uppercase tracking-widest px-2.5 py-0.5 rounded-full border border-[var(--border-main)] bg-[var(--bg-secondary)] text-[var(--text-secondary)]">
+          <div className="flex flex-wrap items-center gap-2 mb-1">
+            <span className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-widest px-2.5 py-0.5 rounded-full border border-[var(--border-main)] bg-[var(--bg-secondary)] text-[var(--text-secondary)]">
               Assessment Score Roadmap
             </span>
             <span className="text-xs font-semibold text-[var(--text-muted)]">• Score Range: {activeRoadmap.rangeLabel}</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-[var(--text-primary)]">
+          <h1 className="text-xl sm:text-3xl font-black tracking-tight text-[var(--text-primary)] break-words">
             Personalized Learning Path
           </h1>
           <p className="text-xs sm:text-sm text-[var(--text-secondary)] mt-1 max-w-2xl leading-relaxed">
@@ -333,12 +333,12 @@ export default function RoadmapPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center gap-3 shrink-0 w-full sm:w-auto">
           <Link
             to="/assessment"
-            className="saas-button-primary min-h-[44px] px-5 text-xs font-bold shadow-sm flex items-center justify-center gap-2 w-full sm:w-auto"
+            className="saas-button-primary min-h-[46px] px-6 text-xs sm:text-sm font-bold shadow-sm flex items-center justify-center gap-2 w-full sm:w-auto cursor-pointer"
           >
-            <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24">
               <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
             </svg>
             <span>Retake Assessment</span>
@@ -347,11 +347,11 @@ export default function RoadmapPage() {
       </div>
 
       {error && (
-        <div className="rounded-[16px] bg-[var(--error-bg)] border border-[var(--error-color)]/30 p-4 text-sm text-[var(--error-color)] flex items-center gap-3">
+        <div className="rounded-[16px] bg-[var(--error-bg)] border border-[var(--error-color)]/30 p-4 text-xs sm:text-sm text-[var(--error-color)] flex items-center gap-3 break-words">
           <svg className="w-5 h-5 fill-current shrink-0" viewBox="0 0 24 24">
             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
           </svg>
-          <span>{error}</span>
+          <span className="break-words">{error}</span>
         </div>
       )}
 
@@ -363,45 +363,45 @@ export default function RoadmapPage() {
           </p>
         </div>
       ) : (
-        <div className="space-y-8">
-          {/* 📊 Score & Roadmap Banner (Monochromatic Theme) */}
-          <div className="rounded-[24px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-5 sm:p-6 shadow-sm space-y-6">
-            <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex items-center gap-4">
-                <div className="flex h-16 w-16 items-center justify-center rounded-[20px] border-2 border-[var(--border-main)] bg-[var(--bg-primary)] text-2xl font-black text-[var(--text-primary)] shadow-sm shrink-0">
+        <div className="space-y-6 sm:space-y-8">
+          {/* 📊 Score & Roadmap Banner */}
+          <div className="rounded-2xl sm:rounded-[24px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-4 sm:p-6 shadow-sm space-y-5 sm:space-y-6">
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex items-start sm:items-center gap-3.5 sm:gap-4">
+                <div className="flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl border-2 border-[var(--border-main)] bg-[var(--bg-primary)] text-xl sm:text-2xl font-black text-[var(--text-primary)] shadow-sm shrink-0 mt-0.5 sm:mt-0">
                   {score}%
                 </div>
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="text-lg sm:text-xl font-extrabold text-[var(--text-primary)]">
+                    <h2 className="text-base sm:text-xl font-extrabold text-[var(--text-primary)] break-words">
                       {activeRoadmap.tierName}
                     </h2>
                     <span className="text-[10px] uppercase tracking-wider font-extrabold px-2.5 py-0.5 rounded-full border border-[var(--border-main)] bg-[var(--bg-primary)] text-[var(--text-secondary)]">
                       {activeRoadmap.badgeText} ({activeRoadmap.rangeLabel})
                     </span>
                   </div>
-                  <p className="text-xs text-[var(--text-muted)] mt-1 max-w-xl">
+                  <p className="text-xs sm:text-sm text-[var(--text-muted)] mt-1 max-w-xl leading-relaxed">
                     {activeRoadmap.description}
                   </p>
                 </div>
               </div>
 
               {/* Progress Count */}
-              <div className="bg-[var(--bg-primary)] px-4 py-3 rounded-[18px] border border-[var(--border-main)] shrink-0 flex items-center gap-4">
-                <div>
+              <div className="bg-[var(--bg-primary)] p-3 sm:px-4 sm:py-3 rounded-[16px] sm:rounded-[18px] border border-[var(--border-main)] shrink-0 flex items-center justify-around sm:justify-start gap-3 sm:gap-4 w-full sm:w-auto">
+                <div className="text-center sm:text-left">
                   <span className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--text-muted)] block">
                     Completed Steps
                   </span>
-                  <span className="text-base font-black text-[var(--text-primary)]">
+                  <span className="text-sm sm:text-base font-black text-[var(--text-primary)]">
                     {completedCount} / {totalSteps}
                   </span>
                 </div>
-                <div className="h-8 w-px bg-[var(--border-main)]" />
-                <div>
+                <div className="h-7 sm:h-8 w-px bg-[var(--border-main)]" />
+                <div className="text-center sm:text-left">
                   <span className="text-[10px] font-extrabold uppercase tracking-wider text-[var(--text-muted)] block">
                     Roadmap Completion
                   </span>
-                  <span className="text-base font-black text-[var(--text-primary)]">
+                  <span className="text-sm sm:text-base font-black text-[var(--text-primary)]">
                     {progressPercent}%
                   </span>
                 </div>
@@ -423,44 +423,44 @@ export default function RoadmapPage() {
             </div>
           </div>
 
-          {/* 🛣️ Static Step 1, 2, 3, 4, 5 Roadmap Grid */}
-          <div className="space-y-6">
-            <div className="flex items-center justify-between border-b border-[var(--border-main)] pb-4">
+          {/* 🛣️ Vertical Step Roadmap */}
+          <div className="space-y-5 sm:space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[var(--border-main)] pb-3 sm:pb-4">
               <div>
-                <h2 className="text-xl font-black text-[var(--text-primary)]">
+                <h2 className="text-lg sm:text-xl font-black text-[var(--text-primary)]">
                   Score-Tailored Milestones
                 </h2>
                 <p className="text-xs text-[var(--text-muted)] mt-0.5">
-                  Sequential static steps designed for your {activeRoadmap.rangeLabel} score bracket
+                  Sequential steps designed for your {activeRoadmap.rangeLabel} score bracket
                 </p>
               </div>
 
-              <span className="text-xs font-extrabold text-[var(--text-secondary)] px-3 py-1 rounded-full border border-[var(--border-main)] bg-[var(--bg-secondary)]">
+              <span className="text-xs font-extrabold text-[var(--text-secondary)] px-3 py-1 rounded-full border border-[var(--border-main)] bg-[var(--bg-secondary)] self-start sm:self-auto">
                 {activeRoadmap.steps.length} Steps Total
               </span>
             </div>
 
             {/* Steps Container */}
-            <div className="space-y-4">
+            <div className="space-y-3.5 sm:space-y-4">
               {activeRoadmap.steps.map((item) => {
                 const isCompleted = Boolean(completedSteps[item.step])
 
                 return (
                   <div
                     key={item.step}
-                    className={`rounded-[22px] border p-5 transition-all duration-200 ${
+                    className={`rounded-2xl sm:rounded-[22px] border p-4 sm:p-5 transition-all duration-200 ${
                       isCompleted
                         ? 'border-[var(--border-main)] bg-[var(--bg-primary)] opacity-75'
                         : 'border-[var(--border-main)] bg-[var(--bg-secondary)] hover:border-[var(--border-hover)] shadow-sm'
                     }`}
                   >
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                       {/* Step Number Checkbox & Content */}
-                      <div className="flex items-start gap-4">
+                      <div className="flex items-start gap-3 sm:gap-4 flex-1 min-w-0">
                         <button
                           type="button"
                           onClick={() => toggleStepCompleted(item.step)}
-                          className={`mt-0.5 flex h-8 w-8 items-center justify-center rounded-full border text-xs font-black shrink-0 transition min-h-[32px] min-w-[32px] ${
+                          className={`mt-0.5 flex h-11 w-11 sm:h-9 sm:w-9 items-center justify-center rounded-full border text-xs sm:text-sm font-black shrink-0 transition min-h-[44px] min-w-[44px] sm:min-h-[36px] sm:min-w-[36px] cursor-pointer ${
                             isCompleted
                               ? 'border-[var(--text-primary)] bg-[var(--text-primary)] text-[var(--bg-primary)] shadow-xs'
                               : 'border-[var(--border-main)] bg-[var(--bg-primary)] text-[var(--text-muted)] hover:border-[var(--text-primary)]'
@@ -470,23 +470,23 @@ export default function RoadmapPage() {
                           {isCompleted ? '✓' : item.step}
                         </button>
 
-                        <div className="space-y-1">
+                        <div className="space-y-1 flex-1 min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-[6px] bg-[var(--bg-primary)] border border-[var(--border-main)] text-[var(--text-secondary)]">
                               Step {item.step}
                             </span>
-                            <h3 className={`text-base font-extrabold ${isCompleted ? 'line-through text-[var(--text-muted)]' : 'text-[var(--text-primary)]'}`}>
+                            <h3 className={`text-sm sm:text-base font-extrabold break-words ${isCompleted ? 'line-through text-[var(--text-muted)]' : 'text-[var(--text-primary)]'}`}>
                               {item.title}
                             </h3>
                           </div>
-                          <p className="text-xs text-[var(--text-secondary)] leading-relaxed max-w-3xl pt-0.5">
+                          <p className="text-xs text-[var(--text-secondary)] leading-relaxed max-w-3xl pt-0.5 break-words">
                             {item.description}
                           </p>
                         </div>
                       </div>
 
                       {/* Right Meta & Practice Button */}
-                      <div className="flex flex-row sm:flex-col items-start sm:items-end justify-between gap-2 shrink-0 pl-12 sm:pl-0 pt-2 sm:pt-0">
+                      <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between gap-3 shrink-0 pt-3 sm:pt-0 border-t sm:border-t-0 border-[var(--border-main)]/50 sm:border-transparent w-full sm:w-auto">
                         <div className="flex items-center gap-2">
                           <span className="text-[11px] font-semibold text-[var(--text-muted)] px-2.5 py-1 rounded-[10px] bg-[var(--bg-primary)] border border-[var(--border-main)]">
                             {item.estTime}
@@ -499,7 +499,7 @@ export default function RoadmapPage() {
                         <button
                           type="button"
                           onClick={() => navigate('/questions')}
-                          className="px-3.5 py-1.5 rounded-[12px] border border-[var(--border-main)] bg-[var(--bg-primary)] text-xs font-bold text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] transition min-h-[36px]"
+                          className="px-4 py-2 rounded-[12px] border border-[var(--border-main)] bg-[var(--bg-primary)] text-xs font-bold text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] transition min-h-[44px] w-full sm:w-auto flex items-center justify-center cursor-pointer"
                         >
                           Practice Step
                         </button>

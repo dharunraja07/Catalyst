@@ -98,8 +98,8 @@ export default function NavBar({ onOpenProfile }) {
 
   return (
     <>
-      <header className="fixed top-0 left-0 right-0 z-50 bg-[var(--bg-nav)]/80 backdrop-blur-md shadow-sm transition-colors duration-200">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 text-[var(--text-primary)] sm:px-6">
+      <header className="fixed top-0 left-0 right-0 z-30 bg-[var(--bg-nav)]/80 backdrop-blur-md shadow-sm transition-colors duration-200 pt-[env(safe-area-inset-top)]">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-3 sm:px-6 py-2.5 sm:py-3 text-[var(--text-primary)]">
           
           {/* Logo Section */}
           <div className="flex items-center gap-3">
@@ -107,7 +107,7 @@ export default function NavBar({ onOpenProfile }) {
               <button
                 type="button"
                 onClick={() => setMobileMenuOpen((prev) => !prev)}
-                className="lg:hidden inline-flex items-center justify-center p-2 rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-secondary)] text-[var(--text-primary)] hover:border-[var(--accent-color)] transition"
+                className="lg:hidden inline-flex items-center justify-center p-2 min-h-[44px] min-w-[44px] rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-secondary)] text-[var(--text-primary)] hover:border-[var(--accent-color)] transition cursor-pointer"
                 aria-label="Open Navigation Menu"
               >
                 <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
@@ -116,7 +116,7 @@ export default function NavBar({ onOpenProfile }) {
               </button>
             )}
 
-            <Link to="/" onClick={closeMobileMenu} className="flex items-center gap-3 font-bold tracking-tight text-lg">
+            <Link to="/" onClick={closeMobileMenu} className="flex items-center gap-3 font-bold tracking-tight text-lg min-h-[44px]">
               <img
                 src="/favicon.png"
                 alt="Catalyst Logo"
@@ -140,7 +140,7 @@ export default function NavBar({ onOpenProfile }) {
                   <Link
                     key={link.href}
                     to={link.href}
-                    className={`inline-flex items-center px-3.5 py-2 rounded-[14px] text-sm font-medium transition-all duration-200 ${
+                    className={`inline-flex items-center px-3.5 py-2 min-h-[44px] rounded-[14px] text-sm font-medium transition-all duration-200 ${
                       active
                         ? 'bg-[var(--accent-color)] text-black font-semibold shadow-sm'
                         : 'text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)]'
@@ -154,7 +154,7 @@ export default function NavBar({ onOpenProfile }) {
           )}
 
           {/* Right Section: Theme Toggle & Profile Component (or Login button when logged out) */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             {user && <NotificationBell />}
 
             {/* Animated Theme Toggle */}
@@ -166,7 +166,7 @@ export default function NavBar({ onOpenProfile }) {
                 <button
                   type="button"
                   onClick={() => setProfileDropdownOpen((prev) => !prev)}
-                  className="flex items-center gap-2 rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-1.5 sm:px-3 sm:py-1.5 hover:border-[var(--accent-color)] transition"
+                  className="flex items-center gap-2 rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-1.5 sm:px-3 sm:py-1.5 hover:border-[var(--accent-color)] transition min-h-[44px] min-w-[44px] justify-center cursor-pointer"
                 >
                   <span className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-[var(--bg-secondary)] text-xs font-bold shadow-sm">
                     <AvatarVisual avatar={user.avatar} name={user.name} className="text-xs" />
@@ -181,7 +181,7 @@ export default function NavBar({ onOpenProfile }) {
 
                 {/* Profile Popup Dropdown */}
                 {profileDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-56 rounded-[18px] border border-[var(--border-main)] bg-[var(--bg-surface)] p-2 shadow-2xl z-50 divide-y divide-[var(--divider-main)]">
+                  <div className="absolute right-0 mt-2 w-56 max-w-[calc(100vw-2rem)] rounded-[18px] border border-[var(--border-main)] bg-[var(--bg-surface)] p-2 shadow-2xl z-[60] divide-y divide-[var(--divider-main)]">
                     <div className="px-3 py-2.5">
                       <p className="text-xs text-[var(--text-muted)] font-medium">Signed in as</p>
                       <p className="text-sm font-bold text-[var(--text-primary)] truncate">{user.name}</p>
@@ -195,7 +195,7 @@ export default function NavBar({ onOpenProfile }) {
                           setProfileDropdownOpen(false)
                           onOpenProfile?.()
                         }}
-                        className="flex w-full items-center gap-2.5 px-3 py-2 text-sm font-medium rounded-[12px] text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] transition"
+                        className="flex w-full items-center gap-2.5 px-3 py-2 min-h-[44px] text-sm font-medium rounded-[12px] text-[var(--text-primary)] hover:bg-[var(--bg-secondary)] transition cursor-pointer"
                       >
                         <svg className="h-4 w-4 shrink-0 text-[var(--accent-color)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -208,7 +208,7 @@ export default function NavBar({ onOpenProfile }) {
                       <button
                         type="button"
                         onClick={handleLogout}
-                        className="w-full flex items-center gap-2.5 px-3 py-2 text-sm font-medium rounded-[12px] text-[var(--error-color)] hover:bg-[var(--error-bg)] transition"
+                        className="w-full flex items-center gap-2.5 px-3 py-2 min-h-[44px] text-sm font-medium rounded-[12px] text-[var(--error-color)] hover:bg-[var(--error-bg)] transition cursor-pointer"
                       >
                         <svg className="h-4 w-4 shrink-0 text-[var(--error-color)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -220,7 +220,7 @@ export default function NavBar({ onOpenProfile }) {
                 )}
               </div>
             ) : (
-              <Link to="/login" className="inline-flex items-center justify-center min-h-[40px] rounded-[14px] px-5 py-2 text-sm font-semibold text-black bg-[var(--accent-color)] hover:bg-[var(--accent-hover)] transition">
+              <Link to="/login" className="inline-flex items-center justify-center min-h-[44px] rounded-[14px] px-5 py-2 text-sm font-semibold text-black bg-[var(--accent-color)] hover:bg-[var(--accent-hover)] transition">
                 Login
               </Link>
             )}
@@ -231,9 +231,9 @@ export default function NavBar({ onOpenProfile }) {
 
       {/* Mobile Drawer (Shown on mobile when menu toggle clicked) */}
       {user && mobileMenuOpen && (
-        <div className="fixed inset-0 z-50 flex lg:hidden">
+        <div className="fixed inset-0 z-[70] flex lg:hidden">
           <div onClick={closeMobileMenu} className="fixed inset-0 bg-black/60 backdrop-blur-sm" />
-          <div className="relative z-50 w-[300px] max-w-[85vw] h-full bg-[var(--bg-surface)] border-r border-[var(--border-main)] rounded-r-[24px] p-6 shadow-2xl flex flex-col justify-between overflow-y-auto animate-in slide-in-from-left">
+          <div className="relative z-50 w-[300px] max-w-[85vw] h-full bg-[var(--bg-surface)] border-r border-[var(--border-main)] rounded-r-[24px] p-6 pt-[max(1.5rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))] pl-[max(1.5rem,env(safe-area-inset-left))] shadow-2xl flex flex-col justify-between overflow-y-auto animate-in slide-in-from-left">
             <div className="space-y-6">
               <div className="flex items-center justify-between border-b border-[var(--divider-main)] pb-4">
                 <div className="flex items-center gap-3">
@@ -247,7 +247,7 @@ export default function NavBar({ onOpenProfile }) {
                     <p className="text-[10px] uppercase tracking-widest text-[var(--text-secondary)] font-semibold">AI Learning</p>
                   </div>
                 </div>
-                <button type="button" onClick={closeMobileMenu} className="p-2 rounded-[12px] border border-[var(--border-main)] bg-[var(--bg-secondary)] text-[var(--text-secondary)]">✕</button>
+                <button type="button" onClick={closeMobileMenu} className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-[12px] border border-[var(--border-main)] bg-[var(--bg-secondary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer">✕</button>
               </div>
 
               <nav className="space-y-1.5">
@@ -258,7 +258,7 @@ export default function NavBar({ onOpenProfile }) {
                       key={link.href}
                       to={link.href}
                       onClick={closeMobileMenu}
-                      className={`flex items-center gap-3.5 px-4 py-3 rounded-[14px] text-sm font-semibold transition-colors ${
+                      className={`flex items-center gap-3.5 px-4 py-3 min-h-[44px] rounded-[14px] text-sm font-semibold transition-colors ${
                         active ? 'bg-[var(--accent-color)] text-black font-bold shadow-md' : 'text-[var(--text-primary)] hover:bg-[var(--bg-secondary)]'
                       }`}
                     >
@@ -274,7 +274,7 @@ export default function NavBar({ onOpenProfile }) {
               <button
                 type="button"
                 onClick={handleLogout}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-[14px] text-sm font-bold text-[var(--error-color)] bg-[var(--error-bg)]"
+                className="w-full flex items-center gap-3 px-4 py-3 min-h-[44px] rounded-[14px] text-sm font-bold text-[var(--error-color)] bg-[var(--error-bg)] cursor-pointer"
               >
                 <span>🚪</span> Logout
               </button>

@@ -65,22 +65,22 @@ export default function QuestionsPage() {
   const TwoMarkQuestion = ({ question, idx, questionKey }) => {
     const isVisible = visibleAnswers[questionKey]
     return (
-      <div className="saas-card p-5">
-        <div className="flex flex-col gap-4">
-          <p className="card-title font-semibold">
+      <div className="saas-card p-4 sm:p-6 rounded-2xl sm:rounded-[20px]">
+        <div className="flex flex-col gap-3.5">
+          <p className="card-title font-bold text-sm sm:text-base text-[var(--text-primary)] leading-snug break-words">
             {idx + 1}. {question.question}
           </p>
           <button
             type="button"
             onClick={() => toggleAnswerVisibility(questionKey)}
-            className="saas-button-secondary self-start min-h-[40px] px-4 text-xs font-semibold text-[var(--accent-color)]"
+            className="saas-button-secondary self-start min-h-[44px] px-4 text-xs font-bold text-[var(--accent-color)] cursor-pointer"
           >
             {isVisible ? 'Hide Answer' : 'View Answer'}
           </button>
           {isVisible && (
-            <div className="rounded-[14px] bg-[var(--bg-secondary)] p-4 border-l-4 border-[var(--accent-color)]">
-              <p className="caption-text uppercase font-semibold mb-1">Answer:</p>
-              <p className="body-text leading-relaxed">{question.expectedAnswer}</p>
+            <div className="rounded-xl sm:rounded-[14px] bg-[var(--bg-secondary)] p-3.5 sm:p-5 border-l-4 border-[var(--accent-color)] max-w-full overflow-hidden">
+              <p className="caption-text uppercase font-semibold mb-1.5 text-[10px] text-[var(--accent-color)]">Expected Answer:</p>
+              <p className="body-text text-xs sm:text-sm leading-relaxed text-[var(--text-primary)] break-words max-w-full overflow-x-auto custom-scrollbar">{question.expectedAnswer}</p>
             </div>
           )}
         </div>
@@ -91,29 +91,31 @@ export default function QuestionsPage() {
   const LongAnswerQuestion = ({ question, idx, questionKey, marks }) => {
     const isVisible = visibleAnswers[questionKey]
     return (
-      <div className="saas-card p-5">
-        <div className="flex flex-col gap-4">
+      <div className="saas-card p-4 sm:p-6 rounded-2xl sm:rounded-[20px]">
+        <div className="flex flex-col gap-3.5">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-            <p className="card-title font-semibold">
+            <p className="card-title font-bold text-sm sm:text-base text-[var(--text-primary)] leading-snug break-words">
               {idx + 1}. {question.question}
             </p>
-            <span className="inline-flex items-center rounded-[14px] bg-[var(--accent-light)] px-3 py-1 text-xs font-semibold text-[var(--accent-color)] border border-[var(--accent-color)]/20 w-fit">
+            <span className="inline-flex items-center rounded-[12px] bg-[var(--accent-light)] px-2.5 py-1 text-xs font-bold text-[var(--accent-color)] border border-[var(--accent-color)]/20 w-fit shrink-0">
               {marks} marks
             </span>
           </div>
           <button
             type="button"
             onClick={() => toggleAnswerVisibility(questionKey)}
-            className="saas-button-secondary self-start min-h-[40px] px-4 text-xs font-semibold text-[var(--accent-color)]"
+            className="saas-button-secondary self-start min-h-[44px] px-4 text-xs font-bold text-[var(--accent-color)] cursor-pointer"
           >
             {isVisible ? 'Hide Answer' : 'View Answer'}
           </button>
           {isVisible && (
-            <div className="rounded-[14px] bg-[var(--bg-secondary)] p-5 border-l-4 border-[var(--accent-color)]">
-              <p className="caption-text uppercase font-semibold mb-2">Expected Answer:</p>
-              <MarkdownRenderer>
-                {question.expectedAnswer}
-              </MarkdownRenderer>
+            <div className="rounded-xl sm:rounded-[14px] bg-[var(--bg-secondary)] p-3.5 sm:p-5 border-l-4 border-[var(--accent-color)] max-w-full overflow-hidden">
+              <p className="caption-text uppercase font-semibold mb-2 text-[10px] text-[var(--accent-color)]">Expected Answer:</p>
+              <div className="max-w-full overflow-x-auto custom-scrollbar">
+                <MarkdownRenderer>
+                  {question.expectedAnswer}
+                </MarkdownRenderer>
+              </div>
             </div>
           )}
         </div>
@@ -122,17 +124,17 @@ export default function QuestionsPage() {
   }
 
   return (
-    <main className="mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    <main className="mx-auto max-w-[1280px] max-w-full overflow-x-hidden px-3 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6 sm:space-y-8">
       {/* Page Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="page-label">Practice</p>
-          <h1 className="page-title mb-2">Adaptive Questions</h1>
-          <p className="page-description">Generate personalized practice questions from any syllabus or topic.</p>
+          <h1 className="page-title mb-1.5 text-2xl sm:text-3xl font-extrabold">Adaptive Questions</h1>
+          <p className="page-description text-xs sm:text-sm text-[var(--text-secondary)]">Generate personalized practice questions from any syllabus or topic.</p>
         </div>
-        <div className="flex flex-wrap items-center gap-3 shrink-0">
+        <div className="grid grid-cols-1 sm:flex sm:flex-wrap items-center gap-3 shrink-0 w-full sm:w-auto">
           <div className="flex items-center gap-2">
-            <label className="small-text font-semibold whitespace-nowrap text-[var(--text-primary)]">AI Model</label>
+            <label className="small-text font-semibold whitespace-nowrap text-[var(--text-primary)] text-xs sm:text-sm">AI Model</label>
             <select
               value={selectedProvider}
               onChange={(e) => {
@@ -140,18 +142,18 @@ export default function QuestionsPage() {
                 setSelectedProvider(val)
                 localStorage.setItem('ai_provider', val)
               }}
-              className="saas-input min-h-[44px] py-2 px-3 text-sm font-medium"
+              className="saas-input min-h-[46px] py-2 px-3.5 text-sm font-medium w-full sm:w-auto cursor-pointer"
             >
               <option value="gemini">Gemini</option>
               <option value="groq">Groq</option>
             </select>
           </div>
           <div className="flex items-center gap-2">
-            <label className="small-text font-semibold whitespace-nowrap text-[var(--text-primary)]">Student Type</label>
+            <label className="small-text font-semibold whitespace-nowrap text-[var(--text-primary)] text-xs sm:text-sm">Student Type</label>
             <select
               value={studentType}
               onChange={(event) => setStudentType(event.target.value)}
-              className="saas-input min-h-[44px] py-2 px-3 text-sm font-medium"
+              className="saas-input min-h-[46px] py-2 px-3.5 text-sm font-medium w-full sm:w-auto cursor-pointer"
             >
               <option value="">Unspecified</option>
               <option>School Student</option>
@@ -161,24 +163,24 @@ export default function QuestionsPage() {
         </div>
       </div>
 
-      <hr className="canvas-divider" />
+      <hr className="canvas-divider opacity-60" />
 
       {/* Interactive Form Section */}
-      <div className="space-y-4">
-        <label className="block text-sm font-semibold text-[var(--text-primary)]">Syllabus / Topics</label>
+      <div className="space-y-3 sm:space-y-4">
+        <label className="block text-xs sm:text-sm font-semibold text-[var(--text-primary)]">Syllabus / Topics</label>
         <textarea
           value={syllabus}
           onChange={(event) => setSyllabus(event.target.value)}
           placeholder="Paste the topic or syllabus you want to practice..."
           rows="4"
-          className="saas-input w-full min-h-[120px] p-4 text-base"
+          className="saas-input w-full min-h-[110px] sm:min-h-[120px] p-3.5 sm:p-4 text-sm sm:text-base leading-relaxed"
         />
-        <div className="flex justify-end">
+        <div className="flex justify-end pt-1">
           <button
             type="button"
             onClick={handleGenerateQuestions}
             disabled={generating}
-            className="saas-button-primary font-bold px-8 shadow-sm"
+            className="saas-button-primary font-bold min-h-[48px] px-6 sm:px-8 text-sm sm:text-base w-full sm:w-auto shadow-md cursor-pointer"
           >
             {generating ? 'Generating...' : 'Generate Questions'}
           </button>
@@ -186,20 +188,20 @@ export default function QuestionsPage() {
       </div>
 
       {aiError && (
-        <p className="rounded-[14px] bg-[var(--error-bg)] border border-[var(--error-color)]/30 px-4 py-3 text-sm text-[var(--error-color)]">
+        <p className="rounded-[14px] bg-[var(--error-bg)] border border-[var(--error-color)]/30 px-4 py-3 text-xs sm:text-sm text-[var(--error-color)] break-words">
           {aiError}
         </p>
       )}
 
       {/* Questions Output Stream */}
-      <div className="space-y-10">
+      <div className="space-y-8 sm:space-y-10">
         {practiceData.twoMarkQuestions.length > 0 && (
           <div>
-            <hr className="canvas-divider" />
-            <div className="space-y-4">
-              <div className="flex items-baseline justify-between">
-                <h2 className="section-title">2-mark Questions</h2>
-                <span className="small-text text-[var(--text-muted)] font-medium">Total: {practiceData.twoMarkQuestions.length} questions</span>
+            <hr className="canvas-divider opacity-60" />
+            <div className="space-y-4 pt-2">
+              <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-1">
+                <h2 className="section-title text-xl sm:text-2xl font-extrabold">2-mark Questions</h2>
+                <span className="small-text text-[var(--text-muted)] font-medium text-xs">Total: {practiceData.twoMarkQuestions.length} questions</span>
               </div>
               <div className="space-y-4">
                 {practiceData.twoMarkQuestions.map((question, idx) => (
@@ -217,11 +219,11 @@ export default function QuestionsPage() {
 
         {practiceData.longAnswerQuestions.length > 0 && (
           <div>
-            <hr className="canvas-divider" />
-            <div className="space-y-4">
-              <div className="flex items-baseline justify-between">
-                <h2 className="section-title">{longAnswerLabel}</h2>
-                <span className="small-text text-[var(--text-muted)] font-medium">
+            <hr className="canvas-divider opacity-60" />
+            <div className="space-y-4 pt-2">
+              <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-1">
+                <h2 className="section-title text-xl sm:text-2xl font-extrabold">{longAnswerLabel}</h2>
+                <span className="small-text text-[var(--text-muted)] font-medium text-xs">
                   Total: {practiceData.longAnswerQuestions.length} questions × {practiceData.counts?.longAnswerMarks} marks
                 </span>
               </div>
@@ -242,8 +244,8 @@ export default function QuestionsPage() {
 
         {!practiceData.twoMarkQuestions.length && !practiceData.longAnswerQuestions.length && (
           <div>
-            <hr className="canvas-divider" />
-            <p className="body-text text-sm text-[var(--text-muted)] italic">
+            <hr className="canvas-divider opacity-60" />
+            <p className="body-text text-xs sm:text-sm text-[var(--text-muted)] italic pt-2">
               Paste your syllabus above and click "Generate Questions" to begin.
             </p>
           </div>

@@ -556,83 +556,83 @@ export default function DashboardPage() {
   }
 
   return (
-    <main className="mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-8 py-8 space-y-8 animate-in fade-in duration-300">
+    <main className="mx-auto max-w-[1280px] max-w-full overflow-x-hidden px-3 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6 sm:space-y-8 animate-in fade-in duration-300">
       {/* Page Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="page-label">Dashboard</p>
-          <h1 className="page-title mb-2">Student Overview</h1>
-          <p className="page-description">Welcome back! Track your study stats, daily goals, pomodoro sessions, and learning consistency.</p>
+          <h1 className="page-title mb-1.5 text-2xl sm:text-3xl font-extrabold">Student Overview</h1>
+          <p className="page-description text-xs sm:text-sm text-[var(--text-secondary)]">Welcome back! Track your study stats, daily goals, pomodoro sessions, and learning consistency.</p>
         </div>
-        <span className="inline-flex items-center min-h-[40px] rounded-[12px] border border-[var(--border-main)] bg-[var(--bg-secondary)] px-4 py-2 text-sm font-semibold text-[var(--text-secondary)] shadow-sm shrink-0">
+        <span className="inline-flex items-center min-h-[44px] rounded-[12px] border border-[var(--border-main)] bg-[var(--bg-secondary)] px-4 py-2 text-xs sm:text-sm font-semibold text-[var(--text-secondary)] shadow-sm shrink-0 self-start sm:self-auto">
           Academic Workspace
         </span>
       </div>
 
-      <hr className="canvas-divider" />
+      <hr className="canvas-divider opacity-60" />
 
       {error && (
-        <p className="rounded-[14px] bg-[var(--error-bg)] border border-[var(--error-color)]/30 px-4 py-3 text-sm text-[var(--error-color)]">
+        <p className="rounded-[14px] bg-[var(--error-bg)] border border-[var(--error-color)]/30 px-4 py-3 text-xs sm:text-sm text-[var(--error-color)] break-words">
           {error}
         </p>
       )}
 
       {profile ? (
-        <div className="space-y-8">
+        <div className="space-y-6 sm:space-y-8">
           {/* Hero Welcome Banner Widget */}
-          <div className="rounded-[20px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-6 sm:p-8 shadow-sm">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+          <div className="rounded-2xl sm:rounded-[20px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-4.5 sm:p-8 shadow-sm">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5 sm:gap-6">
               <div>
-                <h2 className="section-title text-2xl md:text-3xl font-bold">Hello, {profile.name} 👋</h2>
-                <p className="body-text mt-2 max-w-2xl text-[var(--text-secondary)]">
+                <h2 className="section-title text-xl sm:text-2xl md:text-3xl font-bold">Hello, {profile.name} 👋</h2>
+                <p className="body-text mt-1.5 sm:mt-2 max-w-2xl text-xs sm:text-sm text-[var(--text-secondary)] leading-relaxed">
                   Track your learning progress, stay on top of daily goals, and maintain your study streak.
                 </p>
               </div>
-              <div className="flex flex-wrap gap-3">
-                <div className="rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-primary)] px-4 py-3 min-w-[130px]">
-                  <p className="caption-text uppercase tracking-widest font-semibold">Focus Goal</p>
-                  <p className="card-title mt-1 font-bold">{dailyGoal} min</p>
+              <div className="grid grid-cols-2 gap-3 w-full sm:w-auto">
+                <div className="rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-primary)] px-3.5 py-3 text-center sm:text-left min-w-0">
+                  <p className="caption-text uppercase tracking-widest font-semibold text-[10px] text-[var(--text-muted)]">Focus Goal</p>
+                  <p className="card-title mt-0.5 text-sm sm:text-base font-bold truncate">{dailyGoal} min</p>
                 </div>
-                <div className="rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-primary)] px-4 py-3 min-w-[130px]">
-                  <p className="caption-text uppercase tracking-widest font-semibold">Today</p>
-                  <p className="card-title mt-1 font-bold text-[var(--accent-color)]">{todayMinutes} min</p>
+                <div className="rounded-[14px] border border-[var(--border-main)] bg-[var(--bg-primary)] px-3.5 py-3 text-center sm:text-left min-w-0">
+                  <p className="caption-text uppercase tracking-widest font-semibold text-[10px] text-[var(--text-muted)]">Today</p>
+                  <p className="card-title mt-0.5 text-sm sm:text-base font-bold text-[var(--accent-color)] truncate">{todayMinutes} min</p>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Side-by-Side Timers (Pomodoro Timer + Daily Goal Timer) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-6">
             
             {/* 1. Pomodoro Timer Card */}
-            <div className="rounded-[20px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-6 shadow-sm flex flex-col justify-between">
+            <div className="rounded-2xl sm:rounded-[20px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-4.5 sm:p-6 shadow-sm flex flex-col justify-between space-y-4">
               <div>
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center justify-between mb-3 sm:mb-4">
                   <div>
-                    <p className="caption-text uppercase tracking-widest font-semibold">Focus Widget</p>
-                    <h3 className="section-title mt-1 text-xl font-bold">
+                    <p className="caption-text uppercase tracking-widest font-semibold text-[10px] text-[var(--accent-color)]">Focus Widget</p>
+                    <h3 className="section-title mt-0.5 text-lg sm:text-xl font-bold">
                       {pomoMode === 'focus' ? 'Pomodoro Focus Session' : 'Rest Break'}
                     </h3>
                   </div>
-                  <span className="rounded-[12px] border border-[var(--border-main)] bg-[var(--bg-primary)] px-3 py-1.5 text-xs font-bold text-[var(--text-secondary)]">
+                  <span className="rounded-[12px] border border-[var(--border-main)] bg-[var(--bg-primary)] px-2.5 py-1 text-xs font-bold text-[var(--text-secondary)] shrink-0">
                     {pomoMode === 'focus' ? '25 min' : '5 min'}
                   </span>
                 </div>
 
-                <div className="my-6 rounded-[18px] border border-[var(--border-main)] bg-[var(--bg-primary)] p-8 text-center">
-                  <p className="text-5xl sm:text-6xl font-bold tracking-tight text-[var(--text-primary)] font-mono">
+                <div className="my-3 sm:my-6 rounded-2xl sm:rounded-[18px] border border-[var(--border-main)] bg-[var(--bg-primary)] p-6 sm:p-8 text-center">
+                  <p className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-[var(--text-primary)] font-mono break-all">
                     {formatTimerDisplay(pomoSecondsLeft)}
                   </p>
-                  <p className="text-xs font-semibold text-[var(--text-muted)] mt-3 uppercase tracking-wider">
+                  <p className="text-[11px] sm:text-xs font-semibold text-[var(--text-muted)] mt-2.5 sm:mt-3 uppercase tracking-wider">
                     {isPomoRunning ? 'Session in progress' : 'Ready to start'}
                   </p>
                 </div>
               </div>
 
-              <div className="flex gap-3">
+              <div className="flex gap-3 pt-1">
                 <button
                   onClick={() => setIsPomoRunning((prev) => !prev)}
-                  className="flex-1 saas-button-primary font-bold shadow-sm"
+                  className="flex-1 saas-button-primary min-h-[46px] font-bold shadow-sm cursor-pointer text-sm"
                 >
                   {isPomoRunning ? 'Pause' : 'Start Focus'}
                 </button>
@@ -641,7 +641,7 @@ export default function DashboardPage() {
                     setIsPomoRunning(false)
                     setPomoSecondsLeft(pomoMode === 'focus' ? FOCUS_DURATION : BREAK_DURATION)
                   }}
-                  className="saas-button-secondary font-semibold"
+                  className="saas-button-secondary min-h-[46px] px-5 font-semibold cursor-pointer text-sm"
                 >
                   Reset
                 </button>
@@ -649,27 +649,27 @@ export default function DashboardPage() {
             </div>
 
             {/* 2. Daily Goal Timer Card */}
-            <div className="rounded-[20px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-6 shadow-sm flex flex-col justify-between">
+            <div className="rounded-2xl sm:rounded-[20px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-4.5 sm:p-6 shadow-sm flex flex-col justify-between space-y-4">
               <div>
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center justify-between mb-3 sm:mb-4">
                   <div>
-                    <p className="caption-text uppercase tracking-widest font-semibold">Goal Countdown</p>
-                    <h3 className="section-title mt-1 text-xl font-bold">
+                    <p className="caption-text uppercase tracking-widest font-semibold text-[10px] text-[var(--accent-color)]">Goal Countdown</p>
+                    <h3 className="section-title mt-0.5 text-lg sm:text-xl font-bold">
                       {isGoalTimerRunning ? 'Study Goal in Progress' : goalSecondsLeft > 0 ? 'Study Goal Paused' : 'Daily Goal Countdown'}
                     </h3>
                   </div>
-                  <span className="rounded-[12px] border border-[var(--border-main)] bg-[var(--bg-primary)] px-3 py-1.5 text-xs font-bold text-[var(--text-secondary)]">
+                  <span className="rounded-[12px] border border-[var(--border-main)] bg-[var(--bg-primary)] px-2.5 py-1 text-xs font-bold text-[var(--text-secondary)] shrink-0">
                     {timerDurationMinutes > 0 ? `${timerDurationMinutes} min target` : `${dailyGoal} min goal`}
                   </span>
                 </div>
 
-                <div className={`my-6 rounded-[18px] border border-[var(--border-main)] bg-[var(--bg-primary)] p-8 text-center transition-all duration-300 ${
+                <div className={`my-3 sm:my-6 rounded-2xl sm:rounded-[18px] border border-[var(--border-main)] bg-[var(--bg-primary)] p-6 sm:p-8 text-center transition-all duration-300 ${
                   showSuccessPulse ? 'ring-4 ring-[var(--accent-sage)] bg-[var(--success-bg)]' : ''
                 }`}>
-                  <p className="text-5xl sm:text-6xl font-bold tracking-tight text-[var(--text-primary)] font-mono">
+                  <p className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-[var(--text-primary)] font-mono break-all">
                     {formatTimerDisplay(goalSecondsLeft)}
                   </p>
-                  <p className="text-xs font-semibold text-[var(--text-muted)] mt-3 uppercase tracking-wider">
+                  <p className="text-[11px] sm:text-xs font-semibold text-[var(--text-muted)] mt-2.5 sm:mt-3 uppercase tracking-wider">
                     {isGoalTimerRunning
                       ? 'Live Goal Countdown Active'
                       : goalSecondsLeft > 0
@@ -679,18 +679,18 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              <div className="flex gap-3">
+              <div className="flex gap-3 pt-1">
                 {goalSecondsLeft > 0 ? (
                   <>
                     <button
                       onClick={togglePauseGoalTimer}
-                      className="flex-1 saas-button-primary font-bold shadow-sm"
+                      className="flex-1 saas-button-primary min-h-[46px] font-bold shadow-sm cursor-pointer text-sm"
                     >
                       {isGoalTimerRunning ? 'Pause' : 'Resume'}
                     </button>
                     <button
                       onClick={resetGoalTimer}
-                      className="saas-button-secondary font-semibold"
+                      className="saas-button-secondary min-h-[46px] px-5 font-semibold cursor-pointer text-sm"
                     >
                       Reset
                     </button>
@@ -699,7 +699,7 @@ export default function DashboardPage() {
                   <button
                     onClick={saveDailyGoal}
                     disabled={savingGoal}
-                    className="w-full saas-button-primary font-bold shadow-sm"
+                    className="w-full saas-button-primary min-h-[46px] font-bold shadow-sm cursor-pointer text-sm"
                   >
                     {savingGoal ? 'Starting...' : 'Start Goal Countdown'}
                   </button>
@@ -709,10 +709,10 @@ export default function DashboardPage() {
           </div>
 
           {/* Study Statistics & Daily Goal Settings Widget */}
-          <div className="rounded-[20px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-6 shadow-sm space-y-6">
+          <div className="rounded-2xl sm:rounded-[20px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-4.5 sm:p-6 shadow-sm space-y-5 sm:space-y-6">
             <div>
-              <p className="caption-text uppercase tracking-widest font-semibold mb-1">Study Statistics</p>
-              <div className="flex justify-between text-sm font-semibold text-[var(--text-secondary)] mt-2">
+              <p className="caption-text uppercase tracking-widest font-semibold text-[10px] text-[var(--accent-color)] mb-1">Study Statistics</p>
+              <div className="flex justify-between text-xs sm:text-sm font-semibold text-[var(--text-secondary)] mt-2">
                 <span>Today's Progress</span>
                 <span className="text-[var(--text-primary)] font-bold">{todayMinutes} / {dailyGoal} min</span>
               </div>
@@ -726,38 +726,38 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
               {/* Current Streak Card with Fire Emoji */}
               <div className="rounded-[16px] border border-[var(--border-main)] bg-[var(--bg-primary)] p-4 text-center hover:border-[var(--accent-color)]/50 transition">
-                <p className="caption-text uppercase font-semibold text-[var(--text-muted)]">Current Streak</p>
+                <p className="caption-text uppercase font-semibold text-[var(--text-muted)] text-[10px]">Current Streak</p>
                 <div className="flex items-center justify-center gap-1.5 mt-1">
-                  <span className="text-2xl font-bold text-[var(--text-primary)]">{currentStreak} days</span>
+                  <span className="text-xl sm:text-2xl font-bold text-[var(--text-primary)] break-words">{currentStreak} days</span>
                   {currentStreak > 0 ? (
-                    <span className="inline-block text-xl animate-pulse" title="Active Streak!">🔥</span>
+                    <span className="inline-block text-lg sm:text-xl animate-pulse" title="Active Streak!">🔥</span>
                   ) : (
-                    <span className="inline-block text-xl grayscale opacity-35" title="Streak inactive">🔥</span>
+                    <span className="inline-block text-lg sm:text-xl grayscale opacity-35" title="Streak inactive">🔥</span>
                   )}
                 </div>
               </div>
 
               {/* Best Streak Card with Vibrant Fire Emoji */}
               <div className="rounded-[16px] border border-[var(--border-main)] bg-[var(--bg-primary)] p-4 text-center hover:border-[var(--accent-color)]/50 transition">
-                <p className="caption-text uppercase font-semibold text-[var(--text-muted)]">Best Streak</p>
+                <p className="caption-text uppercase font-semibold text-[var(--text-muted)] text-[10px]">Best Streak</p>
                 <div className="flex items-center justify-center gap-1.5 mt-1">
-                  <span className="text-2xl font-bold text-[var(--text-primary)]">{longestStreak} days</span>
-                  <span className="inline-block text-xl" title="Best Streak Record">🔥</span>
+                  <span className="text-xl sm:text-2xl font-bold text-[var(--text-primary)] break-words">{longestStreak} days</span>
+                  <span className="inline-block text-lg sm:text-xl" title="Best Streak Record">🔥</span>
                 </div>
               </div>
 
               {/* Study Days Card */}
               <div className="rounded-[16px] border border-[var(--border-main)] bg-[var(--bg-primary)] p-4 text-center hover:border-[var(--accent-color)]/50 transition">
-                <p className="caption-text uppercase font-semibold text-[var(--text-muted)]">Study Days</p>
-                <p className="text-2xl font-bold mt-1 text-[var(--text-primary)]">{totalCompletedDays}</p>
+                <p className="caption-text uppercase font-semibold text-[var(--text-muted)] text-[10px]">Study Days</p>
+                <p className="text-xl sm:text-2xl font-bold mt-1 text-[var(--text-primary)] break-words">{totalCompletedDays}</p>
               </div>
             </div>
 
             <div className="rounded-[16px] border border-[var(--border-main)] bg-[var(--bg-primary)] p-4 space-y-2">
-              <label className="caption-text uppercase font-semibold text-[var(--text-muted)]">Set Daily Goal</label>
+              <label className="caption-text uppercase font-semibold text-[var(--text-muted)] text-[10px]">Set Daily Goal</label>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end pt-1">
                 <div>
                   <label className="text-[11px] uppercase font-semibold text-[var(--text-muted)]">Hours</label>
@@ -766,7 +766,7 @@ export default function DashboardPage() {
                     min="0"
                     value={hoursInput}
                     onChange={(e) => setHoursInput(e.target.value)}
-                    className="saas-input w-full mt-1 min-h-[44px] text-sm"
+                    className="saas-input w-full mt-1 min-h-[46px] px-3.5 text-sm"
                   />
                 </div>
                 <div>
@@ -777,13 +777,13 @@ export default function DashboardPage() {
                     max="59"
                     value={minutesInput}
                     onChange={(e) => setMinutesInput(e.target.value)}
-                    className="saas-input w-full mt-1 min-h-[44px] text-sm"
+                    className="saas-input w-full mt-1 min-h-[46px] px-3.5 text-sm"
                   />
                 </div>
                 <button
                   onClick={saveDailyGoal}
                   disabled={savingGoal}
-                  className="saas-button-primary min-h-[44px] w-full font-bold shadow-sm"
+                  className="saas-button-primary min-h-[46px] w-full font-bold shadow-sm cursor-pointer text-sm"
                 >
                   {savingGoal ? 'Saving...' : 'Save Goal'}
                 </button>

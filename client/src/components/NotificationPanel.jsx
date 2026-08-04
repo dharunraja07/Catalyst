@@ -87,13 +87,13 @@ export default function NotificationPanel() {
       {/* Mobile Backdrop Overlay (<md) */}
       <div
         onClick={closePanel}
-        className="fixed inset-0 z-40 bg-black/50 backdrop-blur-xs md:hidden animate-in fade-in duration-200"
+        className="fixed inset-0 z-[55] bg-black/60 backdrop-blur-xs md:hidden animate-in fade-in duration-200"
       />
 
       {/* Responsive Drawer Container */}
       <div
         ref={panelRef}
-        className="fixed bottom-0 left-0 right-0 z-50 flex max-h-[85vh] flex-col rounded-t-[28px] border-t border-[var(--border-main)] bg-[var(--bg-surface)] shadow-2xl transition-all duration-300 md:fixed md:bottom-auto md:left-auto md:right-6 md:top-16 md:w-[420px] md:max-h-[580px] md:rounded-[24px] md:border"
+        className="fixed bottom-0 left-0 right-0 z-[60] flex max-h-[88vh] flex-col rounded-t-[28px] border-t border-[var(--border-main)] bg-[var(--bg-surface)] shadow-2xl transition-all duration-300 md:fixed md:bottom-auto md:left-auto md:right-6 md:top-16 md:w-[420px] md:max-h-[580px] md:rounded-[24px] md:border"
       >
         {/* Mobile Pull Handle Pill */}
         <div className="flex justify-center pt-3 pb-1 md:hidden">

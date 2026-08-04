@@ -105,14 +105,14 @@ export default function LearningJourneySection() {
       </div>
 
       {/* Timeline Container */}
-      <div className="max-w-3xl mx-auto relative pl-10 sm:pl-16 pr-2 space-y-10 sm:space-y-14">
+      <div className="max-w-3xl mx-auto relative pl-11 sm:pl-16 pr-1 space-y-8 sm:space-y-14">
         {/* Layer 1: Background Thin Gray Line */}
-        <div className="absolute left-[8.5px] sm:left-[18.5px] top-7 bottom-7 w-[3px] bg-[var(--border-main)]/60 rounded-full pointer-events-none" />
+        <div className="absolute left-[13.5px] sm:left-[18.5px] top-7 bottom-7 w-[3px] bg-[var(--border-main)]/60 rounded-full pointer-events-none" />
 
         {/* Layer 2: Foreground Catalyst Gold Continuous Progress Line */}
         <motion.div
           style={{ scaleY: smoothProgress }}
-          className="absolute left-[8.5px] sm:left-[18.5px] top-7 bottom-7 w-[3px] bg-gradient-to-b from-[var(--accent-color)] via-amber-400 to-[var(--accent-color)] origin-top rounded-full shadow-[0_0_16px_var(--accent-color)] z-10 pointer-events-none"
+          className="absolute left-[13.5px] sm:left-[18.5px] top-7 bottom-7 w-[3px] bg-gradient-to-b from-[var(--accent-color)] via-amber-400 to-[var(--accent-color)] origin-top rounded-full shadow-[0_0_16px_var(--accent-color)] z-10 pointer-events-none"
         />
 
         {/* 6 Interactive Milestone Step Cards */}
@@ -155,21 +155,21 @@ function TimelineStepCard({ item, index, totalSteps, smoothProgress }) {
 
   return (
     <div className="relative z-20">
-      {/* Interactive Vector Icon Squircle Node (Matching uploaded sidebar design) */}
+      {/* Interactive Vector Icon Squircle Node */}
       <motion.div
         style={{ scale: dotScale }}
-        className="absolute -left-[52px] sm:-left-[68px] top-4 sm:top-5 h-11 w-11 sm:h-12 sm:w-12 rounded-[16px] border border-[var(--border-main)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] flex items-center justify-center z-20 shadow-md transition-colors duration-300 group-hover:border-[var(--accent-color)]"
+        className="absolute -left-[45px] sm:-left-[68px] top-4 sm:top-5 h-9 w-9 sm:h-12 sm:w-12 rounded-[12px] sm:rounded-[16px] border border-[var(--border-main)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] flex items-center justify-center z-20 shadow-md transition-colors duration-300 group-hover:border-[var(--accent-color)]"
       >
         <motion.div
           style={{ opacity }}
-          className="absolute inset-0 rounded-[16px] bg-[var(--accent-color)] shadow-[0_0_20px_rgba(230,179,37,0.4)] pointer-events-none"
+          className="absolute inset-0 rounded-[12px] sm:rounded-[16px] bg-[var(--accent-color)] shadow-[0_0_20px_rgba(230,179,37,0.4)] pointer-events-none"
         />
 
         {/* Pulse Ripple Ring on Active Node */}
-        <span className="absolute inset-0 rounded-[16px] bg-[var(--accent-color)]/30 animate-ping opacity-60 pointer-events-none" />
+        <span className="absolute inset-0 rounded-[12px] sm:rounded-[16px] bg-[var(--accent-color)]/30 animate-ping opacity-60 pointer-events-none" />
 
         {/* Vector Line Icon inside Node */}
-        <IconComp className="h-5 w-5 sm:h-6 sm:w-6 z-10 transition-transform duration-300 text-[var(--text-secondary)] group-hover:text-black group-hover:scale-110" />
+        <IconComp className="h-4 w-4 sm:h-6 sm:w-6 z-10 transition-transform duration-300 text-[var(--text-secondary)] group-hover:text-black group-hover:scale-110" />
       </motion.div>
 
       {/* Milestone Step Card */}
@@ -179,19 +179,19 @@ function TimelineStepCard({ item, index, totalSteps, smoothProgress }) {
         viewport={{ once: false, amount: 0.15 }}
         transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
         whileHover={{ scale: 1.02, y: -4 }}
-        className="saas-elevated-card group relative rounded-2xl sm:rounded-3xl border border-[var(--border-main)] bg-[var(--bg-elevated)] p-5 sm:p-7 shadow-lg transition-colors duration-300 hover:border-[var(--accent-color)] hover:shadow-[0_15px_40px_rgba(230,179,37,0.2)] cursor-pointer"
+        className="saas-elevated-card group relative rounded-2xl sm:rounded-3xl border border-[var(--border-main)] bg-[var(--bg-elevated)] p-4 sm:p-7 shadow-lg transition-colors duration-300 hover:border-[var(--accent-color)] hover:shadow-[0_15px_40px_rgba(230,179,37,0.2)] cursor-pointer"
       >
         {/* Card Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4 mb-2">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-xl bg-[var(--accent-light)] border border-[var(--accent-color)]/30 flex items-center justify-center text-[var(--accent-color)]">
-              <IconComp className="h-5 w-5" />
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-xl bg-[var(--accent-light)] border border-[var(--accent-color)]/30 flex items-center justify-center text-[var(--accent-color)] shrink-0">
+              <IconComp className="h-4 w-4 sm:h-5 sm:w-5" />
             </div>
-            <h4 className="card-title font-extrabold text-base sm:text-lg text-[var(--text-primary)] group-hover:text-[var(--accent-color)] transition-colors duration-200">
+            <h4 className="card-title font-extrabold text-sm sm:text-lg text-[var(--text-primary)] group-hover:text-[var(--accent-color)] transition-colors duration-200">
               {item.title}
             </h4>
           </div>
-          <span className="self-start sm:self-auto px-2.5 py-0.5 rounded-md bg-[var(--accent-light)] border border-[var(--accent-color)]/30 text-[10px] sm:text-[11px] font-semibold text-[var(--accent-color)] uppercase tracking-wider">
+          <span className="self-start sm:self-auto px-2 sm:px-2.5 py-0.5 rounded-md bg-[var(--accent-light)] border border-[var(--accent-color)]/30 text-[10px] sm:text-[11px] font-semibold text-[var(--accent-color)] uppercase tracking-wider">
             {item.badge}
           </span>
         </div>
