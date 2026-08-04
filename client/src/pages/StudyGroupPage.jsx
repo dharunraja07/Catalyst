@@ -1333,7 +1333,6 @@ export default function StudyGroupPage() {
                 </div>
               </div>
             )}
-
             <hr className="canvas-divider opacity-60" />
 
             <div className="space-y-4">

@@ -1339,7 +1339,7 @@ export default function MeetRoomPage() {
           </div>
         )}
 
-        {/* FULL SCREEN WHITEBOARD OVERLAY */}
+        {/* FULL SCREEN WHITEBOARD OVERLAY (Fills Full Available Vertical Space) */}
         {activeSidePanel === 'whiteboard' && (
           <div className="absolute inset-2 sm:inset-3 z-40 flex flex-col rounded-[20px] border border-[var(--border-main)] bg-[var(--bg-surface)] shadow-2xl overflow-hidden animate-fadeIn">
             {/* Whiteboard Header Toolbar */}
