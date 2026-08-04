@@ -78,6 +78,15 @@ export default function QuestionsPage() {
       setPracticeData(response.data)
       setVisibleAnswers({}) // Reset visible answers
 
+      // Auto-delete uploaded documents after questions are generated (one-time use)
+      if (documents.length > 0) {
+        const toDelete = [...documents]
+        setDocuments([])
+        toDelete.forEach((doc) => {
+          api.delete(`/documents/${doc._id || doc.id}`).catch(() => {})
+        })
+      }
+
       // Stamp today's date into catalyst_practice_days in localStorage
       try {
         const localDate = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0]

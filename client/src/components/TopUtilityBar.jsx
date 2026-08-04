@@ -80,7 +80,7 @@ export default function TopUtilityBar({ onOpenMobileDrawer, toggleCollapse, isCo
   }
 
   return (
-    <header className="sticky top-0 z-30 border-b border-[var(--border-main)]/60 bg-[var(--bg-nav)]/80 backdrop-blur-md shadow-sm transition-colors duration-200 pt-[env(safe-area-inset-top)]">
+    <header className="sticky top-0 z-30 border-b border-[var(--border-main)] bg-[var(--bg-nav)]/80 backdrop-blur-md shadow-sm transition-colors duration-200 pt-[env(safe-area-inset-top)]">
       <div className="mx-auto flex w-full items-center justify-between gap-2 sm:gap-4 px-3 sm:px-6 py-2.5 sm:py-3">
 
         {/* Left Side: Mobile Drawer Trigger / Desktop Sidebar Collapse Trigger */}

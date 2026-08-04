@@ -133,6 +133,15 @@ export default function AssessmentPage() {
         documentIds: documents.map((d) => d._id || d.id).filter(Boolean)
       })
       setQuestions(response.data.questions || [])
+
+      // Auto-delete uploaded documents after questions are generated (one-time use)
+      if (documents.length > 0) {
+        const toDelete = [...documents]
+        setDocuments([])
+        toDelete.forEach((doc) => {
+          api.delete(`/documents/${doc._id || doc.id}`).catch(() => {})
+        })
+      }
     } catch (err) {
       setAiError(err.response?.data?.error || 'Unable to generate assessment questions')
     } finally {
