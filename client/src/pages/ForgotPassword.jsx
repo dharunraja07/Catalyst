@@ -54,8 +54,8 @@ export default function ForgotPassword() {
   }
 
   return (
-    <main className="min-h-[calc(100vh-8rem)] flex items-center justify-center px-4 py-4 sm:px-6">
-      <div className="w-full max-w-[460px] saas-card bg-[var(--bg-surface)] border border-[var(--border-main)] rounded-2xl shadow-xl p-6 sm:p-8 space-y-6 relative overflow-hidden">
+    <main className="min-h-[calc(100vh-8rem)] flex items-center justify-center px-3 sm:px-6 py-6 sm:py-10 max-w-full overflow-x-hidden">
+      <div className="w-full max-w-[440px] saas-card bg-[var(--bg-surface)] border border-[var(--border-main)] rounded-2xl sm:rounded-3xl shadow-xl p-5 sm:p-8 space-y-6 relative overflow-hidden">
         {/* Top Gradient Accent Line */}
         <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-[var(--accent-color)] via-amber-400 to-[var(--accent-color)]" />
 
@@ -68,18 +68,18 @@ export default function ForgotPassword() {
         <hr className="border-t border-[var(--border-main)] opacity-60" />
 
         {message && (
-          <div className="rounded-xl bg-[var(--success-bg)] border border-[var(--success-color)]/30 p-4 text-xs text-[var(--success-color)] leading-relaxed font-semibold space-y-2">
+          <div className="rounded-xl bg-[var(--success-bg)] border border-[var(--success-color)]/30 p-4 text-xs text-[var(--success-color)] leading-relaxed font-semibold space-y-2 break-words overflow-hidden">
             <div className="flex items-start gap-2">
               <svg className="w-5 h-5 text-[var(--success-color)] shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 002-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
-              <div>{message}</div>
+              <div className="break-words">{message}</div>
             </div>
           </div>
         )}
 
         {error && (
-          <div className="rounded-xl bg-[var(--error-bg)] border border-[var(--error-color)]/30 p-4 text-xs text-[var(--error-color)] leading-relaxed font-medium">
+          <div className="rounded-xl bg-[var(--error-bg)] border border-[var(--error-color)]/30 p-4 text-xs text-[var(--error-color)] leading-relaxed font-medium break-words overflow-hidden">
             {error}
           </div>
         )}
@@ -101,7 +101,7 @@ export default function ForgotPassword() {
           <button
             type="submit"
             disabled={loading || resending}
-            className="saas-button-primary w-full min-h-[46px] text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-60 shadow-md hover:shadow-lg transition-all"
+            className="saas-button-primary w-full min-h-[46px] text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-60 shadow-md hover:shadow-lg transition-all cursor-pointer"
           >
             {loading ? (
               <>
@@ -124,7 +124,7 @@ export default function ForgotPassword() {
               type="button"
               onClick={handleResend}
               disabled={resending || loading}
-              className="text-xs font-bold text-[var(--accent-color,#E6B325)] hover:underline inline-flex items-center gap-1.5 disabled:opacity-50"
+              className="text-xs font-bold text-[var(--accent-color,#E6B325)] hover:underline inline-flex items-center gap-1.5 min-h-[44px] px-3 disabled:opacity-50 cursor-pointer"
             >
               {resending ? (
                 <>
@@ -143,7 +143,7 @@ export default function ForgotPassword() {
 
         <div className="pt-3 border-t border-[var(--border-main)] text-center text-xs sm:text-sm text-[var(--text-secondary)]">
           Remember your password?{' '}
-          <Link to="/login" className="font-bold text-[var(--accent-color)] hover:underline">
+          <Link to="/login" className="font-bold text-[var(--accent-color)] hover:underline min-h-[44px] inline-flex items-center">
             Back to Login
           </Link>
         </div>

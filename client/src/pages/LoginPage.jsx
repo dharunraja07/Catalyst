@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 
 export default function LoginPage() {
   const [form, setForm] = useState({ email: '', password: '' })
+  const [showPassword, setShowPassword] = useState(false)
   const [message, setMessage] = useState('')
   const [resetSent, setResetSent] = useState(false)
   const { login, googleLogin } = useAuth()
@@ -58,8 +59,8 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-[calc(100vh-8rem)] flex items-center justify-center px-4 py-4 sm:px-6">
-      <div className="w-full max-w-[460px] saas-card bg-[var(--bg-surface)] border border-[var(--border-main)] rounded-2xl shadow-xl p-6 sm:p-8 space-y-6 relative overflow-hidden">
+    <main className="min-h-[calc(100vh-8rem)] flex items-center justify-center px-3 sm:px-6 py-6 sm:py-10 max-w-full overflow-x-hidden">
+      <div className="w-full max-w-[440px] saas-card bg-[var(--bg-surface)] border border-[var(--border-main)] rounded-2xl sm:rounded-3xl shadow-xl p-5 sm:p-8 space-y-6 relative overflow-hidden">
         {/* Top Gradient Accent Line */}
         <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-[var(--accent-color)] via-amber-400 to-[var(--accent-color)]" />
 
@@ -72,8 +73,8 @@ export default function LoginPage() {
         <hr className="border-t border-[var(--border-main)] opacity-60" />
 
         {resetSent && (
-          <div className="rounded-xl bg-[var(--success-bg)] border border-[var(--success-color)]/30 p-3.5 text-xs text-[var(--success-color)] font-semibold">
-            Reset link sent to <strong>{form.email}</strong>.
+          <div className="rounded-xl bg-[var(--success-bg)] border border-[var(--success-color)]/30 p-3.5 text-xs text-[var(--success-color)] font-semibold break-words leading-relaxed">
+            Reset link sent to <strong className="break-all">{form.email}</strong>.
           </div>
         )}
 
@@ -92,33 +93,43 @@ export default function LoginPage() {
           </label>
 
           <label className="block space-y-1.5 font-semibold text-xs text-[var(--text-primary)]">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <span>Password</span>
               <Link
                 to="/forgot-password"
-                className="text-xs font-bold text-[var(--accent-color)] hover:underline focus:outline-none"
+                className="text-xs font-bold text-[var(--accent-color)] hover:underline focus:outline-none min-h-[32px] flex items-center"
               >
                 Forgot Password?
               </Link>
             </div>
-            <input
-              name="password"
-              type="password"
-              required
-              value={form.password}
-              onChange={handleChange}
-              placeholder="••••••••"
-              className="saas-input w-full min-h-[46px] px-4 text-sm"
-            />
+            <div className="relative w-full">
+              <input
+                name="password"
+                type={showPassword ? 'text' : 'password'}
+                required
+                value={form.password}
+                onChange={handleChange}
+                placeholder="••••••••"
+                className="saas-input w-full min-h-[46px] pl-4 pr-12 text-sm"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((prev) => !prev)}
+                className="absolute right-1 top-1/2 -translate-y-1/2 min-h-[44px] min-w-[44px] flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer text-sm"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? '🙈' : '👁️'}
+              </button>
+            </div>
           </label>
 
           {message && (
-            <p className="rounded-xl bg-[var(--error-bg)] border border-[var(--error-color)]/30 p-3 text-xs text-[var(--error-color)] font-medium">
+            <p className="rounded-xl bg-[var(--error-bg)] border border-[var(--error-color)]/30 p-3 text-xs text-[var(--error-color)] font-medium break-words leading-relaxed">
               {message}
             </p>
           )}
 
-          <button type="submit" className="saas-button-primary w-full min-h-[46px] text-sm font-bold shadow-md hover:shadow-lg transition-all">
+          <button type="submit" className="saas-button-primary w-full min-h-[46px] text-sm font-bold shadow-md hover:shadow-lg transition-all cursor-pointer">
             Sign in
           </button>
         </form>
@@ -163,7 +174,7 @@ export default function LoginPage() {
         {/* Sign up prompt */}
         <div className="pt-3 border-t border-[var(--border-main)] text-center text-xs sm:text-sm text-[var(--text-secondary)]">
           Don't have an account?{' '}
-          <Link to="/register" className="font-bold text-[var(--accent-color)] hover:underline">
+          <Link to="/register" className="font-bold text-[var(--accent-color)] hover:underline min-h-[44px] inline-flex items-center">
             Sign up
           </Link>
         </div>

@@ -206,20 +206,20 @@ export default function ProfileModal({ isOpen, onClose }) {
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center px-3 py-4 sm:px-6" onClick={handleOverlayClick}>
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-2 sm:p-4 overflow-y-auto pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))] pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))]" onClick={handleOverlayClick}>
       <div className="absolute inset-0 bg-[var(--bg-primary)]/70 backdrop-blur-xl" />
-      <div className="relative z-10 w-full max-w-2xl overflow-hidden rounded-[28px] border border-[var(--border-main)] bg-[var(--bg-surface)] shadow-2xl">
-        <div className="flex items-center justify-between border-b border-[var(--divider-main)] px-4 py-4 sm:px-6">
+      <div className="relative z-10 w-full max-w-2xl max-h-[92vh] sm:max-h-[86vh] my-auto flex flex-col overflow-hidden rounded-[24px] sm:rounded-[28px] border border-[var(--border-main)] bg-[var(--bg-surface)] shadow-2xl">
+        <div className="flex shrink-0 items-center justify-between border-b border-[var(--divider-main)] px-4 py-4 sm:px-6">
           <div>
             <p className="caption-text uppercase tracking-[0.24em] text-[var(--accent-color)]">Profile</p>
             <h2 className="section-title mt-1">Edit your profile</h2>
           </div>
-          <button type="button" onClick={onClose} className="rounded-full border border-[var(--border-main)] bg-[var(--bg-secondary)] p-2 text-[var(--text-secondary)] transition hover:border-[var(--accent-color)] hover:text-[var(--text-primary)]">
+          <button type="button" onClick={onClose} className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full border border-[var(--border-main)] bg-[var(--bg-secondary)] p-2 text-[var(--text-secondary)] transition hover:border-[var(--accent-color)] hover:text-[var(--text-primary)] cursor-pointer">
             ✕
           </button>
         </div>
 
-        <div className="max-h-[80vh] overflow-y-auto px-4 py-5 sm:px-6 sm:py-6">
+        <div className="flex-1 overflow-y-auto custom-scrollbar px-4 py-5 sm:px-6 sm:py-6">
           <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
             <div className="relative flex-shrink-0">
               <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-full border border-[var(--border-main)] bg-[var(--bg-secondary)] shadow-sm sm:h-28 sm:w-28">
@@ -228,7 +228,7 @@ export default function ProfileModal({ isOpen, onClose }) {
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="absolute bottom-0 right-0 rounded-full border border-[var(--border-main)] bg-[var(--bg-surface)] p-2 text-[var(--accent-color)] shadow-sm"
+                className="absolute bottom-0 right-0 min-h-[36px] min-w-[36px] flex items-center justify-center rounded-full border border-[var(--border-main)] bg-[var(--bg-surface)] p-2 text-[var(--accent-color)] shadow-sm cursor-pointer"
                 aria-label="Edit avatar"
               >
                 ✎
@@ -245,7 +245,7 @@ export default function ProfileModal({ isOpen, onClose }) {
                     key={preset.id}
                     type="button"
                     onClick={() => handlePickPreset(preset.id)}
-                    className={`flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br ${preset.classes} text-sm font-bold text-white shadow-sm transition hover:scale-105 ${formState.avatar === `preset:${preset.id}` ? 'ring-2 ring-[var(--accent-color)] ring-offset-2 ring-offset-[var(--bg-surface)]' : ''}`}
+                    className={`flex h-10 w-10 min-h-[40px] min-w-[40px] items-center justify-center rounded-full bg-gradient-to-br ${preset.classes} text-sm font-bold text-white shadow-sm transition hover:scale-105 cursor-pointer ${formState.avatar === `preset:${preset.id}` ? 'ring-2 ring-[var(--accent-color)] ring-offset-2 ring-offset-[var(--bg-surface)]' : ''}`}
                     aria-label={preset.label}
                   >
                     {preset.initials}
@@ -285,11 +285,11 @@ export default function ProfileModal({ isOpen, onClose }) {
               <span className="text-sm font-semibold text-[var(--text-primary)]">Preferred subjects</span>
               <div className="flex flex-col gap-2 sm:flex-row">
                 <input value={subjectInput} onChange={(event) => setSubjectInput(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); addTag('interestedSubjects', subjectInput); setSubjectInput('') } }} className="saas-input min-h-[44px] flex-1" placeholder="Add a subject" />
-                <button type="button" onClick={() => { addTag('interestedSubjects', subjectInput); setSubjectInput('') }} className="saas-button-secondary min-h-[44px] whitespace-nowrap">Add</button>
+                <button type="button" onClick={() => { addTag('interestedSubjects', subjectInput); setSubjectInput('') }} className="saas-button-secondary min-h-[44px] whitespace-nowrap cursor-pointer">Add</button>
               </div>
               <div className="mt-2 flex flex-wrap gap-2">
                 {formState.interestedSubjects.length ? formState.interestedSubjects.map((subject) => (
-                  <button key={subject} type="button" onClick={() => removeTag('interestedSubjects', subject)} className="rounded-full border border-[var(--border-main)] bg-[var(--bg-secondary)] px-3 py-1.5 text-sm text-[var(--text-primary)]">
+                  <button key={subject} type="button" onClick={() => removeTag('interestedSubjects', subject)} className="rounded-full border border-[var(--border-main)] bg-[var(--bg-secondary)] px-3 py-1.5 min-h-[36px] text-sm text-[var(--text-primary)] cursor-pointer">
                     {subject} ×
                   </button>
                 )) : <p className="text-sm text-[var(--text-muted)]">No subjects selected yet.</p>}
@@ -300,11 +300,11 @@ export default function ProfileModal({ isOpen, onClose }) {
               <span className="text-sm font-semibold text-[var(--text-primary)]">Career goals</span>
               <div className="flex flex-col gap-2 sm:flex-row">
                 <input value={careerInput} onChange={(event) => setCareerInput(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); addTag('careerInterests', careerInput); setCareerInput('') } }} className="saas-input min-h-[44px] flex-1" placeholder="Add a career goal" />
-                <button type="button" onClick={() => { addTag('careerInterests', careerInput); setCareerInput('') }} className="saas-button-secondary min-h-[44px] whitespace-nowrap">Add</button>
+                <button type="button" onClick={() => { addTag('careerInterests', careerInput); setCareerInput('') }} className="saas-button-secondary min-h-[44px] whitespace-nowrap cursor-pointer">Add</button>
               </div>
               <div className="mt-2 flex flex-wrap gap-2">
                 {formState.careerInterests.length ? formState.careerInterests.map((interest) => (
-                  <button key={interest} type="button" onClick={() => removeTag('careerInterests', interest)} className="rounded-full border border-[var(--border-main)] bg-[var(--bg-secondary)] px-3 py-1.5 text-sm text-[var(--text-primary)]">
+                  <button key={interest} type="button" onClick={() => removeTag('careerInterests', interest)} className="rounded-full border border-[var(--border-main)] bg-[var(--bg-secondary)] px-3 py-1.5 min-h-[36px] text-sm text-[var(--text-primary)] cursor-pointer">
                     {interest} ×
                   </button>
                 )) : <p className="text-sm text-[var(--text-muted)]">No career goals selected yet.</p>}
@@ -313,8 +313,8 @@ export default function ProfileModal({ isOpen, onClose }) {
           </div>
 
           <div className="mt-6 flex flex-col-reverse gap-3 border-t border-[var(--divider-main)] pt-4 sm:flex-row sm:justify-end">
-            <button type="button" onClick={onClose} className="saas-button-secondary min-h-[44px]">Cancel</button>
-            <button type="button" onClick={handleSave} disabled={saving} className="saas-button-primary min-h-[44px]">
+            <button type="button" onClick={onClose} className="saas-button-secondary min-h-[44px] cursor-pointer">Cancel</button>
+            <button type="button" onClick={handleSave} disabled={saving} className="saas-button-primary min-h-[44px] cursor-pointer">
               {saving ? 'Saving...' : 'Save changes'}
             </button>
           </div>

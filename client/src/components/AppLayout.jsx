@@ -1,3 +1,12 @@
+/**
+ * App-Wide Z-Index Hierarchy:
+ * - Mobile Drawer (MobileDrawer): z-[70]
+ * - Modals (ProfileModal, dialogs): z-[60]
+ * - Floating Elements (FloatingAIAssistant): z-[50]
+ * - Sticky Top Bar (TopUtilityBar, NavBar): z-30
+ * - Page Content / Workspace: z-0 to z-10
+ */
+
 import { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
@@ -54,9 +63,9 @@ export default function AppLayout({ children }) {
   // Logged Out Layout: Render top header without side navigation
   if (!user) {
     return (
-      <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)] transition-colors duration-200 pt-16">
+      <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)] transition-colors duration-200 pt-16 max-w-full overflow-x-hidden">
         <NavBar onOpenProfile={() => setIsProfileOpen(true)} />
-        <main className="mx-auto w-full max-w-[1600px] px-3 sm:px-6 lg:px-8 py-4 sm:py-6 pb-16">
+        <main className="mx-auto w-full max-w-[1600px] px-3 sm:px-6 lg:px-8 py-4 sm:py-6 pb-16 min-w-0 overflow-x-hidden">
           {children}
         </main>
         <ProfileModal isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} />
@@ -67,7 +76,7 @@ export default function AppLayout({ children }) {
 
   // Logged In Layout: Persistent AppShell (Fixed Sidebar + Top Utility Bar + Scrollable Main Workspace)
   return (
-    <div className="h-screen w-screen overflow-hidden bg-[var(--bg-primary)] text-[var(--text-primary)] flex transition-colors duration-200">
+    <div className="h-screen w-full max-w-full overflow-hidden bg-[var(--bg-primary)] text-[var(--text-primary)] flex transition-colors duration-200">
       {/* Left Collapsible Sidebar (Fixed 100vh, hidden on Mobile <768px) */}
       <div className="hidden md:block shrink-0 h-full">
         <SidebarNav isCollapsed={isCollapsed} toggleCollapse={toggleCollapse} />
@@ -86,7 +95,7 @@ export default function AppLayout({ children }) {
         </div>
 
         {/* Main Content Workspace Area */}
-        <main className="flex-1 w-full max-w-[1600px] mx-auto px-3 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-12">
+        <main className="flex-1 w-full max-w-[1600px] mx-auto px-3 sm:px-6 lg:px-8 pt-4 sm:pt-6 pb-12 min-w-0 overflow-x-hidden">
           {children}
         </main>
       </div>

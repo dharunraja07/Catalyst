@@ -186,6 +186,14 @@ async function connectDatabase() {
   }
 }
 
+process.on('uncaughtException', (err) => {
+  console.error('[Server Warning] Uncaught Exception:', err?.message || err)
+})
+
+process.on('unhandledRejection', (reason) => {
+  console.error('[Server Warning] Unhandled Rejection:', reason?.message || reason)
+})
+
 if (env.NODE_ENV !== 'test') {
   ensureRequiredEnv()
   if (!process.env.VERCEL) {

@@ -26,9 +26,9 @@ export default function CoreFeaturesShowcase() {
     const updateSpacing = () => {
       const w = window.innerWidth
       if (w < 640) {
-        setCardSpacing(Math.min(w * 0.85, 340))
+        setCardSpacing(Math.min(w * 0.78, 280))
       } else if (w < 1024) {
-        setCardSpacing(450)
+        setCardSpacing(420)
       } else {
         setCardSpacing(540)
       }
@@ -265,7 +265,7 @@ export default function CoreFeaturesShowcase() {
             type="button"
             onClick={handlePrev}
             aria-label="Previous Feature"
-            className="w-[42px] h-[42px] sm:w-[46px] sm:h-[46px] rounded-full bg-[#0B1220]/80 dark:bg-[#0B1220]/90 backdrop-blur-xl border border-[var(--accent-color)] text-[var(--accent-color)] shadow-[0_6px_20px_rgba(0,0,0,0.4)] flex items-center justify-center transition-all duration-300 hover:scale-[1.08] hover:shadow-[0_0_25px_rgba(230,179,37,0.6)] active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-color)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-primary)] cursor-pointer group"
+            className="w-[46px] h-[46px] sm:w-[48px] sm:h-[48px] min-h-[44px] min-w-[44px] rounded-full bg-[#0B1220]/80 dark:bg-[#0B1220]/90 backdrop-blur-xl border border-[var(--accent-color)] text-[var(--accent-color)] shadow-[0_6px_20px_rgba(0,0,0,0.4)] flex items-center justify-center transition-all duration-300 hover:scale-[1.08] hover:shadow-[0_0_25px_rgba(230,179,37,0.6)] active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-color)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-primary)] cursor-pointer group"
           >
             <svg
               className="w-5 h-5 stroke-current transition-transform duration-300 group-hover:-translate-x-0.5"
@@ -282,7 +282,7 @@ export default function CoreFeaturesShowcase() {
             type="button"
             onClick={handleNext}
             aria-label="Next Feature"
-            className="w-[42px] h-[42px] sm:w-[46px] sm:h-[46px] rounded-full bg-[#0B1220]/80 dark:bg-[#0B1220]/90 backdrop-blur-xl border border-[var(--accent-color)] text-[var(--accent-color)] shadow-[0_6px_20px_rgba(0,0,0,0.4)] flex items-center justify-center transition-all duration-300 hover:scale-[1.08] hover:shadow-[0_0_25px_rgba(230,179,37,0.6)] active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-color)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-primary)] cursor-pointer group"
+            className="w-[46px] h-[46px] sm:w-[48px] sm:h-[48px] min-h-[44px] min-w-[44px] rounded-full bg-[#0B1220]/80 dark:bg-[#0B1220]/90 backdrop-blur-xl border border-[var(--accent-color)] text-[var(--accent-color)] shadow-[0_6px_20px_rgba(0,0,0,0.4)] flex items-center justify-center transition-all duration-300 hover:scale-[1.08] hover:shadow-[0_0_25px_rgba(230,179,37,0.6)] active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-color)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-primary)] cursor-pointer group"
           >
             <svg
               className="w-5 h-5 stroke-current transition-transform duration-300 group-hover:translate-x-0.5"
@@ -310,8 +310,8 @@ function FeatureCardContent({ feature, isActive }) {
         }`}
       />
 
-      {/* 72% TOP: Screenshot Showcase */}
-      <div className="relative h-[72%] w-full overflow-hidden bg-[var(--bg-primary)] flex items-center justify-center rounded-t-2xl sm:rounded-t-3xl border-b border-[var(--border-main)]">
+      {/* TOP: Screenshot Showcase */}
+      <div className="relative flex-1 min-h-0 w-full overflow-hidden bg-[var(--bg-primary)] flex items-center justify-center rounded-t-2xl sm:rounded-t-3xl border-b border-[var(--border-main)]">
         {/* Inner Overlay for natural blending */}
         <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg-elevated)]/80 via-transparent to-[var(--bg-primary)]/10 z-10 pointer-events-none" />
 
@@ -330,9 +330,9 @@ function FeatureCardContent({ feature, isActive }) {
         )}
       </div>
 
-      {/* 28% BOTTOM: Feature Information & CTA */}
-      <div className="h-[28%] p-3 sm:p-4.5 flex flex-col justify-between bg-[var(--bg-elevated)] relative z-20">
-        <div className="space-y-0.5 sm:space-y-1">
+      {/* BOTTOM: Feature Information & CTA */}
+      <div className="p-3.5 sm:p-4.5 flex flex-col justify-between bg-[var(--bg-elevated)] relative z-20 shrink-0 space-y-2">
+        <div className="space-y-1">
           <div className="flex items-center justify-between">
             <span className="px-2 py-0.5 rounded-md bg-[var(--accent-light)] border border-[var(--accent-color)]/30 text-[10px] sm:text-[11px] font-semibold text-[var(--accent-color)] uppercase tracking-wider">
               {feature.badge}
@@ -348,7 +348,7 @@ function FeatureCardContent({ feature, isActive }) {
         </div>
 
         {/* Minimal CTA */}
-        <div className="flex items-center justify-end text-[11px] sm:text-xs font-semibold text-[var(--accent-color)] pt-0.5">
+        <div className="flex items-center justify-end text-[11px] sm:text-xs font-semibold text-[var(--accent-color)] pt-0.5 min-h-[32px]">
           <span className="flex items-center gap-1 group-hover:gap-2 transition-all">
             Explore {feature.title}
             <svg className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
