@@ -28,6 +28,7 @@ import aiRoutes from './routes/aiRoutes.js'
 import todoRoutes from './routes/todoRoutes.js'
 import meetRoutes from './routes/meetRoutes.js'
 import statsRoutes from './routes/statsRoutes.js'
+import documentRoutes from './routes/documentRoutes.js'
 import { setupChatSocket } from './sockets/chatSocket.js'
 import { setupMeetSocket } from './sockets/meetSocket.js'
 import { errorHandler } from './middleware/errorMiddleware.js'
@@ -102,6 +103,7 @@ app.use('/api/ai', aiRoutes)
 app.use('/api/todos', todoRoutes)
 app.use('/api/meets', meetRoutes)
 app.use('/api/stats', statsRoutes)
+app.use('/api/documents', documentRoutes)
 
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', environment: env.NODE_ENV })

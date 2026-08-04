@@ -4,6 +4,9 @@ import CopyButton from '../components/CopyButton.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useNotifications } from '../context/NotificationContext.jsx'
 import AIChatSurface from '../components/AIChatSurface.jsx'
+import FileCard from '../components/FileCard.jsx'
+import FileUploadZone from '../components/FileUploadZone.jsx'
+import FilePreviewModal from '../components/FilePreviewModal.jsx'
 import getSocket from '../api/socket.js'
 
 const MAX_MEMBERS = 70
@@ -110,6 +113,22 @@ export default function StudyGroupPage() {
   const [hasUnreadNew, setHasUnreadNew] = useState(false)
   const [confirmModal, setConfirmModal] = useState({ open: false, type: null, groupId: null, groupName: '' })
   const [activeActionMsg, setActiveActionMsg] = useState(null)
+
+  // Group Documents Management State
+  const [groupDocuments, setGroupDocuments] = useState([])
+  const [showGroupDocsModal, setShowGroupDocsModal] = useState(false)
+  const [previewFile, setPreviewFile] = useState(null)
+  const [groupDocSearch, setGroupDocSearch] = useState('')
+  const [showAttachUpload, setShowAttachUpload] = useState(false)
+
+  const handleDeleteGroupDocument = async (file) => {
+    try {
+      await api.delete(`/documents/${file._id || file.id}`)
+      setGroupDocuments((prev) => prev.filter((d) => (d._id || d.id) !== (file._id || file.id)))
+    } catch {
+      // Ignored
+    }
+  }
 
   const messagesEndRef = useRef(null)
   const scrollContainerRef = useRef(null)
@@ -375,14 +394,16 @@ export default function StudyGroupPage() {
       return
     }
 
-    // 1. Fetch initial message history (latest 35 messages) via REST
-    async function loadMessages() {
+    // 1. Fetch initial message history & documents via REST
+    async function loadMessagesAndDocs() {
       try {
-        const response = await api.get(`/study-groups/groups/${selectedGroupId}/messages`, {
-          params: { limit: 35 }
-        })
-        const initialMsgs = response.data || []
+        const [msgsResp, docsResp] = await Promise.all([
+          api.get(`/study-groups/groups/${selectedGroupId}/messages`, { params: { limit: 35 } }),
+          api.get('/documents', { params: { module: 'group', groupId: selectedGroupId } })
+        ])
+        const initialMsgs = msgsResp.data || []
         setMessages(initialMsgs)
+        setGroupDocuments(docsResp.data || [])
         setHasMoreMessages(initialMsgs.length >= 35)
         setHasUnreadNew(false)
         requestAnimationFrame(() => {
@@ -394,7 +415,7 @@ export default function StudyGroupPage() {
         setError('Unable to load group messages')
       }
     }
-    loadMessages()
+    loadMessagesAndDocs()
 
     // 2. Connect socket and join group
     const socket = getSocket()
@@ -520,9 +541,21 @@ export default function StudyGroupPage() {
       })
     }
 
+    const handleDocumentUploaded = (doc) => {
+      if (doc.groupId === selectedGroupId) {
+        setGroupDocuments((prev) => [doc, ...prev.filter((d) => (d._id || d.id) !== (doc._id || doc.id))])
+      }
+    }
+
+    const handleDocumentDeleted = ({ documentId }) => {
+      setGroupDocuments((prev) => prev.filter((d) => (d._id || d.id) !== documentId))
+    }
+
     socket.on('connect', handleConnect)
     socket.on('receive_message', handleReceiveMessage)
     socket.on('message_deleted', handleMessageDeleted)
+    socket.on('document_uploaded', handleDocumentUploaded)
+    socket.on('document_deleted', handleDocumentDeleted)
     socket.on('presence_update', handlePresenceUpdate)
     socket.on('member_joined', handleMemberJoined)
     socket.on('member_left', handleMemberLeft)
@@ -539,6 +572,8 @@ export default function StudyGroupPage() {
       socket.off('connect', handleConnect)
       socket.off('receive_message', handleReceiveMessage)
       socket.off('message_deleted', handleMessageDeleted)
+      socket.off('document_uploaded', handleDocumentUploaded)
+      socket.off('document_deleted', handleDocumentDeleted)
       socket.off('presence_update', handlePresenceUpdate)
       socket.off('member_joined', handleMemberJoined)
       socket.off('member_left', handleMemberLeft)
@@ -830,6 +865,14 @@ export default function StudyGroupPage() {
                 </button>
                 <button
                   type="button"
+                  onClick={() => setShowGroupDocsModal(true)}
+                  className="saas-button-secondary min-h-[40px] px-3.5 text-xs font-semibold flex items-center gap-1.5 whitespace-nowrap cursor-pointer shrink-0"
+                >
+                  <span>📁</span>
+                  <span>Files ({groupDocuments.length})</span>
+                </button>
+                <button
+                  type="button"
                   onClick={() => setShowInviteModal(true)}
                   className="saas-button-primary min-h-[40px] px-3.5 text-xs font-bold whitespace-nowrap cursor-pointer shrink-0"
                   disabled={(selectedGroup.members?.length || 0) >= (selectedGroup.maxMembers || MAX_MEMBERS)}
@@ -1018,47 +1061,90 @@ export default function StudyGroupPage() {
             </div>
           )}
 
-          {showAiModal && (
+          {showGroupDocsModal && (
             <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/70 backdrop-blur-md p-2 sm:p-6 animate-fadeIn">
-              <div className="saas-card max-w-2xl w-full h-[90vh] sm:h-[85vh] max-h-[90vh] flex flex-col shadow-2xl relative border-2 border-[var(--accent-color)]/40 rounded-2xl sm:rounded-[2rem] p-4 sm:p-6 overflow-hidden">
-                <div className="flex items-center justify-between border-b border-[var(--divider-main)] pb-3 mb-2">
+              <div className="saas-card max-w-3xl w-full h-[85vh] flex flex-col shadow-2xl relative border border-[var(--border-main)] rounded-2xl p-4 sm:p-6 overflow-hidden bg-[var(--bg-surface)]">
+                <div className="flex items-center justify-between border-b border-[var(--border-main)] pb-3 mb-3 shrink-0">
                   <div className="flex items-center gap-2.5">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--accent-color)] text-black font-bold text-base shadow-sm shrink-0">
-                      🤖
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--accent-color)]/10 text-xl font-bold border border-[var(--accent-color)]/20 shrink-0">
+                      📁
                     </div>
                     <div>
-                      <h2 className="section-title text-base sm:text-lg font-bold">Group AI Companion</h2>
-                      <p className="caption-text text-xs text-[var(--text-secondary)]">Instant explanations & study notes for your team</p>
+                      <h2 className="section-title text-base sm:text-lg font-bold">Group Shared Documents</h2>
+                      <p className="caption-text text-xs text-[var(--text-secondary)]">All files, PDFs, and materials shared in this study group</p>
                     </div>
                   </div>
                   <button
                     type="button"
-                    onClick={() => setShowAiModal(false)}
-                    className="rounded-full border border-[var(--border-main)] bg-[var(--bg-secondary)] px-3.5 py-1.5 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] min-h-[36px] cursor-pointer"
+                    onClick={() => setShowGroupDocsModal(false)}
+                    className="rounded-full border border-[var(--border-main)] bg-[var(--bg-secondary)] px-3 py-1 text-xs font-semibold text-[var(--text-secondary)] hover:text-[var(--text-primary)] min-h-[36px] cursor-pointer"
                   >
                     ✕ Close
                   </button>
                 </div>
-                <div className="flex-1 min-h-0">
-                  <GroupChatAI
-                    groupId={selectedGroupId}
+
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mb-3 shrink-0">
+                  <input
+                    type="text"
+                    value={groupDocSearch}
+                    onChange={(e) => setGroupDocSearch(e.target.value)}
+                    placeholder="Search group documents by name..."
+                    className="saas-input py-1.5 px-3 text-xs w-full"
+                  />
+                </div>
+
+                <div className="mb-3 shrink-0">
+                  <FileUploadZone
                     api={api}
-                    onShareToGroup={(content) => {
-                      const socket = getSocket()
-                      if (socket && socket.connected) {
-                        socket.emit('send_message', {
-                          groupId: selectedGroupId,
-                          message: `🤖 [AI Assistant Note]\n${content}`
-                        })
-                        setShowAiModal(false)
-                        setStatus('AI response shared with the group chat!')
-                        clearTransientMessage()
-                      }
+                    moduleName="group"
+                    groupId={selectedGroupId}
+                    compact
+                    onUploadSuccess={(newDocs) => {
+                      setGroupDocuments((prev) => [...newDocs, ...prev])
                     }}
                   />
                 </div>
+
+                <div className="flex-1 min-h-0 overflow-y-auto space-y-2.5 custom-scrollbar pr-1">
+                  {groupDocuments.filter((d) => {
+                    if (!groupDocSearch.trim()) return true
+                    const q = groupDocSearch.toLowerCase().trim()
+                    return (
+                      (d.originalName || d.filename || '').toLowerCase().includes(q) ||
+                      (d.uploaderName || '').toLowerCase().includes(q)
+                    )
+                  }).length > 0 ? (
+                    groupDocuments.filter((d) => {
+                      if (!groupDocSearch.trim()) return true
+                      const q = groupDocSearch.toLowerCase().trim()
+                      return (
+                        (d.originalName || d.filename || '').toLowerCase().includes(q) ||
+                        (d.uploaderName || '').toLowerCase().includes(q)
+                      )
+                    }).map((doc) => (
+                      <FileCard
+                        key={doc._id || doc.id}
+                        file={doc}
+                        onPreview={setPreviewFile}
+                        onDelete={handleDeleteGroupDocument}
+                        canDelete={isCurrentHost || doc.uploadedBy?._id === currentUserId || doc.uploadedBy === currentUserId}
+                      />
+                    ))
+                  ) : (
+                    <div className="flex h-40 items-center justify-center">
+                      <p className="text-xs text-[var(--text-muted)] italic">No shared documents found in this group.</p>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
+          )}
+
+          {previewFile && (
+            <FilePreviewModal
+              file={previewFile}
+              onClose={() => setPreviewFile(null)}
+            />
           )}
 
           {/* Professional Message Actions Modal / Context Menu */}
@@ -1380,20 +1466,64 @@ export default function StudyGroupPage() {
                   <span>AI Companion is generating a response...</span>
                 </div>
               )}
+              {showAttachUpload && (
+                <div className="mb-2 p-2 rounded-[14px] bg-[var(--bg-secondary)] border border-[var(--border-main)] animate-fadeIn">
+                  <div className="flex justify-between items-center mb-1.5 px-1">
+                    <span className="text-xs font-bold text-[var(--accent-color)] flex items-center gap-1">
+                      <span>📎</span>
+                      <span>Attach Document to Group</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setShowAttachUpload(false)}
+                      className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer font-bold"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <FileUploadZone
+                    api={api}
+                    moduleName="group"
+                    groupId={selectedGroupId}
+                    compact
+                    onUploadSuccess={(newDocs) => {
+                      setGroupDocuments((prev) => [...newDocs, ...prev])
+                      setShowAttachUpload(false)
+                      setStatus(`Uploaded ${newDocs.length} file(s) to group!`)
+                      clearTransientMessage()
+                    }}
+                  />
+                </div>
+              )}
+
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                <textarea
-                  value={messageText}
-                  onChange={handleInputChange}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault()
-                      sendMessage()
-                    }
-                  }}
-                  placeholder="Type your message... (Tip: start with @ai to ask AI in group chat)"
-                  rows="2"
-                  className="saas-input w-full min-h-[46px] max-h-24 resize-none p-3 text-sm font-medium flex-1"
-                />
+                <div className="flex items-center gap-2 flex-1 w-full">
+                  <button
+                    type="button"
+                    onClick={() => setShowAttachUpload((prev) => !prev)}
+                    className={`h-[46px] w-[46px] rounded-[12px] border text-base flex items-center justify-center transition cursor-pointer shrink-0 ${
+                      showAttachUpload
+                        ? 'border-[var(--accent-color)] bg-[var(--accent-color)]/20 text-[var(--accent-color)]'
+                        : 'border-[var(--border-main)] bg-[var(--bg-secondary)] hover:border-[var(--accent-color)]/50 text-[var(--text-secondary)]'
+                    }`}
+                    title="Attach file to group"
+                  >
+                    📎
+                  </button>
+                  <textarea
+                    value={messageText}
+                    onChange={handleInputChange}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault()
+                        sendMessage()
+                      }
+                    }}
+                    placeholder="Type your message... (Tip: start with @ai to ask AI in group chat)"
+                    rows="2"
+                    className="saas-input w-full min-h-[46px] max-h-24 resize-none p-3 text-sm font-medium flex-1"
+                  />
+                </div>
                 <div className="flex items-center gap-2 shrink-0 self-end sm:self-center w-full sm:w-auto">
                   <select
                     value={groupSelectedProvider}

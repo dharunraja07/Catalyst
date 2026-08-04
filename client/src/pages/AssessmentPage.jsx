@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
+import FileCard from '../components/FileCard.jsx'
+import FileUploadZone from '../components/FileUploadZone.jsx'
+import FilePreviewModal from '../components/FilePreviewModal.jsx'
 
 export default function AssessmentPage() {
-  const { api } = useAuth()
+  const { api, user } = useAuth()
   const [questions, setQuestions] = useState([])
   const [answers, setAnswers] = useState({})
   const [result, setResult] = useState(null)
@@ -11,19 +14,48 @@ export default function AssessmentPage() {
   const [generating, setGenerating] = useState(false)
   const [aiError, setAiError] = useState('')
 
+  // Document Management State
+  const [documents, setDocuments] = useState([])
+  const [previewFile, setPreviewFile] = useState(null)
+  const [docSearch, setDocSearch] = useState('')
+
+  const isInstructorOrAdmin = user?.role === 'instructor' || user?.role === 'admin'
+
   useEffect(() => {
-    async function loadAssessmentHistory() {
+    async function loadAssessmentData() {
       try {
-        const response = await api.get('/assessment/history')
-        if (response.data.length) {
-          setResult(response.data[0])
+        const [historyResp, docsResp] = await Promise.all([
+          api.get('/assessment/history'),
+          api.get('/documents', { params: { module: 'assessment' } })
+        ])
+        if (historyResp.data?.length) {
+          setResult(historyResp.data[0])
         }
+        setDocuments(docsResp.data || [])
       } catch (err) {
         setError('Unable to load assessment content')
       }
     }
-    loadAssessmentHistory()
+    loadAssessmentData()
   }, [api])
+
+  const handleDeleteDocument = async (file) => {
+    try {
+      await api.delete(`/documents/${file._id || file.id}`)
+      setDocuments((prev) => prev.filter((d) => (d._id || d.id) !== (file._id || file.id)))
+    } catch (err) {
+      setError('Failed to delete document')
+    }
+  }
+
+  const filteredDocs = documents.filter((doc) => {
+    if (!docSearch.trim()) return true
+    const q = docSearch.toLowerCase().trim()
+    return (
+      (doc.originalName || doc.filename || '').toLowerCase().includes(q) ||
+      (doc.uploaderName || '').toLowerCase().includes(q)
+    )
+  })
 
   const handleOption = (questionId, option, question) => {
     setAnswers((prev) => ({
@@ -201,6 +233,60 @@ export default function AssessmentPage() {
           </button>
         </div>
       </div>
+
+      {/* Supporting Documents & Reference Materials Module Section */}
+      <div className="space-y-4 sm:space-y-5 rounded-2xl sm:rounded-[20px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-4 sm:p-6 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--border-main)] pb-3">
+          <div>
+            <h3 className="section-title text-lg font-bold flex items-center gap-2">
+              <span>📚</span>
+              <span>Assessment Reference Documents</span>
+            </h3>
+            <p className="caption-text text-xs text-[var(--text-secondary)]">Question papers, reference notes, and diagrams for study</p>
+          </div>
+
+          <input
+            type="text"
+            value={docSearch}
+            onChange={(e) => setDocSearch(e.target.value)}
+            placeholder="Search documents by name..."
+            className="saas-input py-1.5 px-3 text-xs w-full sm:w-64"
+          />
+        </div>
+
+        <FileUploadZone
+          api={api}
+          moduleName="assessment"
+          onUploadSuccess={(newDocs) => {
+            setDocuments((prev) => [...newDocs, ...prev])
+          }}
+        />
+
+        {filteredDocs.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+            {filteredDocs.map((doc) => (
+              <FileCard
+                key={doc._id || doc.id}
+                file={doc}
+                onPreview={setPreviewFile}
+                onDelete={handleDeleteDocument}
+                canDelete={isInstructorOrAdmin || doc.uploadedBy?._id === user?.id || doc.uploadedBy === user?.id}
+              />
+            ))}
+          </div>
+        ) : (
+          <p className="text-center body-text text-xs text-[var(--text-muted)] italic py-2">
+            {docSearch ? 'No matching documents found.' : 'No reference documents uploaded yet.'}
+          </p>
+        )}
+      </div>
+
+      {previewFile && (
+        <FilePreviewModal
+          file={previewFile}
+          onClose={() => setPreviewFile(null)}
+        />
+      )}
 
       {/* Questions Stream */}
       {questions.length ? (

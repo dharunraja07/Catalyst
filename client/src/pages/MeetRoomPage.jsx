@@ -5,6 +5,9 @@ import getSocket from '../api/socket.js'
 import CopyButton from '../components/CopyButton.jsx'
 import { useJitsiMeet } from '../hooks/useJitsiMeet.js'
 import MeetChatPanel from '../components/MeetChatPanel.jsx'
+import FileCard from '../components/FileCard.jsx'
+import FileUploadZone from '../components/FileUploadZone.jsx'
+import FilePreviewModal from '../components/FilePreviewModal.jsx'
 
 const REACTION_EMOJIS = ['👍', '❤️', '😂', '👏', '🎉', '🤔', '✋', '🔥']
 const COLOR_SWATCHES = ['#F59E0B', '#EF4444', '#10B981', '#3B82F6', '#8B5CF6', '#FFFFFF', '#1E293B']
@@ -27,9 +30,23 @@ export default function MeetRoomPage() {
   const [videoEnabled, setVideoEnabled] = useState(true)
   const [participants, setParticipants] = useState([]) // array of { userId, name, audioOn, videoOn }
 
-  // Side Panel State ('participants' | 'chat' | 'whiteboard' | null)
+  // Side Panel State ('participants' | 'chat' | 'whiteboard' | 'resources' | null)
   const [activeSidePanel, setActiveSidePanel] = useState(null)
   const activeSidePanelRef = useRef(activeSidePanel)
+
+  // Meeting Resources & Shared Documents State
+  const [meetDocuments, setMeetDocuments] = useState([])
+  const [previewFile, setPreviewFile] = useState(null)
+  const [meetDocSearch, setMeetDocSearch] = useState('')
+
+  const handleDeleteMeetDocument = async (file) => {
+    try {
+      await api.delete(`/documents/${file._id || file.id}`)
+      setMeetDocuments((prev) => prev.filter((d) => (d._id || d.id) !== (file._id || file.id)))
+    } catch {
+      // Ignored
+    }
+  }
 
   // In-Meeting Real-Time Chat State & Incoming Toasts
   const [meetMessages, setMeetMessages] = useState([])
@@ -268,8 +285,12 @@ export default function MeetRoomPage() {
       setIsValidating(true)
       setRoomError('')
       try {
-        const res = await api.get(`/meets/${upperRoomCode}`)
+        const [res, docsRes] = await Promise.all([
+          api.get(`/meets/${upperRoomCode}`),
+          api.get('/documents', { params: { module: 'meet', meetId: upperRoomCode } })
+        ])
         setMeetInfo(res.data)
+        setMeetDocuments(docsRes.data || [])
       } catch (err) {
         if (err.response?.status === 401) {
           navigate('/login')
@@ -673,9 +694,21 @@ export default function MeetRoomPage() {
       setWbAllowedUserIds(allowedUserIds || [])
     }
 
+    const handleDocumentUploaded = (doc) => {
+      if ((doc.meetId || '').toUpperCase() === upperRoomCode) {
+        setMeetDocuments((prev) => [doc, ...prev.filter((d) => (d._id || d.id) !== (doc._id || doc.id))])
+      }
+    }
+
+    const handleDocumentDeleted = ({ documentId }) => {
+      setMeetDocuments((prev) => prev.filter((d) => (d._id || d.id) !== documentId))
+    }
+
     socket.on('meet_error', handleMeetError)
     socket.on('meet_participants_update', handleParticipantsUpdate)
     socket.on('reaction_received', handleReactionReceived)
+    socket.on('document_uploaded', handleDocumentUploaded)
+    socket.on('document_deleted', handleDocumentDeleted)
     socket.on('meet_board_history', handleMeetBoardHistory)
     socket.on('wb_toggle', handleWbToggle)
     socket.on('wb_permissions_updated', handleWbPermissionsUpdated)
@@ -693,6 +726,8 @@ export default function MeetRoomPage() {
       socket.off('meet_error', handleMeetError)
       socket.off('meet_participants_update', handleParticipantsUpdate)
       socket.off('reaction_received', handleReactionReceived)
+      socket.off('document_uploaded', handleDocumentUploaded)
+      socket.off('document_deleted', handleDocumentDeleted)
       socket.off('meet_board_history', handleMeetBoardHistory)
       socket.off('wb_toggle', handleWbToggle)
       socket.off('wb_permissions_updated', handleWbPermissionsUpdated)
@@ -1336,6 +1371,83 @@ export default function MeetRoomPage() {
                 onClose={() => setActiveSidePanel(null)}
               />
             )}
+
+            {/* 3. IN-MEETING RESOURCES & DOCUMENTS PANEL */}
+            {activeSidePanel === 'resources' && (
+              <div className="w-full md:w-80 h-full flex flex-col bg-[var(--bg-secondary)] border-l border-[var(--border-main)] p-3 sm:p-4 animate-fadeIn shadow-2xl z-40 overflow-hidden">
+                <div className="flex items-center justify-between border-b border-[var(--border-main)] pb-2.5 mb-3 shrink-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">📁</span>
+                    <div>
+                      <h3 className="section-title text-sm font-bold text-[var(--text-primary)]">Meeting Resources</h3>
+                      <p className="caption-text text-[11px] text-[var(--text-muted)]">Live meeting documents & files</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveSidePanel(null)}
+                    className="h-7 w-7 rounded-full flex items-center justify-center text-xs font-bold text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-primary)] cursor-pointer"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div className="mb-3 shrink-0">
+                  <FileUploadZone
+                    api={api}
+                    moduleName="meet"
+                    meetId={upperRoomCode}
+                    compact
+                    onUploadSuccess={(newDocs) => {
+                      setMeetDocuments((prev) => [...newDocs, ...prev])
+                    }}
+                  />
+                </div>
+
+                <div className="mb-3 shrink-0">
+                  <input
+                    type="text"
+                    value={meetDocSearch}
+                    onChange={(e) => setMeetDocSearch(e.target.value)}
+                    placeholder="Search resources..."
+                    className="saas-input py-1.5 px-3 text-xs w-full"
+                  />
+                </div>
+
+                <div className="flex-1 min-h-0 overflow-y-auto space-y-2 custom-scrollbar pr-0.5">
+                  {meetDocuments.filter((d) => {
+                    if (!meetDocSearch.trim()) return true
+                    const q = meetDocSearch.toLowerCase().trim()
+                    return (
+                      (d.originalName || d.filename || '').toLowerCase().includes(q) ||
+                      (d.uploaderName || '').toLowerCase().includes(q)
+                    )
+                  }).length > 0 ? (
+                    meetDocuments.filter((d) => {
+                      if (!meetDocSearch.trim()) return true
+                      const q = meetDocSearch.toLowerCase().trim()
+                      return (
+                        (d.originalName || d.filename || '').toLowerCase().includes(q) ||
+                        (d.uploaderName || '').toLowerCase().includes(q)
+                      )
+                    }).map((doc) => (
+                      <FileCard
+                        key={doc._id || doc.id}
+                        file={doc}
+                        compact
+                        onPreview={setPreviewFile}
+                        onDelete={handleDeleteMeetDocument}
+                        canDelete={isHost || doc.uploadedBy?._id === currentUserId || doc.uploadedBy === currentUserId}
+                      />
+                    ))
+                  ) : (
+                    <div className="flex h-32 items-center justify-center">
+                      <p className="text-xs text-[var(--text-muted)] italic text-center">No meeting resources shared yet.</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -1726,6 +1838,21 @@ export default function MeetRoomPage() {
             >
               <span className="text-sm">💬</span>
               <span className="hidden md:inline">Chat</span>
+            </button>
+
+            {/* Meeting Resources & Files Panel Toggle */}
+            <button
+              type="button"
+              onClick={() => setActiveSidePanel((prev) => (prev === 'resources' ? null : 'resources'))}
+              className={`flex items-center justify-center gap-1.5 px-2.5 sm:px-3.5 py-2 sm:py-2.5 h-10 w-10 sm:h-auto sm:w-auto min-h-[40px] rounded-[14px] font-bold text-xs border transition cursor-pointer shrink-0 ${
+                activeSidePanel === 'resources'
+                  ? 'bg-[var(--accent-color)] text-black border-transparent font-extrabold'
+                  : 'bg-[var(--bg-secondary)] border-[var(--border-main)] text-[var(--text-primary)] hover:border-[var(--accent-color)]'
+              }`}
+              title="Meeting Resources & Documents"
+            >
+              <span className="text-sm">📁</span>
+              <span className="hidden md:inline">Resources</span>
             </button>
 
             {/* Share Screen Button */}
@@ -2126,6 +2253,13 @@ export default function MeetRoomPage() {
             ))}
           </div>
         </>
+      )}
+      {/* File Preview Modal */}
+      {previewFile && (
+        <FilePreviewModal
+          file={previewFile}
+          onClose={() => setPreviewFile(null)}
+        />
       )}
     </div>
   )

@@ -1,9 +1,12 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 import MarkdownRenderer from '../components/MarkdownRenderer.jsx'
+import FileCard from '../components/FileCard.jsx'
+import FileUploadZone from '../components/FileUploadZone.jsx'
+import FilePreviewModal from '../components/FilePreviewModal.jsx'
 
 export default function QuestionsPage() {
-  const { api } = useAuth()
+  const { api, user } = useAuth()
   const [studentType, setStudentType] = useState('')
   const [syllabus, setSyllabus] = useState('')
   const [generating, setGenerating] = useState(false)
@@ -13,6 +16,43 @@ export default function QuestionsPage() {
   })
   const [aiError, setAiError] = useState('')
   const [visibleAnswers, setVisibleAnswers] = useState({})
+
+  // Practice Documents State
+  const [documents, setDocuments] = useState([])
+  const [previewFile, setPreviewFile] = useState(null)
+  const [docSearch, setDocSearch] = useState('')
+
+  const isInstructorOrAdmin = user?.role === 'instructor' || user?.role === 'admin'
+
+  useEffect(() => {
+    async function loadPracticeDocuments() {
+      try {
+        const res = await api.get('/documents', { params: { module: 'practice' } })
+        setDocuments(res.data || [])
+      } catch {
+        // Ignore silent load error
+      }
+    }
+    loadPracticeDocuments()
+  }, [api])
+
+  const handleDeleteDocument = async (file) => {
+    try {
+      await api.delete(`/documents/${file._id || file.id}`)
+      setDocuments((prev) => prev.filter((d) => (d._id || d.id) !== (file._id || file.id)))
+    } catch {
+      // Ignore
+    }
+  }
+
+  const filteredDocs = documents.filter((doc) => {
+    if (!docSearch.trim()) return true
+    const q = docSearch.toLowerCase().trim()
+    return (
+      (doc.originalName || doc.filename || '').toLowerCase().includes(q) ||
+      (doc.uploaderName || '').toLowerCase().includes(q)
+    )
+  })
 
   const [selectedProvider, setSelectedProvider] = useState(() => {
     return localStorage.getItem('ai_provider') || 'gemini'
@@ -186,6 +226,60 @@ export default function QuestionsPage() {
           </button>
         </div>
       </div>
+
+      {/* Practice Module Reference Sheets, Coding Datasets & Material Attachments */}
+      <div className="space-y-4 sm:space-y-5 rounded-2xl sm:rounded-[20px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-4 sm:p-6 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--border-main)] pb-3">
+          <div>
+            <h3 className="section-title text-lg font-bold flex items-center gap-2">
+              <span>📂</span>
+              <span>Practice Sheets, Coding Problems & Datasets</span>
+            </h3>
+            <p className="caption-text text-xs text-[var(--text-secondary)]">Reference PDFs, sample inputs/outputs, and datasets for solving practice problems</p>
+          </div>
+
+          <input
+            type="text"
+            value={docSearch}
+            onChange={(e) => setDocSearch(e.target.value)}
+            placeholder="Search practice sheets..."
+            className="saas-input py-1.5 px-3 text-xs w-full sm:w-64"
+          />
+        </div>
+
+        <FileUploadZone
+          api={api}
+          moduleName="practice"
+          onUploadSuccess={(newDocs) => {
+            setDocuments((prev) => [...newDocs, ...prev])
+          }}
+        />
+
+        {filteredDocs.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+            {filteredDocs.map((doc) => (
+              <FileCard
+                key={doc._id || doc.id}
+                file={doc}
+                onPreview={setPreviewFile}
+                onDelete={handleDeleteDocument}
+                canDelete={isInstructorOrAdmin || doc.uploadedBy?._id === user?.id || doc.uploadedBy === user?.id}
+              />
+            ))}
+          </div>
+        ) : (
+          <p className="text-center body-text text-xs text-[var(--text-muted)] italic py-2">
+            {docSearch ? 'No matching practice sheets found.' : 'No practice attachments uploaded yet.'}
+          </p>
+        )}
+      </div>
+
+      {previewFile && (
+        <FilePreviewModal
+          file={previewFile}
+          onClose={() => setPreviewFile(null)}
+        />
+      )}
 
       {aiError && (
         <p className="rounded-[14px] bg-[var(--error-bg)] border border-[var(--error-color)]/30 px-4 py-3 text-xs sm:text-sm text-[var(--error-color)] break-words">
