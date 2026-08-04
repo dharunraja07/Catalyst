@@ -1293,46 +1293,6 @@ export default function StudyGroupPage() {
               </div>
             )}
 
-            {incomingRequests.length > 0 && (
-              <div className="space-y-4 pt-2">
-                <h2 className="section-title text-xl sm:text-2xl font-extrabold">
-                  Incoming Requests ({incomingRequests.length})
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4">
-                  {incomingRequests.map((request) => (
-                    <div key={request._id} className="rounded-2xl sm:rounded-[16px] border border-[var(--border-main)] bg-[var(--bg-secondary)] p-4 shadow-sm space-y-3">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                        <div className="min-w-0 flex-1">
-                          <h3 className="card-title font-bold text-sm sm:text-base truncate">{request.sender?.name || 'A student'}</h3>
-                          <p className="caption-text text-xs text-[var(--text-muted)] truncate">{request.sender?.email}</p>
-                          {request.group?.groupName && (
-                            <p className="body-text text-xs text-[var(--text-secondary)] mt-1 truncate">
-                              Wants to add you to &quot;{request.group.groupName}&quot;
-                            </p>
-                          )}
-                        </div>
-                        <div className="flex gap-2 shrink-0 w-full sm:w-auto">
-                          <button
-                            type="button"
-                            onClick={() => respondToRequest(request._id, true)}
-                            className="saas-button-primary min-h-[44px] px-4 text-xs font-bold flex-1 sm:flex-none cursor-pointer"
-                          >
-                            Accept
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => respondToRequest(request._id, false)}
-                            className="saas-button-secondary min-h-[44px] px-4 text-xs font-semibold flex-1 sm:flex-none cursor-pointer"
-                          >
-                            Reject
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
             <hr className="canvas-divider opacity-60" />
 
             <div className="space-y-4">

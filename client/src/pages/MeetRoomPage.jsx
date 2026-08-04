@@ -1341,243 +1341,309 @@ export default function MeetRoomPage() {
 
         {/* FULL SCREEN WHITEBOARD OVERLAY (Fills Full Available Vertical Space) */}
         {activeSidePanel === 'whiteboard' && (
-          <div className="absolute inset-2 sm:inset-3 z-40 flex flex-col rounded-[20px] border border-[var(--border-main)] bg-[var(--bg-surface)] shadow-2xl overflow-hidden animate-fadeIn">
-            {/* Whiteboard Header Toolbar */}
-            <div className="flex flex-wrap items-center justify-between gap-1.5 border-b border-[var(--border-main)] bg-[var(--bg-secondary)] p-2">
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => setWbTool('pen')}
-                  disabled={!canDraw}
-                  className={`px-2.5 py-1 rounded-[8px] text-xs font-bold transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
-                    wbTool === 'pen'
-                      ? 'bg-[var(--accent-color)] text-black'
-                      : 'bg-[var(--bg-primary)] text-[var(--text-secondary)] border border-[var(--border-main)]'
-                  }`}
-                  title="Freehand Pen"
-                >
-                  ✏️ Pen
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setWbTool('text')}
-                  disabled={!canDraw}
-                  className={`px-2.5 py-1 rounded-[8px] text-xs font-bold transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
-                    wbTool === 'text'
-                      ? 'bg-[var(--accent-color)] text-black'
-                      : 'bg-[var(--bg-primary)] text-[var(--text-secondary)] border border-[var(--border-main)]'
-                  }`}
-                >
-                  🔤 Text
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setWbTool('eraser')}
-                  disabled={!canDraw}
-                  className={`px-2.5 py-1 rounded-[8px] text-xs font-bold transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
-                    wbTool === 'eraser'
-                      ? 'bg-[var(--accent-color)] text-black'
-                      : 'bg-[var(--bg-primary)] text-[var(--text-secondary)] border border-[var(--border-main)]'
-                  }`}
-                >
-                  🧹 Eraser
-                </button>
-              </div>
-
-              {/* Center Status / Host Permission Popover Toggle */}
-              <div className="flex items-center gap-2">
-                {!canDraw ? (
-                  <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1">
-                    🔒 Read-Only (Host Permission Required)
-                  </span>
-                ) : !isHost ? (
-                  <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
-                    ✏️ Drawing Access Granted
-                  </span>
-                ) : null}
-
-                {isHost && (
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setShowWbPermPopover((prev) => !prev)}
-                      className="px-2.5 py-1 rounded-[8px] text-xs font-bold bg-[var(--accent-color)] text-black flex items-center gap-1 cursor-pointer hover:opacity-90 transition"
-                    >
-                      <span>✏️ Permissions ({wbAllowedUserIds.length})</span>
-                    </button>
-                    {showWbPermPopover && (
-                      <div className="absolute left-1/2 -translate-x-1/2 sm:left-auto sm:right-0 top-9 w-64 p-3 bg-[var(--bg-surface)] border border-[var(--border-main)] rounded-[14px] shadow-2xl z-50 space-y-2">
-                        <div className="flex items-center justify-between pb-1.5 border-b border-[var(--border-main)]">
-                          <span className="text-xs font-bold text-[var(--text-primary)]">
-                            Whiteboard Access
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => setShowWbPermPopover(false)}
-                            className="text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                        <div className="max-h-48 overflow-y-auto space-y-1.5 custom-scrollbar">
-                          {participants
-                            .filter((p) => p.userId !== currentUserId)
-                            .map((p) => {
-                              const isAllowed = wbAllowedUserIds.includes(p.userId)
-                              return (
-                                <div
-                                  key={p.userId}
-                                  className="flex items-center justify-between p-1.5 rounded-[8px] bg-[var(--bg-secondary)] text-xs border border-[var(--border-main)]"
-                                >
-                                  <span className="truncate font-medium text-[var(--text-primary)] max-w-[120px]">
-                                    {p.name}
-                                  </span>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleToggleWbPermission(p.userId)}
-                                    className={`px-2 py-0.5 rounded-[6px] text-[10px] font-bold cursor-pointer transition ${
-                                      isAllowed
-                                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 hover:bg-red-500/20 hover:text-red-400'
-                                        : 'bg-[var(--bg-primary)] border border-[var(--border-main)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-                                    }`}
-                                  >
-                                    {isAllowed ? '✓ Allowed' : '+ Allow'}
-                                  </button>
-                                </div>
-                              )
-                            })}
-                          {participants.filter((p) => p.userId !== currentUserId).length === 0 && (
-                            <p className="text-[11px] text-[var(--text-muted)] italic text-center py-1">
-                              No other participants in room
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <div className="flex items-center gap-1.5">
-                {canDraw && (
-                  <>
-                    {wbTool === 'eraser' ? (
-                      <select
-                        value={wbEraserWidth}
-                        onChange={(e) => setWbEraserWidth(Number(e.target.value))}
-                        className="saas-input text-[11px] py-1 px-1.5 bg-[var(--bg-primary)] cursor-pointer"
-                        title="Eraser Size"
-                      >
-                        <option value={15}>15px</option>
-                        <option value={30}>30px</option>
-                        <option value={50}>50px</option>
-                      </select>
-                    ) : (
-                      <>
-                        <select
-                          value={wbWidth}
-                          onChange={(e) => setWbWidth(Number(e.target.value))}
-                          className="saas-input text-[11px] py-1 px-1.5 bg-[var(--bg-primary)] cursor-pointer"
-                          title="Pen Thickness"
-                        >
-                          <option value={2}>2px</option>
-                          <option value={4}>4px</option>
-                          <option value={8}>8px</option>
-                        </select>
-
-                        <div className="flex items-center gap-0.5">
-                          {COLOR_SWATCHES.slice(0, 5).map((c) => (
-                            <button
-                              key={c}
-                              type="button"
-                              onClick={() => setWbColor(c)}
-                              style={{ backgroundColor: c }}
-                              className={`h-4 w-4 rounded-full border border-black/30 transition transform hover:scale-110 cursor-pointer ${
-                                wbColor === c ? 'ring-2 ring-[var(--accent-color)] scale-110' : ''
-                              }`}
-                            />
-                          ))}
-                        </div>
-                      </>
-                    )}
-                  </>
-                )}
-
-                {isHost && (
+          <div className="absolute inset-0 z-40 flex flex-col bg-slate-950 p-1 sm:p-2 animate-fadeIn w-full h-full min-h-0 overflow-hidden">
+            <div className="flex-1 min-h-0 flex flex-col bg-slate-900 overflow-hidden rounded-[16px] border border-slate-800 shadow-2xl w-full h-full">
+              {/* Whiteboard Header Toolbar (Slim, Pinned to Top) */}
+              <div className="flex-none flex items-center justify-between gap-1.5 border-b border-[var(--border-main)] bg-[var(--bg-secondary)] p-1.5 sm:p-2 z-20 overflow-x-auto no-scrollbar custom-scrollbar">
+                {/* Left Tools Group: Pen / Text / Eraser + Shapes */}
+                <div className="flex items-center gap-1 shrink-0">
                   <button
                     type="button"
-                    onClick={handleClearBoard}
-                    className="px-2 py-1 rounded-[6px] text-[10px] font-bold bg-[var(--error-bg)] text-[var(--error-color)] border border-[var(--error-color)]/30 hover:opacity-80 transition cursor-pointer"
-                    title="Clear whiteboard for everyone"
+                    onClick={() => setWbTool('pen')}
+                    disabled={!canDraw}
+                    className={`px-2 py-1 rounded-[8px] text-xs font-bold transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shrink-0 ${
+                      wbTool === 'pen'
+                        ? 'bg-[var(--accent-color)] text-black font-extrabold'
+                        : 'bg-[var(--bg-primary)] text-[var(--text-secondary)] border border-[var(--border-main)]'
+                    }`}
+                    title="Pen Tool"
                   >
-                    Clear
+                    <span>✏️</span>
+                    <span className="hidden md:inline ml-1">Pen</span>
                   </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setWbTool('text')}
+                    disabled={!canDraw}
+                    className={`px-2 py-1 rounded-[8px] text-xs font-bold transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shrink-0 ${
+                      wbTool === 'text'
+                        ? 'bg-[var(--accent-color)] text-black font-extrabold'
+                        : 'bg-[var(--bg-primary)] text-[var(--text-secondary)] border border-[var(--border-main)]'
+                    }`}
+                    title="Text Tool"
+                  >
+                    <span>🔤</span>
+                    <span className="hidden md:inline ml-1">Text</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setWbTool('eraser')}
+                    disabled={!canDraw}
+                    className={`px-2 py-1 rounded-[8px] text-xs font-bold transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shrink-0 ${
+                      wbTool === 'eraser'
+                        ? 'bg-[var(--accent-color)] text-black font-extrabold'
+                        : 'bg-[var(--bg-primary)] text-[var(--text-secondary)] border border-[var(--border-main)]'
+                    }`}
+                    title="Eraser Tool"
+                  >
+                    <span>🧹</span>
+                    <span className="hidden md:inline ml-1">Eraser</span>
+                  </button>
+
+                  {/* Shape Tools */}
+                  <div className="flex items-center gap-0.5 border-l border-[var(--border-main)] pl-1 ml-0.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setWbTool('line')}
+                      disabled={!canDraw}
+                      className={`p-1 rounded-[6px] text-xs font-bold transition cursor-pointer disabled:opacity-40 ${
+                        wbTool === 'line' ? 'bg-[var(--accent-color)] text-black' : 'hover:bg-[var(--bg-surface)] text-[var(--text-secondary)]'
+                      }`}
+                      title="Line Tool"
+                    >
+                      📏
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setWbTool('rect')}
+                      disabled={!canDraw}
+                      className={`p-1 rounded-[6px] text-xs font-bold transition cursor-pointer disabled:opacity-40 ${
+                        wbTool === 'rect' ? 'bg-[var(--accent-color)] text-black' : 'hover:bg-[var(--bg-surface)] text-[var(--text-secondary)]'
+                      }`}
+                      title="Rectangle Tool"
+                    >
+                      🔲
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setWbTool('ellipse')}
+                      disabled={!canDraw}
+                      className={`p-1 rounded-[6px] text-xs font-bold transition cursor-pointer disabled:opacity-40 ${
+                        wbTool === 'ellipse' ? 'bg-[var(--accent-color)] text-black' : 'hover:bg-[var(--bg-surface)] text-[var(--text-secondary)]'
+                      }`}
+                      title="Ellipse Tool"
+                    >
+                      ⭕
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setWbTool('arrow')}
+                      disabled={!canDraw}
+                      className={`p-1 rounded-[6px] text-xs font-bold transition cursor-pointer disabled:opacity-40 ${
+                        wbTool === 'arrow' ? 'bg-[var(--accent-color)] text-black' : 'hover:bg-[var(--bg-surface)] text-[var(--text-secondary)]'
+                      }`}
+                      title="Arrow Tool"
+                    >
+                      ➔
+                    </button>
+                  </div>
+                </div>
+
+                {/* Center Status / Host Permission Popover Toggle */}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {!canDraw ? (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1 shrink-0">
+                      🔒 <span className="hidden sm:inline">Read-Only</span>
+                    </span>
+                  ) : !isHost ? (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1 shrink-0">
+                      ✏️ <span className="hidden sm:inline">Drawing Granted</span>
+                    </span>
+                  ) : null}
+
+                  {isHost && (
+                    <div className="relative shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setShowWbPermPopover((prev) => !prev)}
+                        className="px-2 py-1 rounded-[8px] text-[11px] sm:text-xs font-bold bg-[var(--accent-color)] text-black flex items-center gap-1 cursor-pointer hover:opacity-90 transition shrink-0"
+                      >
+                        <span>✏️ Perms ({wbAllowedUserIds.length})</span>
+                      </button>
+                      {showWbPermPopover && (
+                        <div className="absolute left-1/2 -translate-x-1/2 sm:left-auto sm:right-0 top-9 w-64 p-3 bg-[var(--bg-surface)] border border-[var(--border-main)] rounded-[14px] shadow-2xl z-50 space-y-2">
+                          <div className="flex items-center justify-between pb-1.5 border-b border-[var(--border-main)]">
+                            <span className="text-xs font-bold text-[var(--text-primary)]">
+                              Whiteboard Access
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setShowWbPermPopover(false)}
+                              className="text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                          <div className="max-h-48 overflow-y-auto space-y-1.5 custom-scrollbar">
+                            {participants
+                              .filter((p) => p.userId !== currentUserId)
+                              .map((p) => {
+                                const isAllowed = wbAllowedUserIds.includes(p.userId)
+                                return (
+                                  <div
+                                    key={p.userId}
+                                    className="flex items-center justify-between p-1.5 rounded-[8px] bg-[var(--bg-secondary)] text-xs border border-[var(--border-main)]"
+                                  >
+                                    <span className="truncate font-medium text-[var(--text-primary)] max-w-[120px]">
+                                      {p.name}
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleToggleWbPermission(p.userId)}
+                                      className={`px-2 py-0.5 rounded-[6px] text-[10px] font-bold cursor-pointer transition ${
+                                        isAllowed
+                                          ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 hover:bg-red-500/20 hover:text-red-400'
+                                          : 'bg-[var(--bg-primary)] border border-[var(--border-main)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                                      }`}
+                                    >
+                                      {isAllowed ? '✓ Allowed' : '+ Allow'}
+                                    </button>
+                                  </div>
+                                )
+                              })}
+                            {participants.filter((p) => p.userId !== currentUserId).length === 0 && (
+                              <p className="text-[11px] text-[var(--text-muted)] italic text-center py-1">
+                                No other participants in room
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+                  {canDraw && (
+                    <>
+                      {wbTool === 'eraser' ? (
+                        <select
+                          value={wbEraserWidth}
+                          onChange={(e) => setWbEraserWidth(Number(e.target.value))}
+                          className="saas-input text-[11px] py-0.5 px-1 bg-[var(--bg-primary)] cursor-pointer"
+                          title="Eraser Size"
+                        >
+                          <option value={15}>15px</option>
+                          <option value={30}>30px</option>
+                          <option value={50}>50px</option>
+                        </select>
+                      ) : (
+                        <>
+                          <select
+                            value={wbWidth}
+                            onChange={(e) => setWbWidth(Number(e.target.value))}
+                            className="saas-input text-[11px] py-0.5 px-1 bg-[var(--bg-primary)] cursor-pointer"
+                            title="Pen Thickness"
+                          >
+                            <option value={2}>2px</option>
+                            <option value={4}>4px</option>
+                            <option value={8}>8px</option>
+                          </select>
+
+                          <div className="flex items-center gap-0.5">
+                            {COLOR_SWATCHES.slice(0, 5).map((c) => (
+                              <button
+                                key={c}
+                                type="button"
+                                onClick={() => setWbColor(c)}
+                                style={{ backgroundColor: c }}
+                                className={`h-4 w-4 rounded-full border border-black/30 transition transform hover:scale-110 cursor-pointer ${
+                                  wbColor === c ? 'ring-2 ring-[var(--accent-color)] scale-110' : ''
+                                }`}
+                              />
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </>
+                  )}
+
+                  {isHost && (
+                    <button
+                      type="button"
+                      onClick={handleClearBoard}
+                      className="px-2 py-1 rounded-[6px] text-[10px] font-bold bg-[var(--error-bg)] text-[var(--error-color)] border border-[var(--error-color)]/30 hover:opacity-80 transition cursor-pointer shrink-0"
+                      title="Clear whiteboard for everyone"
+                    >
+                      Clear
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={handleToggleWhiteboard}
+                    className="h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer shrink-0"
+                    title="Close Whiteboard"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+
+              {/* Canvas Workspace Container: Flex-1 Min-H-0 to fill ALL remaining vertical space */}
+              <div
+                ref={canvasContainerRef}
+                className={`relative flex-1 min-h-0 w-full h-full bg-slate-900 overflow-hidden ${
+                  canDraw ? 'cursor-crosshair' : 'cursor-not-allowed'
+                }`}
+              >
+                {!canDraw && (
+                  <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 px-3 py-1.5 rounded-full bg-black/80 border border-amber-500/50 text-amber-300 text-xs font-semibold shadow-lg backdrop-blur-md pointer-events-none flex items-center gap-1.5">
+                    <span>🔒 View-Only Mode</span>
+                    <span className="text-[10px] text-slate-400">(Host permission required to draw)</span>
+                  </div>
                 )}
 
-                <button
-                  type="button"
-                  onClick={handleToggleWhiteboard}
-                  className="h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
-                  title="Close Whiteboard for everyone"
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
-
-            {/* Canvas Workspace */}
-            <div
-              ref={canvasContainerRef}
-              className={`relative flex-1 min-h-0 bg-slate-900 overflow-hidden ${
-                !canDraw
-                  ? 'cursor-not-allowed'
-                  : wbTool === 'eraser'
-                    ? 'cursor-eraser'
-                    : wbTool === 'text'
-                      ? 'cursor-text'
-                      : 'cursor-crosshair'
-              }`}
-            >
-              {!canDraw && (
-                <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 px-3 py-1.5 rounded-full bg-black/80 border border-amber-500/50 text-amber-300 text-xs font-semibold shadow-lg backdrop-blur-md pointer-events-none flex items-center gap-1.5">
-                  <span>🔒 View-Only Mode</span>
-                  <span className="text-[10px] text-slate-400">(Host permission required to draw)</span>
-                </div>
-              )}
-
-              <canvas
-                ref={canvasRef}
-                onPointerDown={handleCanvasPointerDown}
-                onPointerMove={handleCanvasPointerMove}
-                onPointerUp={handleCanvasPointerUp}
-                onPointerCancel={handleCanvasPointerUp}
-                onPointerLeave={handleCanvasPointerUp}
-                className="touch-none w-full h-full block"
-              />
-
-              {/* Floating Text Input Box */}
-              {textInput.open && canDraw && (
-                <form
-                  onSubmit={handleSubmitText}
-                  style={{ left: `${textInput.x}px`, top: `${textInput.y}px` }}
-                  className="absolute z-20 flex gap-1 bg-black/80 p-1.5 rounded-[10px] border border-[var(--accent-color)] shadow-xl"
-                >
-                  <input
-                    type="text"
-                    autoFocus
-                    value={textInput.content}
-                    onChange={(e) => setTextInput((prev) => ({ ...prev, content: e.target.value }))}
-                    placeholder="Type text..."
-                    className="saas-input text-xs py-1 px-2 bg-slate-900 min-w-[120px]"
+                {/* NEW FEATURE 2: Visible Circular Eraser Cursor Preview */}
+                {wbTool === 'eraser' && eraserCursor.visible && (
+                  <div
+                    style={{
+                      left: `${eraserCursor.x}px`,
+                      top: `${eraserCursor.y}px`,
+                      width: `${wbEraserWidth}px`,
+                      height: `${wbEraserWidth}px`,
+                      transform: 'translate(-50%, -50%)'
+                    }}
+                    className="absolute z-30 pointer-events-none rounded-full border-2 border-red-500 bg-red-500/20 shadow-md"
                   />
-                  <button
-                    type="submit"
-                    className="px-2.5 py-1 text-xs font-bold bg-[var(--accent-color)] text-black rounded-[6px]"
+                )}
+
+                <canvas
+                  ref={canvasRef}
+                  onPointerDown={handleCanvasPointerDown}
+                  onPointerMove={handleCanvasPointerMove}
+                  onPointerUp={handleCanvasPointerUp}
+                  onPointerCancel={handleCanvasPointerUp}
+                  onPointerLeave={handleCanvasPointerUp}
+                  className="touch-none w-full h-full block"
+                />
+
+                {/* Floating Text Input Box */}
+                {textInput.open && canDraw && (
+                  <form
+                    onSubmit={handleSubmitText}
+                    style={{ left: `${textInput.x}px`, top: `${textInput.y}px` }}
+                    className="absolute z-20 flex gap-1 bg-black/80 p-1.5 rounded-[10px] border border-[var(--accent-color)] shadow-xl"
                   >
-                    Add
-                  </button>
-                </form>
-              )}
+                    <input
+                      type="text"
+                      autoFocus
+                      value={textInput.content}
+                      onChange={(e) => setTextInput((prev) => ({ ...prev, content: e.target.value }))}
+                      placeholder="Type text..."
+                      className="saas-input text-xs py-1 px-2 bg-slate-900 min-w-[120px]"
+                    />
+                    <button
+                      type="submit"
+                      className="px-2.5 py-1 text-xs font-bold bg-[var(--accent-color)] text-black rounded-[6px]"
+                    >
+                      Add
+                    </button>
+                  </form>
+                )}
+              </div>
             </div>
           </div>
         )}
