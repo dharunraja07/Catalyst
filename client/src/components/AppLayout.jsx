@@ -27,6 +27,17 @@ export default function AppLayout({ children }) {
     localStorage.setItem('sidebarCollapsed', isCollapsed ? 'true' : 'false')
   }, [isCollapsed])
 
+  useEffect(() => {
+    if (isMobileDrawerOpen || isProfileOpen) {
+      document.body.classList.add('body-scroll-lock')
+    } else {
+      document.body.classList.remove('body-scroll-lock')
+    }
+    return () => {
+      document.body.classList.remove('body-scroll-lock')
+    }
+  }, [isMobileDrawerOpen, isProfileOpen])
+
   // Automatically close notification panel & mobile drawer when navigating to a new page, and sync notifications
   useEffect(() => {
     closePanel()

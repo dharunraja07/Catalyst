@@ -78,6 +78,28 @@ export default function MeetLobbyPage() {
     }
   }
 
+  const handleShareLink = async (meet) => {
+    const meetUrl = `${window.location.origin}/meet/room/${meet.roomCode}`
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `Join ${meet.title || 'Study Meet'} on Catalyst`,
+          text: `Join my live study call on Catalyst Meet! Room Code: ${meet.roomCode}`,
+          url: meetUrl
+        })
+        return
+      } catch (err) {
+        // User cancelled share dialog
+      }
+    }
+    if (navigator.clipboard) {
+      try {
+        await navigator.clipboard.writeText(meetUrl)
+        alert(`Meeting link for ${meet.roomCode} copied to clipboard!`)
+      } catch (e) {}
+    }
+  }
+
   return (
     <div className="space-y-8">
         {/* Header */}
@@ -260,24 +282,34 @@ export default function MeetLobbyPage() {
                       </p>
                     </div>
 
-                    <div className="pt-2 border-t border-[var(--border-main)]">
-                      {meet.isActive ? (
+                    <div className="pt-2 border-t border-[var(--border-main)] space-y-2">
+                      <div className="flex gap-2">
+                        {meet.isActive ? (
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/meet/room/${meet.roomCode}`)}
+                            className="saas-button-primary flex-1 min-h-[38px] text-xs font-bold cursor-pointer"
+                          >
+                            Rejoin Call →
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            disabled
+                            className="saas-button-secondary flex-1 min-h-[38px] text-xs font-semibold opacity-50 cursor-not-allowed"
+                          >
+                            Meeting Ended
+                          </button>
+                        )}
                         <button
                           type="button"
-                          onClick={() => navigate(`/meet/room/${meet.roomCode}`)}
-                          className="saas-button-primary w-full min-h-[36px] text-xs font-bold cursor-pointer"
+                          onClick={() => handleShareLink(meet)}
+                          className="saas-button-secondary px-3 min-h-[38px] text-xs font-bold shrink-0 cursor-pointer"
+                          title="Share meeting link"
                         >
-                          Rejoin Call →
+                          🔗 Share
                         </button>
-                      ) : (
-                        <button
-                          type="button"
-                          disabled
-                          className="saas-button-secondary w-full min-h-[36px] text-xs font-semibold opacity-50 cursor-not-allowed"
-                        >
-                          Meeting Ended
-                        </button>
-                      )}
+                      </div>
                     </div>
                   </div>
                 )

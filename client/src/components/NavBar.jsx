@@ -12,7 +12,8 @@ const authNavLinks = [
   { href: '/questions', label: 'Practice', icon: '🎯' },
   { href: '/progress', label: 'Progress', icon: '📈' },
   { href: '/career', label: 'Career', icon: '💼' },
-  { href: '/study-group', label: 'Study Group', icon: '👥' }
+  { href: '/study-group', label: 'Study Group', icon: '👥' },
+  { href: '/meet', label: 'Meet', icon: '📹' }
 ]
 
 function AnimatedThemeToggle({ isDark, onToggle }) {

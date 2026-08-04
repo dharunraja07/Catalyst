@@ -1051,6 +1051,7 @@ export default function MeetRoomPage() {
                       ? 'bg-[var(--accent-color)] text-black'
                       : 'bg-[var(--bg-primary)] text-[var(--text-secondary)] border border-[var(--border-main)]'
                   }`}
+                  title="Freehand Pen"
                 >
                   ✏️ Pen
                 </button>
@@ -1225,7 +1226,13 @@ export default function MeetRoomPage() {
             <div
               ref={canvasContainerRef}
               className={`relative flex-1 min-h-0 bg-slate-900 overflow-hidden ${
-                canDraw ? 'cursor-crosshair' : 'cursor-not-allowed'
+                !canDraw
+                  ? 'cursor-not-allowed'
+                  : wbTool === 'eraser'
+                    ? 'cursor-eraser'
+                    : wbTool === 'text'
+                      ? 'cursor-text'
+                      : 'cursor-crosshair'
               }`}
             >
               {!canDraw && (
