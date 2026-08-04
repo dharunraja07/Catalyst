@@ -78,7 +78,7 @@ export default function LoginPage() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4" autoComplete="on">
           <label className="block space-y-1.5 font-semibold text-xs text-[var(--text-primary)]">
             <span>Email Address</span>
             <input
@@ -87,6 +87,7 @@ export default function LoginPage() {
               required
               value={form.email}
               onChange={handleChange}
+              autoComplete="email"
               placeholder="name@example.com"
               className="saas-input w-full min-h-[46px] px-4 text-sm"
             />
@@ -109,6 +110,7 @@ export default function LoginPage() {
                 required
                 value={form.password}
                 onChange={handleChange}
+                autoComplete="current-password"
                 placeholder="••••••••"
                 className="saas-input w-full min-h-[46px] pl-4 pr-12 text-sm"
               />
