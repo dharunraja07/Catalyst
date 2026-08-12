@@ -12,3 +12,7 @@ coverage/
 .vscode/
 .DS_Store
 *.log
+
+# Local file uploads (use Cloudinary/S3 in production — Render's disk is ephemeral)
+server/uploads/*
+!server/uploads/.gitkeep
