@@ -1125,6 +1125,7 @@ export default function StudyGroupPage() {
                       <FileCard
                         key={doc._id || doc.id}
                         file={doc}
+                        api={api}
                         onPreview={setPreviewFile}
                         onDelete={handleDeleteGroupDocument}
                         canDelete={isCurrentHost || doc.uploadedBy?._id === currentUserId || doc.uploadedBy === currentUserId}
@@ -1143,6 +1144,7 @@ export default function StudyGroupPage() {
           {previewFile && (
             <FilePreviewModal
               file={previewFile}
+              api={api}
               onClose={() => setPreviewFile(null)}
             />
           )}

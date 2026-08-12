@@ -15,6 +15,8 @@ const meetHosts = new Map()
 const meetWbOpen = new Map()
 // meetWbPermissions: Map<roomCode, Set<string>>
 const meetWbPermissions = new Map()
+// meetWbPresenter: Map<roomCode, { userId: string, name: string } | null>
+const meetWbPresenter = new Map()
 
 const ALLOWED_EMOJIS = new Set(['👍', '❤️', '😂', '👏', '🎉', '🤔', '✋', '🔥'])
 
@@ -64,6 +66,13 @@ function removeSocketFromMeetRoom(io, socket, roomCode) {
     if (roomMap.size === 0) {
       meetPresence.delete(roomCode)
     }
+  }
+
+  // If the whiteboard presenter left, clear the presenter state for everyone
+  const currentPresenter = meetWbPresenter.get(roomCode)
+  if (currentPresenter && socket.user && currentPresenter.userId === socket.user._id.toString()) {
+    meetWbPresenter.set(roomCode, null)
+    io.to(roomCode).emit('wb_presenter_state', { presenter: null })
   }
 
   broadcastParticipants(io, roomCode)
@@ -127,6 +136,9 @@ export function setupMeetSocket(io) {
         }
         const allowedSet = meetWbPermissions.get(code)
         socket.emit('wb_permissions_updated', { allowedUserIds: Array.from(allowedSet) })
+
+        // Send current whiteboard presenter state (who, if anyone, is presenting)
+        socket.emit('wb_presenter_state', { presenter: meetWbPresenter.get(code) || null })
 
         // Broadcast updated participants to everyone in room
         broadcastParticipants(io, code)
@@ -208,6 +220,38 @@ export function setupMeetSocket(io) {
       io.to(code).emit('wb_toggle', { isOpen: openState })
     })
 
+    // Whiteboard Presenting: announces the shared workspace without forcing anyone's view
+    socket.on('wb_present_start', ({ roomCode }) => {
+      if (!roomCode) return
+      const code = roomCode.trim().toUpperCase()
+      const userId = socket.user._id.toString()
+
+      // Only host or someone the host has granted draw permission to can present
+      if (!isUserAllowedToDraw(userId, code)) {
+        return socket.emit('meet_error', { error: 'Only the host (or someone granted permission) can present the whiteboard' })
+      }
+
+      const presenter = { userId, name: socket.user.name }
+      meetWbPresenter.set(code, presenter)
+      io.to(code).emit('wb_presenter_state', { presenter })
+    })
+
+    socket.on('wb_present_stop', ({ roomCode }) => {
+      if (!roomCode) return
+      const code = roomCode.trim().toUpperCase()
+      const userId = socket.user._id.toString()
+      const hostId = meetHosts.get(code)
+      const currentPresenter = meetWbPresenter.get(code)
+
+      // Only the current presenter or the host can stop presenting
+      if (currentPresenter && currentPresenter.userId !== userId && hostId !== userId) {
+        return socket.emit('meet_error', { error: 'Only the presenter or host can stop presenting' })
+      }
+
+      meetWbPresenter.set(code, null)
+      io.to(code).emit('wb_presenter_state', { presenter: null })
+    })
+
     socket.on('wb_toggle_permission', async ({ roomCode, targetUserId }) => {
       if (!roomCode || !targetUserId) return
       const code = roomCode.trim().toUpperCase()
@@ -269,17 +313,13 @@ export function setupMeetSocket(io) {
     socket.on('wb_clear', async ({ roomCode }) => {
       if (!roomCode) return
       const code = roomCode.trim().toUpperCase()
-      try {
-        const meet = await Meet.findOne({ roomCode: code })
-        if (!meet || meet.createdBy.toString() !== socket.user._id.toString()) {
-          return socket.emit('meet_error', { error: 'Only host can clear the whiteboard' })
-        }
-
-        meetBoards.set(code, [])
-        io.to(code).emit('wb_clear', {})
-      } catch (err) {
-        console.error('Socket wb_clear error:', err)
+      const userId = socket.user._id.toString()
+      if (!isUserAllowedToDraw(userId, code)) {
+        return socket.emit('meet_error', { error: 'You do not have permission to clear the whiteboard' })
       }
+
+      meetBoards.set(code, [])
+      io.to(code).emit('wb_clear', {})
     })
 
     socket.on('wb_remove_action', ({ roomCode, actionId, actionType }) => {

@@ -20,109 +20,66 @@ export default function MeetRoomPage() {
   const upperRoomCode = (roomCode || '').toUpperCase()
   const currentUserId = (user?.id || user?._id || '').toString()
 
-  // Room state
+  // 1. All useState declarations
   const [meetInfo, setMeetInfo] = useState(null)
   const [isValidating, setIsValidating] = useState(true)
   const [roomError, setRoomError] = useState('')
-
-  // Media state
   const [audioEnabled, setAudioEnabled] = useState(true)
   const [videoEnabled, setVideoEnabled] = useState(true)
-  const [participants, setParticipants] = useState([]) // array of { userId, name, audioOn, videoOn }
-
-  // Side Panel State ('participants' | 'chat' | 'whiteboard' | 'resources' | null)
+  const [participants, setParticipants] = useState([])
   const [activeSidePanel, setActiveSidePanel] = useState(null)
-  const activeSidePanelRef = useRef(activeSidePanel)
-
-  // Meeting Resources & Shared Documents State
   const [meetDocuments, setMeetDocuments] = useState([])
   const [previewFile, setPreviewFile] = useState(null)
   const [meetDocSearch, setMeetDocSearch] = useState('')
-
-  const handleDeleteMeetDocument = async (file) => {
-    try {
-      await api.delete(`/documents/${file._id || file.id}`)
-      setMeetDocuments((prev) => prev.filter((d) => (d._id || d.id) !== (file._id || file.id)))
-    } catch {
-      // Ignored
-    }
-  }
-
-  // In-Meeting Real-Time Chat State & Incoming Toasts
   const [meetMessages, setMeetMessages] = useState([])
   const [chatToasts, setChatToasts] = useState([])
-
-  useEffect(() => {
-    activeSidePanelRef.current = activeSidePanel
-    if (activeSidePanel === 'chat') {
-      setChatToasts([])
-    }
-  }, [activeSidePanel])
-
-  // Floating UI Modals State
+  const [screenShareNotice, setScreenShareNotice] = useState(false)
+  const [presenterToast, setPresenterToast] = useState(null)
   const [showInviteModal, setShowInviteModal] = useState(false)
   const [showReactionsPicker, setShowReactionsPicker] = useState(false)
   const [confirmEndModal, setConfirmEndModal] = useState(false)
-  const [reactions, setReactions] = useState([]) // array of { id, name, emoji, xPercent }
-  const [activeTileReactions, setActiveTileReactions] = useState({}) // userId -> { emoji, id }
-
-  // Screen Sharing State
+  const [reactions, setReactions] = useState([])
+  const [activeTileReactions, setActiveTileReactions] = useState({})
   const [isSharingScreen, setIsSharingScreen] = useState(false)
-
-  // Share to Group Modal State
   const [showShareGroupModal, setShowShareGroupModal] = useState(false)
   const [userGroups, setUserGroups] = useState([])
   const [loadingGroups, setLoadingGroups] = useState(false)
   const [selectedShareGroupId, setSelectedShareGroupId] = useState('')
   const [shareSuccessMsg, setShareSuccessMsg] = useState('')
   const [sharingGroup, setSharingGroup] = useState(false)
-
-  // Auto-Hide Controls & Mobile More Menu State (Zoom/YouTube style)
   const [showControls, setShowControls] = useState(true)
   const [showMoreMenu, setShowMoreMenu] = useState(false)
-  const hideControlsTimerRef = useRef(null)
-
-  // Whiteboard State & Shape Tool
   const [wbColor, setWbColor] = useState('#F59E0B')
   const [wbWidth, setWbWidth] = useState(3)
   const [wbEraserWidth, setWbEraserWidth] = useState(30)
-  const [wbTool, setWbTool] = useState('pen') // 'pen' | 'line' | 'rect' | 'ellipse' | 'arrow' | 'text' | 'eraser'
+  const [wbTool, setWbTool] = useState('pen')
   const [textInput, setTextInput] = useState({ open: false, x: 0, y: 0, nx: 0, ny: 0, content: '' })
   const [eraserCursor, setEraserCursor] = useState({ x: 0, y: 0, visible: false })
   const [draggingTextId, setDraggingTextId] = useState(null)
   const [wbAllowedUserIds, setWbAllowedUserIds] = useState([])
   const [showWbPermPopover, setShowWbPermPopover] = useState(false)
-
-  // Auto-hide controls reset helper (Only auto-hides on mobile <768px; laptop/desktop keeps bars permanently visible)
-  const isInputOrModalOpen = textInput.open || showInviteModal || showReactionsPicker || confirmEndModal || showShareGroupModal || showWbPermPopover || showMoreMenu || activeSidePanel === 'chat'
-
-  const resetHideControlsTimer = useCallback(() => {
-    setShowControls(true)
-    if (hideControlsTimerRef.current) {
-      clearTimeout(hideControlsTimerRef.current)
-    }
-    // Laptop/Desktop screens (>=768px) keep top and bottom bars PERMANENTLY visible
-    if (typeof window !== 'undefined' && window.innerWidth >= 768) {
-      return
-    }
-    if (!isInputOrModalOpen) {
-      hideControlsTimerRef.current = setTimeout(() => {
-        setShowControls(false)
-      }, 3000)
-    }
-  }, [isInputOrModalOpen])
-
-  useEffect(() => {
-    resetHideControlsTimer()
-    return () => {
-      if (hideControlsTimerRef.current) clearTimeout(hideControlsTimerRef.current)
-    }
-  }, [resetHideControlsTimer])
-
-  // Jitsi Container Node State
+  const [wbPresenter, setWbPresenter] = useState(null)
+  const [isCompactViewport, setIsCompactViewport] = useState(
+    typeof window !== 'undefined' ? Math.min(window.innerWidth, window.innerHeight) < 700 : true
+  )
   const [jitsiContainerEl, setJitsiContainerEl] = useState(null)
 
-  // Jitsi Engine Custom Hook
+  // 2. All useRef declarations
+  const activeSidePanelRef = useRef(activeSidePanel)
+  const hideControlsTimerRef = useRef(null)
+  const roomContainerRef = useRef(null)
+  const canvasRef = useRef(null)
+  const canvasContainerRef = useRef(null)
+  const currentStrokeIdRef = useRef(null)
+  const isDrawingRef = useRef(false)
+  const shapeStartPtRef = useRef(null)
+  const draggingTextRef = useRef(null)
+  const remoteBoardActionsRef = useRef([])
+  const undoStackRef = useRef([])
+  const redoStackRef = useRef([])
+  const handleLeaveCallRef = useRef(null)
+
+  // 3. Custom Jitsi Meet Hook
   const {
     isJoined: isJitsiJoined,
     isLoading: isJitsiLoading,
@@ -136,12 +93,78 @@ export default function MeetRoomPage() {
     containerEl: jitsiContainerEl,
     displayName: user?.name,
     onLeave: () => {
-      handleLeaveCall()
+      if (handleLeaveCallRef.current) handleLeaveCallRef.current()
     }
   })
 
-  // Room Container Ref for Fullscreen API
-  const roomContainerRef = useRef(null)
+  // Document deletion helper
+  const handleDeleteMeetDocument = async (file) => {
+    try {
+      await api.delete(`/documents/${file._id || file.id}`)
+      setMeetDocuments((prev) => prev.filter((d) => (d._id || d.id) !== (file._id || file.id)))
+    } catch {
+      // Ignored
+    }
+  }
+
+  // Auto-hide controls reset helper
+  const isInputOrModalOpen = textInput.open || showInviteModal || showReactionsPicker || confirmEndModal || showShareGroupModal || showWbPermPopover || showMoreMenu || activeSidePanel === 'chat'
+
+  const resetHideControlsTimer = useCallback(() => {
+    setShowControls(true)
+    if (hideControlsTimerRef.current) {
+      clearTimeout(hideControlsTimerRef.current)
+    }
+    if (!isCompactViewport) {
+      return
+    }
+    if (!isInputOrModalOpen) {
+      hideControlsTimerRef.current = setTimeout(() => {
+        setShowControls(false)
+      }, 3000)
+    }
+  }, [isInputOrModalOpen, isCompactViewport])
+
+  // 4. useEffect Hooks
+  useEffect(() => {
+    if (!screenShareNotice) return
+    const timer = setTimeout(() => setScreenShareNotice(false), 5000)
+    return () => clearTimeout(timer)
+  }, [screenShareNotice])
+
+  useEffect(() => {
+    if (!presenterToast) return
+    const timer = setTimeout(() => setPresenterToast(null), 8000)
+    return () => clearTimeout(timer)
+  }, [presenterToast])
+
+  useEffect(() => {
+    activeSidePanelRef.current = activeSidePanel
+    if (activeSidePanel === 'chat') {
+      setChatToasts([])
+    }
+  }, [activeSidePanel])
+
+  // Recompute compact-viewport on resize/orientation change
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const handleViewportChange = () => {
+      setIsCompactViewport(Math.min(window.innerWidth, window.innerHeight) < 700)
+    }
+    window.addEventListener('resize', handleViewportChange)
+    window.addEventListener('orientationchange', handleViewportChange)
+    return () => {
+      window.removeEventListener('resize', handleViewportChange)
+      window.removeEventListener('orientationchange', handleViewportChange)
+    }
+  }, [])
+
+  useEffect(() => {
+    resetHideControlsTimer()
+    return () => {
+      if (hideControlsTimerRef.current) clearTimeout(hideControlsTimerRef.current)
+    }
+  }, [resetHideControlsTimer])
 
   // Fullscreen API & Landscape Orientation Handling
   useEffect(() => {
@@ -170,7 +193,7 @@ export default function MeetRoomPage() {
             try {
               const p = req.call(elem)
               if (p && typeof p.catch === 'function') {
-                p.catch(() => {}) // Gracefully handle iOS Safari or browser restriction
+                p.catch(() => {}) 
               }
             } catch (_) {}
           }
@@ -204,7 +227,6 @@ export default function MeetRoomPage() {
       window.removeEventListener('resize', handleResizeOrOrientation)
       window.removeEventListener('orientationchange', handleResizeOrOrientation)
 
-      // Clean exit from fullscreen on unmount / leaving meeting
       const doc = document
       const isCurrentlyFullscreen = Boolean(
         doc.fullscreenElement ||
@@ -227,16 +249,34 @@ export default function MeetRoomPage() {
     }
   }, [])
 
-  // Whiteboard Canvas Refs
-  const canvasRef = useRef(null)
-  const canvasContainerRef = useRef(null)
-  const currentStrokeIdRef = useRef(null)
-  const isDrawingRef = useRef(false)
-  const shapeStartPtRef = useRef(null)
-  const draggingTextRef = useRef(null)
-  const remoteBoardActionsRef = useRef([])
-  const undoStackRef = useRef([])
-  const redoStackRef = useRef([])
+  // 1. Initial Room Validation on Mount
+  useEffect(() => {
+    if (!user) {
+      navigate('/login')
+      return
+    }
+    async function validateRoom() {
+      setIsValidating(true)
+      setRoomError('')
+      try {
+        const [res, docsRes] = await Promise.all([
+          api.get(`/meets/${upperRoomCode}`),
+          api.get('/documents', { params: { module: 'meet', meetId: upperRoomCode } })
+        ])
+        setMeetInfo(res.data)
+        setMeetDocuments(docsRes.data || [])
+      } catch (err) {
+        if (err.response?.status === 401) {
+          navigate('/login')
+          return
+        }
+        setRoomError(err.response?.data?.error || "This meet doesn't exist or has ended")
+      } finally {
+        setIsValidating(false)
+      }
+    }
+    validateRoom()
+  }, [api, upperRoomCode, user, navigate])
 
   // Helper to trigger floating reaction
   const triggerReaction = useCallback(({ userId, name, emoji }) => {
@@ -682,11 +722,10 @@ export default function MeetRoomPage() {
       navigate('/meet')
     }
 
-    const handleWbToggle = ({ isOpen }) => {
-      if (isOpen) {
-        setActiveSidePanel('whiteboard')
-      } else {
-        setActiveSidePanel((prev) => (prev === 'whiteboard' ? null : prev))
+    const handleWbPresenterState = ({ presenter }) => {
+      setWbPresenter(presenter || null)
+      if (presenter && presenter.userId !== currentUserId && activeSidePanelRef.current !== 'whiteboard') {
+        setPresenterToast({ id: Date.now(), name: presenter.name })
       }
     }
 
@@ -710,7 +749,7 @@ export default function MeetRoomPage() {
     socket.on('document_uploaded', handleDocumentUploaded)
     socket.on('document_deleted', handleDocumentDeleted)
     socket.on('meet_board_history', handleMeetBoardHistory)
-    socket.on('wb_toggle', handleWbToggle)
+    socket.on('wb_presenter_state', handleWbPresenterState)
     socket.on('wb_permissions_updated', handleWbPermissionsUpdated)
     socket.on('wb_draw_start', handleWbDrawStart)
     socket.on('wb_draw_point', handleWbDrawPoint)
@@ -729,7 +768,7 @@ export default function MeetRoomPage() {
       socket.off('document_uploaded', handleDocumentUploaded)
       socket.off('document_deleted', handleDocumentDeleted)
       socket.off('meet_board_history', handleMeetBoardHistory)
-      socket.off('wb_toggle', handleWbToggle)
+      socket.off('wb_presenter_state', handleWbPresenterState)
       socket.off('wb_permissions_updated', handleWbPermissionsUpdated)
       socket.off('wb_draw_start', handleWbDrawStart)
       socket.off('wb_draw_point', handleWbDrawPoint)
@@ -765,6 +804,18 @@ export default function MeetRoomPage() {
   }
 
   const handleToggleScreenShare = () => {
+    const isSupported =
+      typeof navigator !== 'undefined' &&
+      navigator.mediaDevices &&
+      typeof navigator.mediaDevices.getDisplayMedia === 'function'
+
+    if (!isSupported) {
+      // Mobile browsers (Chrome/Safari on Android & iOS) don't support screen
+      // capture from the web — this is a platform limitation, not a bug.
+      setScreenShareNotice(true)
+      return
+    }
+
     toggleJitsiShareScreen()
     setIsSharingScreen((prev) => !prev)
   }
@@ -779,6 +830,31 @@ export default function MeetRoomPage() {
     }
     navigate('/meet')
   }
+  handleLeaveCallRef.current = handleLeaveCall
+
+  // Best-effort cleanup on refresh/tab-close/navigation-away: explicitly tells
+  // Jitsi and our own server "I'm leaving" instead of waiting for the ICE/
+  // socket timeout to detect the drop. This is what shrinks the "ghost tile"
+  // window when someone refreshes on mobile — it can't be fully eliminated
+  // (browsers don't guarantee network calls complete during unload), but this
+  // covers the vast majority of refresh/close cases.
+  useEffect(() => {
+    const handleUnload = () => {
+      try {
+        hangupJitsi()
+      } catch (_) {}
+      const socket = getSocket()
+      if (socket && socket.connected) {
+        socket.emit('leave_meet', { roomCode: upperRoomCode })
+      }
+    }
+    window.addEventListener('pagehide', handleUnload)
+    window.addEventListener('beforeunload', handleUnload)
+    return () => {
+      window.removeEventListener('pagehide', handleUnload)
+      window.removeEventListener('beforeunload', handleUnload)
+    }
+  }, [hangupJitsi, upperRoomCode])
 
   const handleEndMeetForEveryone = () => {
     const socket = getSocket()
@@ -818,10 +894,23 @@ export default function MeetRoomPage() {
   const canDraw = Boolean(isHost || wbAllowedUserIds.includes(currentUserId))
 
   const handleToggleWhiteboard = () => {
-    const nextOpen = activeSidePanel !== 'whiteboard'
+    // Local-only: just shows/hides the whiteboard on THIS user's screen.
+    // Does not affect other participants — see handlePresentWhiteboard for that.
+    setActiveSidePanel((prev) => (prev === 'whiteboard' ? null : 'whiteboard'))
+  }
+
+  const handlePresentWhiteboard = () => {
     const socket = getSocket()
     if (socket && socket.connected) {
-      socket.emit('wb_toggle', { roomCode: upperRoomCode, isOpen: nextOpen })
+      socket.emit('wb_present_start', { roomCode: upperRoomCode })
+    }
+    setActiveSidePanel('whiteboard')
+  }
+
+  const handleStopPresenting = () => {
+    const socket = getSocket()
+    if (socket && socket.connected) {
+      socket.emit('wb_present_stop', { roomCode: upperRoomCode })
     }
   }
 
@@ -1056,6 +1145,7 @@ export default function MeetRoomPage() {
   }
 
   const handleClearBoard = () => {
+    if (!window.confirm('Clear the whiteboard for everyone? This cannot be undone.')) return
     const socket = getSocket()
     if (socket && socket.connected) {
       socket.emit('wb_clear', { roomCode: upperRoomCode })
@@ -1176,10 +1266,12 @@ export default function MeetRoomPage() {
         ))}
       </div>
 
-      {/* Standalone Minimal Top Header Bar (Auto-Hides on Mobile <768px Only, Permanent on Laptop/Desktop) */}
+      {/* Standalone Minimal Top Header Bar (Auto-Hides on compact/mobile viewports, incl. landscape phones; Permanent on Laptop/Desktop) */}
       <header
-        className={`flex-none border-b border-[var(--border-main)] bg-[var(--bg-surface)] px-3 py-2 sm:px-4 sm:py-2.5 shadow-xs z-30 transition-all duration-300 ease-in-out ${
-          showControls ? 'opacity-100 translate-y-0' : 'max-md:opacity-0 max-md:-translate-y-full max-md:pointer-events-none'
+        className={`flex-none border-[var(--border-main)] bg-[var(--bg-surface)] px-3 sm:px-4 shadow-xs z-30 transition-all duration-300 ease-in-out ${
+          showControls || !isCompactViewport
+            ? 'max-h-24 opacity-100 py-2 sm:py-2.5 border-b'
+            : 'max-h-0 opacity-0 py-0 pointer-events-none border-b-0 overflow-hidden'
         }`}
       >
         <div className="flex items-center justify-between gap-2">
@@ -1250,7 +1342,7 @@ export default function MeetRoomPage() {
         className="flex-1 min-h-0 flex overflow-hidden p-1 sm:p-3 gap-2 sm:gap-3 relative bg-slate-950 max-w-full overflow-x-hidden"
       >
         {/* LEFT MAIN VIDEO AREA (Reflows Width When Panel Opens, Locked to 16:9 Video Canvas) */}
-        <div className="flex-1 min-h-0 flex items-center justify-center overflow-hidden relative rounded-[20px] border border-slate-800 bg-slate-950 shadow-2xl transition-all duration-300 ease-in-out p-0.5 sm:p-2 max-w-full">
+        <div className="flex-1 min-h-0 min-w-0 flex items-center justify-center overflow-hidden relative rounded-[20px] border border-slate-800 bg-slate-950 shadow-2xl transition-all duration-300 ease-in-out p-0.5 sm:p-2 max-w-full">
           {/* Locked 16:9 Aspect Ratio Video Box */}
           <div
             style={{
@@ -1277,7 +1369,7 @@ export default function MeetRoomPage() {
 
         {/* RIGHT SIDE PANEL AREA (Participants & Chat) */}
         {activeSidePanel && activeSidePanel !== 'whiteboard' && (
-          <div className="w-full sm:w-[360px] md:w-[380px] shrink-0 h-full flex flex-col rounded-[20px] border border-[var(--border-main)] bg-[var(--bg-surface)] overflow-hidden shadow-2xl transition-all duration-300 ease-in-out z-20">
+          <div className="absolute inset-0 sm:relative sm:inset-auto sm:w-[360px] md:w-[380px] shrink-0 h-full flex flex-col rounded-[20px] border border-[var(--border-main)] bg-[var(--bg-surface)] overflow-hidden shadow-2xl transition-all duration-300 ease-in-out z-40 sm:z-20">
             {/* 1. PARTICIPANTS PANEL */}
             {activeSidePanel === 'participants' && (
               <div className="flex flex-col h-full bg-[var(--bg-surface)] overflow-hidden">
@@ -1374,7 +1466,7 @@ export default function MeetRoomPage() {
 
             {/* 3. IN-MEETING RESOURCES & DOCUMENTS PANEL */}
             {activeSidePanel === 'resources' && (
-              <div className="w-full md:w-80 h-full flex flex-col bg-[var(--bg-secondary)] border-l border-[var(--border-main)] p-3 sm:p-4 animate-fadeIn shadow-2xl z-40 overflow-hidden">
+              <div className="w-full h-full flex flex-col bg-[var(--bg-secondary)] p-3 sm:p-4 animate-fadeIn overflow-hidden">
                 <div className="flex items-center justify-between border-b border-[var(--border-main)] pb-2.5 mb-3 shrink-0">
                   <div className="flex items-center gap-2">
                     <span className="text-xl">📁</span>
@@ -1434,6 +1526,7 @@ export default function MeetRoomPage() {
                       <FileCard
                         key={doc._id || doc.id}
                         file={doc}
+                        api={api}
                         compact
                         onPreview={setPreviewFile}
                         onDelete={handleDeleteMeetDocument}
@@ -1570,58 +1663,67 @@ export default function MeetRoomPage() {
                       <button
                         type="button"
                         onClick={() => setShowWbPermPopover((prev) => !prev)}
-                        className="px-2 py-1 rounded-[8px] text-[11px] sm:text-xs font-bold bg-[var(--accent-color)] text-black flex items-center gap-1 cursor-pointer hover:opacity-90 transition shrink-0"
+                        className="px-2.5 py-1 rounded-[8px] text-[11px] sm:text-xs font-bold bg-[var(--accent-color)] text-black flex items-center gap-1 cursor-pointer hover:opacity-90 transition shrink-0 shadow-xs"
                       >
                         <span>✏️ Perms ({wbAllowedUserIds.length})</span>
                       </button>
                       {showWbPermPopover && (
-                        <div className="absolute left-1/2 -translate-x-1/2 sm:left-auto sm:right-0 top-9 w-64 p-3 bg-[var(--bg-surface)] border border-[var(--border-main)] rounded-[14px] shadow-2xl z-50 space-y-2">
-                          <div className="flex items-center justify-between pb-1.5 border-b border-[var(--border-main)]">
-                            <span className="text-xs font-bold text-[var(--text-primary)]">
-                              Whiteboard Access
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => setShowWbPermPopover(false)}
-                              className="text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                          <div className="max-h-48 overflow-y-auto space-y-1.5 custom-scrollbar">
-                            {participants
-                              .filter((p) => p.userId !== currentUserId)
-                              .map((p) => {
-                                const isAllowed = wbAllowedUserIds.includes(p.userId)
-                                return (
-                                  <div
-                                    key={p.userId}
-                                    className="flex items-center justify-between p-1.5 rounded-[8px] bg-[var(--bg-secondary)] text-xs border border-[var(--border-main)]"
-                                  >
-                                    <span className="truncate font-medium text-[var(--text-primary)] max-w-[120px]">
-                                      {p.name}
-                                    </span>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleToggleWbPermission(p.userId)}
-                                      className={`px-2 py-0.5 rounded-[6px] text-[10px] font-bold cursor-pointer transition ${
-                                        isAllowed
-                                          ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 hover:bg-red-500/20 hover:text-red-400'
-                                          : 'bg-[var(--bg-primary)] border border-[var(--border-main)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-                                      }`}
+                        <>
+                          <div
+                            onClick={() => setShowWbPermPopover(false)}
+                            className="fixed inset-0 z-[190] bg-black/40 backdrop-blur-xs"
+                          />
+                          <div className="fixed top-14 left-1/2 -translate-x-1/2 sm:left-auto sm:right-12 w-72 p-3.5 bg-[var(--bg-surface)] border-2 border-[var(--accent-color)] rounded-[16px] shadow-2xl z-[200] space-y-2.5 animate-fadeIn">
+                            <div className="flex items-center justify-between pb-2 border-b border-[var(--border-main)]">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-sm">🎨</span>
+                                <span className="text-xs font-extrabold text-[var(--text-primary)]">
+                                  Whiteboard Draw Access
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setShowWbPermPopover(false)}
+                                className="text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                            <div className="max-h-60 overflow-y-auto space-y-2 custom-scrollbar pr-0.5">
+                              {participants
+                                .filter((p) => p.userId !== currentUserId)
+                                .map((p) => {
+                                  const isAllowed = wbAllowedUserIds.includes(p.userId)
+                                  return (
+                                    <div
+                                      key={p.userId}
+                                      className="flex items-center justify-between p-2 rounded-[10px] bg-[var(--bg-secondary)] text-xs border border-[var(--border-main)] gap-2"
                                     >
-                                      {isAllowed ? '✓ Allowed' : '+ Allow'}
-                                    </button>
-                                  </div>
-                                )
-                              })}
-                            {participants.filter((p) => p.userId !== currentUserId).length === 0 && (
-                              <p className="text-[11px] text-[var(--text-muted)] italic text-center py-1">
-                                No other participants in room
-                              </p>
-                            )}
+                                      <span className="truncate font-bold text-[var(--text-primary)] min-w-0 flex-1">
+                                        {p.name}
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleToggleWbPermission(p.userId)}
+                                        className={`px-2.5 py-1 rounded-[8px] text-[10px] font-extrabold cursor-pointer transition shrink-0 ${
+                                          isAllowed
+                                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 hover:bg-red-500/20 hover:text-red-400'
+                                            : 'bg-[var(--accent-color)] text-black hover:opacity-90'
+                                        }`}
+                                      >
+                                        {isAllowed ? '✓ Granted' : '+ Allow Draw'}
+                                      </button>
+                                    </div>
+                                  )
+                                })}
+                              {participants.filter((p) => p.userId !== currentUserId).length === 0 && (
+                                <p className="text-[11px] text-[var(--text-muted)] italic text-center py-2">
+                                  No other participants in room
+                                </p>
+                              )}
+                            </div>
                           </div>
-                        </div>
+                        </>
                       )}
                     </div>
                   )}
@@ -1672,7 +1774,42 @@ export default function MeetRoomPage() {
                     </>
                   )}
 
-                  {isHost && (
+                  {/* Presenter Status Badge */}
+                  {wbPresenter && (
+                    <span className="hidden sm:flex items-center gap-1 px-2 py-1 rounded-[8px] text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shrink-0">
+                      🟢 {wbPresenter.userId === currentUserId ? 'You are presenting' : `${wbPresenter.name} is presenting`}
+                    </span>
+                  )}
+
+                  {/* Present / Stop Presenting Toggle — permission-gated like drawing (host or host-granted users only) */}
+                  {wbPresenter?.userId === currentUserId ? (
+                    <button
+                      type="button"
+                      onClick={handleStopPresenting}
+                      className="px-2 py-1 rounded-[6px] text-[10px] font-bold bg-[var(--bg-primary)] text-[var(--text-secondary)] border border-[var(--border-main)] hover:border-[var(--accent-color)] transition cursor-pointer shrink-0"
+                      title="Stop presenting the whiteboard to everyone"
+                    >
+                      Stop Presenting
+                    </button>
+                  ) : canDraw ? (
+                    <button
+                      type="button"
+                      onClick={handlePresentWhiteboard}
+                      className="px-2 py-1 rounded-[6px] text-[10px] font-bold bg-[var(--accent-color)] text-black hover:opacity-90 transition cursor-pointer shrink-0"
+                      title="Make this the shared whiteboard for everyone in the meeting"
+                    >
+                      📣 Present
+                    </button>
+                  ) : (
+                    <span
+                      className="hidden sm:inline-flex items-center gap-1 px-2 py-1 rounded-[6px] text-[10px] font-bold bg-[var(--bg-primary)] text-[var(--text-secondary)]/60 border border-[var(--border-main)] shrink-0 cursor-not-allowed"
+                      title="Only the host (or someone the host has granted permission) can present the whiteboard"
+                    >
+                      🔒 Present
+                    </span>
+                  )}
+
+                  {canDraw && (
                     <button
                       type="button"
                       onClick={handleClearBoard}
@@ -1761,10 +1898,12 @@ export default function MeetRoomPage() {
         )}
       </div>
 
-      {/* BOTTOM CUSTOM CONTROL BAR (Fixed Bottom, Always Visible on Laptop, Auto-Hides on Mobile Only) */}
+      {/* BOTTOM CUSTOM CONTROL BAR (Fixed Bottom, Always Visible on Laptop, Auto-Hides on compact/mobile viewports incl. landscape) */}
       <div
-        className={`flex-none border-t border-[var(--border-main)] bg-[var(--bg-surface)] p-2 sm:p-3 z-30 relative transition-all duration-300 ease-in-out max-w-full overflow-hidden overflow-x-hidden ${
-          showControls ? 'opacity-100 translate-y-0' : 'max-md:opacity-0 max-md:translate-y-full max-md:pointer-events-none'
+        className={`flex-none border-[var(--border-main)] bg-[var(--bg-surface)] z-30 relative transition-all duration-300 ease-in-out max-w-full overflow-hidden overflow-x-hidden ${
+          showControls || !isCompactViewport
+            ? 'max-h-32 opacity-100 p-2 sm:p-3 border-t'
+            : 'max-h-0 opacity-0 p-0 pointer-events-none border-t-0'
         }`}
       >
         <div className="flex items-center justify-between gap-1 sm:gap-2 max-w-[1280px] mx-auto w-full">
@@ -1804,7 +1943,7 @@ export default function MeetRoomPage() {
             <button
               type="button"
               onClick={() => setShowInviteModal(true)}
-              className="flex items-center justify-center gap-1.5 px-2.5 sm:px-3.5 py-2 sm:py-2.5 h-10 w-10 sm:h-auto sm:w-auto min-h-[40px] rounded-[14px] font-bold text-xs bg-[var(--bg-secondary)] border border-[var(--border-main)] text-[var(--text-primary)] hover:border-[var(--accent-color)] transition cursor-pointer shrink-0"
+              className="hidden sm:flex items-center justify-center gap-1.5 px-2.5 sm:px-3.5 py-2 sm:py-2.5 h-10 w-10 sm:h-auto sm:w-auto min-h-[40px] rounded-[14px] font-bold text-xs bg-[var(--bg-secondary)] border border-[var(--border-main)] text-[var(--text-primary)] hover:border-[var(--accent-color)] transition cursor-pointer shrink-0"
               title="Invite Peers"
             >
               <span className="text-sm">🔗</span>
@@ -1844,7 +1983,7 @@ export default function MeetRoomPage() {
             <button
               type="button"
               onClick={() => setActiveSidePanel((prev) => (prev === 'resources' ? null : 'resources'))}
-              className={`flex items-center justify-center gap-1.5 px-2.5 sm:px-3.5 py-2 sm:py-2.5 h-10 w-10 sm:h-auto sm:w-auto min-h-[40px] rounded-[14px] font-bold text-xs border transition cursor-pointer shrink-0 ${
+              className={`hidden sm:flex items-center justify-center gap-1.5 px-2.5 sm:px-3.5 py-2 sm:py-2.5 h-10 w-10 sm:h-auto sm:w-auto min-h-[40px] rounded-[14px] font-bold text-xs border transition cursor-pointer shrink-0 ${
                 activeSidePanel === 'resources'
                   ? 'bg-[var(--accent-color)] text-black border-transparent font-extrabold'
                   : 'bg-[var(--bg-secondary)] border-[var(--border-main)] text-[var(--text-primary)] hover:border-[var(--accent-color)]'
@@ -1859,7 +1998,7 @@ export default function MeetRoomPage() {
             <button
               type="button"
               onClick={handleToggleScreenShare}
-              className={`flex items-center justify-center gap-1.5 px-2.5 sm:px-3.5 py-2 sm:py-2.5 h-10 w-10 sm:h-auto sm:w-auto min-h-[40px] rounded-[14px] font-bold text-xs border transition cursor-pointer shrink-0 ${
+              className={`hidden sm:flex items-center justify-center gap-1.5 px-2.5 sm:px-3.5 py-2 sm:py-2.5 h-10 w-10 sm:h-auto sm:w-auto min-h-[40px] rounded-[14px] font-bold text-xs border transition cursor-pointer shrink-0 ${
                 isSharingScreen
                   ? 'bg-amber-500 text-black border-transparent font-extrabold shadow-md'
                   : 'bg-[var(--bg-secondary)] border-[var(--border-main)] text-[var(--text-primary)] hover:border-[var(--accent-color)]'
@@ -1874,7 +2013,7 @@ export default function MeetRoomPage() {
             <button
               type="button"
               onClick={handleToggleWhiteboard}
-              className={`flex items-center justify-center gap-1.5 px-2.5 sm:px-3.5 py-2 sm:py-2.5 h-10 w-10 sm:h-auto sm:w-auto min-h-[40px] rounded-[14px] font-bold text-xs border transition cursor-pointer shrink-0 ${
+              className={`hidden sm:flex items-center justify-center gap-1.5 px-2.5 sm:px-3.5 py-2 sm:py-2.5 h-10 w-10 sm:h-auto sm:w-auto min-h-[40px] rounded-[14px] font-bold text-xs border transition cursor-pointer shrink-0 ${
                 activeSidePanel === 'whiteboard'
                   ? 'bg-[var(--accent-color)] text-black border-transparent font-extrabold'
                   : 'bg-[var(--bg-secondary)] border-[var(--border-main)] text-[var(--text-primary)] hover:border-[var(--accent-color)]'
@@ -1934,7 +2073,37 @@ export default function MeetRoomPage() {
               </button>
 
               {showMoreMenu && (
-                <div className="fixed bottom-16 right-3 w-56 p-2 bg-[var(--bg-surface)] border border-[var(--border-main)] rounded-[16px] shadow-2xl z-50 space-y-1 animate-fadeIn">
+                <div className="fixed bottom-16 right-3 w-56 p-2 bg-[var(--bg-surface)] border border-[var(--border-main)] rounded-[16px] shadow-2xl z-50 space-y-1 animate-fadeIn max-h-[70vh] overflow-y-auto custom-scrollbar">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowInviteModal(true)
+                      setShowMoreMenu(false)
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold rounded-[10px] hover:bg-[var(--bg-secondary)] text-[var(--text-primary)]"
+                  >
+                    <span>🔗 Invite</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveSidePanel((prev) => (prev === 'resources' ? null : 'resources'))
+                      setShowMoreMenu(false)
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold rounded-[10px] hover:bg-[var(--bg-secondary)] text-[var(--text-primary)]"
+                  >
+                    <span>📁 Resources</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleToggleWhiteboard()
+                      setShowMoreMenu(false)
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-bold rounded-[10px] hover:bg-[var(--bg-secondary)] text-[var(--text-primary)]"
+                  >
+                    <span>🎨 Whiteboard</span>
+                  </button>
                   <button
                     type="button"
                     onClick={() => {
@@ -2169,6 +2338,54 @@ export default function MeetRoomPage() {
         </div>
       )}
 
+      {/* SCREEN SHARE UNSUPPORTED NOTICE (mobile browsers don't support screen capture) */}
+      {screenShareNotice && (
+        <div className="fixed top-16 sm:top-20 left-1/2 -translate-x-1/2 z-50 animate-fadeIn">
+          <div className="flex items-center gap-3 px-4 py-2.5 rounded-full bg-[var(--bg-surface)] border-2 border-amber-500/60 shadow-2xl max-w-[90vw]">
+            <span className="text-xs font-bold text-amber-300 whitespace-nowrap">
+              📵 Screen sharing isn't supported on mobile browsers — try a laptop or desktop
+            </span>
+            <button
+              type="button"
+              onClick={() => setScreenShareNotice(false)}
+              className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] font-bold text-xs cursor-pointer shrink-0"
+              title="Dismiss"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* WHITEBOARD PRESENTER NOTIFICATION TOAST (Top-Center, Auto-Dismisses) */}
+      {presenterToast && activeSidePanel !== 'whiteboard' && (
+        <div className="fixed top-16 sm:top-20 left-1/2 -translate-x-1/2 z-50 animate-fadeIn">
+          <div className="flex items-center gap-3 px-4 py-2.5 rounded-full bg-[var(--bg-surface)] border-2 border-[var(--accent-color)] shadow-2xl">
+            <span className="text-xs font-bold text-[var(--text-primary)] whitespace-nowrap">
+              🎨 {presenterToast.name} is presenting the whiteboard
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setActiveSidePanel('whiteboard')
+                setPresenterToast(null)
+              }}
+              className="px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-[var(--accent-color)] text-black hover:opacity-90 transition cursor-pointer shrink-0"
+            >
+              View
+            </button>
+            <button
+              type="button"
+              onClick={() => setPresenterToast(null)}
+              className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] font-bold text-xs cursor-pointer shrink-0"
+              title="Dismiss"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* INCOMING MEETING CHAT TOAST NOTIFICATIONS (Bottom-Right) */}
       {chatToasts.length > 0 && activeSidePanel !== 'chat' && (
         <div className="fixed bottom-20 right-6 z-50 flex flex-col gap-2.5 max-w-xs sm:max-w-sm w-full pointer-events-none">
@@ -2258,6 +2475,7 @@ export default function MeetRoomPage() {
       {previewFile && (
         <FilePreviewModal
           file={previewFile}
+          api={api}
           onClose={() => setPreviewFile(null)}
         />
       )}

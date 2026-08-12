@@ -295,6 +295,7 @@ export default function AssessmentPage() {
       {previewFile && (
         <FilePreviewModal
           file={previewFile}
+          api={api}
           onClose={() => setPreviewFile(null)}
         />
       )}

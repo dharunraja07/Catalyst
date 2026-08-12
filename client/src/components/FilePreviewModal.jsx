@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
 
-export default function FilePreviewModal({ file, onClose }) {
+export default function FilePreviewModal({ file, api, onClose }) {
   const [textContent, setTextContent] = useState('')
   const [loadingText, setLoadingText] = useState(false)
   const [zoomLevel, setZoomLevel] = useState(1)
+  const [downloading, setDownloading] = useState(false)
 
   if (!file) return null
 
@@ -33,17 +34,28 @@ export default function FilePreviewModal({ file, onClose }) {
     }
   }, [isText, fileUrl])
 
-  const handleDownload = () => {
-    const downloadUrl = fileId
-      ? `/api/documents/download/${fileId}`
-      : fileUrl
-
-    const link = document.createElement('a')
-    link.href = downloadUrl
-    link.setAttribute('download', fileName)
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+  const handleDownload = async () => {
+    if (!fileId || !api) return
+    setDownloading(true)
+    try {
+      // Uses the authenticated api client (blob) rather than a plain <a href>
+      // navigation, since the download route requires auth and a bare anchor
+      // tag doesn't send the Authorization header.
+      const response = await api.get(`/documents/download/${fileId}`, { responseType: 'blob' })
+      const blobUrl = window.URL.createObjectURL(new Blob([response.data]))
+      const link = document.createElement('a')
+      link.href = blobUrl
+      link.setAttribute('download', fileName)
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(blobUrl)
+    } catch (err) {
+      console.error('Download error:', err)
+      alert('Download failed. Please try again.')
+    } finally {
+      setDownloading(false)
+    }
   }
 
   return (
@@ -91,10 +103,11 @@ export default function FilePreviewModal({ file, onClose }) {
             <button
               type="button"
               onClick={handleDownload}
-              className="saas-button-primary py-1.5 px-3 text-xs font-bold flex items-center gap-1 cursor-pointer"
+              disabled={downloading}
+              className="saas-button-primary py-1.5 px-3 text-xs font-bold flex items-center gap-1 cursor-pointer disabled:opacity-50"
             >
-              <span>⬇️</span>
-              <span className="hidden sm:inline">Download</span>
+              <span>{downloading ? '⌛' : '⬇️'}</span>
+              <span className="hidden sm:inline">{downloading ? 'Downloading...' : 'Download'}</span>
             </button>
 
             <button

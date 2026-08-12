@@ -288,6 +288,7 @@ export default function QuestionsPage() {
       {previewFile && (
         <FilePreviewModal
           file={previewFile}
+          api={api}
           onClose={() => setPreviewFile(null)}
         />
       )}

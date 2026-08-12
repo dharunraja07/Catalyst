@@ -23,6 +23,7 @@ function getFileIcon(filename = '', mimeType = '') {
 
 export default function FileCard({
   file,
+  api,
   onPreview,
   onDelete,
   canDelete = false,
@@ -42,22 +43,27 @@ export default function FileCard({
 
   const handleDownload = async (e) => {
     e.stopPropagation()
+    if (!fileId) return
     setDownloading(true)
     try {
-      const downloadUrl = fileId
-        ? `/api/documents/download/${fileId}`
-        : (file.url || '#')
-
+      // The download route requires authentication. A plain <a href> navigation
+      // doesn't send the Authorization header, so the server rejects it — that's
+      // why "preview" worked but "download" failed. Fetching via the authenticated
+      // api client (as a blob) and triggering the save from that fixes it.
+      const response = await api.get(`/documents/download/${fileId}`, { responseType: 'blob' })
+      const blobUrl = window.URL.createObjectURL(new Blob([response.data]))
       const link = document.createElement('a')
-      link.href = downloadUrl
+      link.href = blobUrl
       link.setAttribute('download', fileName)
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
+      window.URL.revokeObjectURL(blobUrl)
     } catch (err) {
       console.error('Download error:', err)
+      alert('Download failed. Please try again.')
     } finally {
-      setTimeout(() => setDownloading(false), 1000)
+      setDownloading(false)
     }
   }
 
