@@ -261,7 +261,7 @@ export async function chatWithAI(req, res, next) {
                     })
                 }
                 return res.status(502).json({
-                    error: 'Failed to reach AI service. Please try again in a moment.'
+                    error: `Failed to reach AI service: ${error.message || 'Please try again.'}`
                 })
             }
             throw error
@@ -412,8 +412,10 @@ export async function sendConversationMessage(req, res, next) {
         } catch (error) {
             if (error instanceof AIProviderError && error.providerName === 'none') {
                 aiReplyText = 'AI service is not configured. Please set an API key in server environment.'
+            } else if (error instanceof AIProviderError) {
+                aiReplyText = `Failed to reach AI service (${error.message || 'Please check your API key'}).`
             } else {
-                aiReplyText = 'Failed to reach AI service. Please try again in a moment.'
+                aiReplyText = `Failed to process message: ${error?.message || 'Unknown error'}`
             }
         }
 

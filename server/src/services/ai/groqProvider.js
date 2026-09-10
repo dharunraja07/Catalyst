@@ -33,23 +33,49 @@ class GroqProvider {
       .filter((entry) => entry.content.trim().length > 0)
   }
 
+  async _executeWithModelFallback(fn) {
+    const candidateModels = Array.from(new Set([
+      process.env.GROQ_MODEL,
+      'openai/gpt-oss-20b', // Groq's recommended replacement for the decommissioned llama-3.1-8b-instant (fast)
+      'openai/gpt-oss-120b' // Groq's recommended replacement for the decommissioned llama-3.3-70b-versatile (higher quality)
+    ].filter(Boolean)))
+
+    let lastError = null
+    for (const modelName of candidateModels) {
+      try {
+        return await fn(modelName)
+      } catch (error) {
+        lastError = error
+        const errStr = String(error?.message || error || '')
+        if (errStr.includes('404') || errStr.includes('not_found') || errStr.includes('model_not_found')) {
+          console.warn(`[GroqProvider] Model '${modelName}' unavailable. Trying next candidate...`)
+          continue
+        }
+        throw error
+      }
+    }
+    throw lastError
+  }
+
   async generateJSON(prompt, { retries = 2 } = {}) {
     const client = this._getClient()
     const attempts = retries + 1
 
     for (let attempt = 1; attempt <= attempts; attempt += 1) {
       try {
-        const completion = await client.chat.completions.create({
-          model: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
-          messages: [
-            { role: 'system', content: 'You are a helpful assistant. Return valid JSON only when requested. Do not wrap JSON in markdown code fences.' },
-            { role: 'user', content: prompt }
-          ],
-          temperature: 0.3,
-          max_tokens: 4096
+        return await this._executeWithModelFallback(async (modelName) => {
+          const completion = await client.chat.completions.create({
+            model: modelName,
+            messages: [
+              { role: 'system', content: 'You are a helpful assistant. Return valid JSON only when requested. Do not wrap JSON in markdown code fences.' },
+              { role: 'user', content: prompt }
+            ],
+            temperature: 0.3,
+            max_tokens: 4096
+          })
+          const rawText = completion.choices?.[0]?.message?.content || ''
+          return parseJsonResponse(rawText)
         })
-        const rawText = completion.choices?.[0]?.message?.content || ''
-        return parseJsonResponse(rawText)
       } catch (error) {
         if (attempt === attempts) {
           throw this._formatError(error)
@@ -63,26 +89,29 @@ class GroqProvider {
   async chatCompletion(history, userMessage) {
     const client = this._getClient()
     try {
-      const messages = [
-        { role: 'system', content: 'You are a helpful study assistant. Provide clear, well-structured responses.' },
-        ...this._normalizeHistory(history),
-        { role: 'user', content: userMessage }
-      ]
+      return await this._executeWithModelFallback(async (modelName) => {
+        const messages = [
+          { role: 'system', content: 'You are a helpful study assistant. Provide clear, well-structured responses.' },
+          ...this._normalizeHistory(history),
+          { role: 'user', content: userMessage }
+        ]
 
-      const completion = await client.chat.completions.create({
-        model: process.env.GROQ_MODEL || 'llama-3.3-70b-versatile',
-        messages,
-        temperature: 0.7,
-        max_tokens: 4096
+        const completion = await client.chat.completions.create({
+          model: modelName,
+          messages,
+          temperature: 0.7,
+          max_tokens: 4096
+        })
+        return completion.choices?.[0]?.message?.content || ''
       })
-      return completion.choices?.[0]?.message?.content || ''
     } catch (error) {
       throw this._formatError(error)
     }
   }
 
   isAvailable() {
-    return !!(process.env.GROQ_API_KEY || '').trim()
+    const key = (process.env.GROQ_API_KEY || '').trim()
+    return !!key && key.startsWith('gsk_') && key.length > 20
   }
 
   _formatError(error) {
@@ -94,6 +123,9 @@ class GroqProvider {
     }
     if (status === 401 || status === 403 || errorStr.includes('invalid_api_key')) {
       return new AIProviderError('Invalid or unauthorized GROQ_API_KEY.', this.name, true, error)
+    }
+    if (status === 404 || errorStr.includes('404') || errorStr.includes('does not exist or you do not have access')) {
+      return new AIProviderError('GROQ_API_KEY is invalid or lacks access to Groq models.', this.name, true, error)
     }
     if (errorStr.includes('ECONNREFUSED') || errorStr.includes('ETIMEDOUT') || errorStr.includes('ENOTFOUND') || errorStr.includes('fetch failed')) {
       return new AIProviderError('Groq API connection failed.', this.name, true, error)

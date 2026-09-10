@@ -11,7 +11,7 @@ class GeminiProvider {
     if (!apiKey) {
       throw new AIProviderError('GEMINI_API_KEY is not configured.', this.name)
     }
-    const chosenModel = modelName || process.env.GEMINI_MODEL || 'gemini-2.5-flash'
+    const chosenModel = modelName || process.env.GEMINI_MODEL || 'gemini-2.0-flash'
     const genAI = new GoogleGenerativeAI(apiKey)
     return genAI.getGenerativeModel({
       model: chosenModel,
@@ -22,10 +22,9 @@ class GeminiProvider {
   async _executeWithModelFallback(fn) {
     const candidateModels = Array.from(new Set([
       process.env.GEMINI_MODEL,
+      'gemini-flash-latest', // Google's rolling alias to the current stable Flash model — stays current without code changes
       'gemini-2.5-flash',
-      'gemini-2.0-flash',
-      'gemini-1.5-flash',
-      'gemini-1.5-pro'
+      'gemini-2.5-flash-lite'
     ].filter(Boolean)))
 
     let lastError = null
@@ -37,8 +36,12 @@ class GeminiProvider {
       } catch (error) {
         lastError = error
         const errStr = String(error?.message || error || '')
+        // If error is authentication or API key related, don't keep cycling candidate models
+        if (errStr.includes('API_KEY_INVALID') || errStr.includes('API key not valid') || errStr.includes('invalid API key') || errStr.includes('401') || errStr.includes('403')) {
+          throw error
+        }
         if (errStr.includes('404') || errStr.includes('not found') || errStr.includes('is not supported')) {
-          console.warn(`[GeminiProvider] Model '${modelName}' unavailable (404). Trying next candidate...`)
+          console.warn(`[GeminiProvider] Model '${modelName}' returned 404 (check API key permissions or model availability). Trying next candidate...`)
           continue
         }
         throw error
@@ -99,7 +102,8 @@ class GeminiProvider {
   }
 
   isAvailable() {
-    return !!(process.env.GEMINI_API_KEY || '').trim()
+    const key = (process.env.GEMINI_API_KEY || '').trim()
+    return !!key && (key.startsWith('AQ.') || key.startsWith('AIzaSy') || key.length > 15)
   }
 
   _formatError(error) {
@@ -111,6 +115,9 @@ class GeminiProvider {
     }
     if (status === 400 || status === 401 || status === 403 || errorStr.includes('API_KEY_INVALID') || errorStr.includes('API key not valid')) {
       return new AIProviderError('Invalid or unauthorized GEMINI_API_KEY.', this.name, true, error)
+    }
+    if (errorStr.includes('404') || errorStr.includes('not found') || errorStr.includes('is not supported')) {
+      return new AIProviderError('GEMINI_API_KEY is invalid or lacks access to Gemini models in Google AI Studio.', this.name, true, error)
     }
     if (errorStr.includes('ECONNREFUSED') || errorStr.includes('ETIMEDOUT') || errorStr.includes('ENOTFOUND') || errorStr.includes('fetch failed')) {
       return new AIProviderError('Gemini API connection failed.', this.name, true, error)
