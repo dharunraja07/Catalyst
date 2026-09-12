@@ -18,9 +18,9 @@ import {
   Award
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext.jsx'
-import HeroSection from '../components/HeroSection.jsx'
-import CoreFeaturesShowcase from '../components/CoreFeaturesShowcase.jsx'
-import LearningJourneySection from '../components/LearningJourneySection.jsx'
+import HeroSection from '../features/landing/components/HeroSection.jsx'
+import CoreFeaturesShowcase from '../features/landing/components/CoreFeaturesShowcase.jsx'
+import LearningJourneySection from '../features/landing/components/LearningJourneySection.jsx'
 
 export default function LandingPage() {
   const { user, api } = useAuth()
@@ -53,8 +53,17 @@ export default function LandingPage() {
     }
   }
 
+  const sectionVariants = {
+    hidden: { opacity: 0, y: 16 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.4, ease: [0.22, 1, 0.36, 1] }
+    }
+  }
+
   return (
-    <div className={`mx-auto w-full max-w-[1600px] max-w-full overflow-x-hidden px-3 sm:px-6 lg:px-8 pb-16 ${user ? 'space-y-6 sm:space-y-8 pt-0' : 'space-y-8 sm:space-y-12'}`}>
+    <div className={`mx-auto w-full max-w-[1600px] max-w-full overflow-x-hidden px-4 sm:px-6 lg:px-8 pb-16 ${user ? 'space-y-10 sm:space-y-14 pt-0' : 'space-y-12 sm:space-y-16'}`}>
 
       {/* 1. Hero Section */}
       <HeroSection />
@@ -69,16 +78,16 @@ export default function LandingPage() {
         ].map((item, idx) => (
           <motion.div
             key={item.label}
-            initial={{ opacity: 0, y: 30, scale: 0.95 }}
-            whileInView={{ opacity: 1, y: 0, scale: 1 }}
-            viewport={{ once: false, amount: 0.3 }}
-            transition={{ duration: 0.7, delay: idx * 0.1, ease: [0.16, 1, 0.3, 1] }}
-            className="gold-orbit-card text-center py-5 sm:py-8 px-3 sm:px-4 flex flex-col items-center justify-center cursor-pointer select-none"
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.4, delay: idx * 0.08, ease: [0.22, 1, 0.36, 1] }}
+            className="rounded-2xl border border-[var(--border-main)] bg-[var(--bg-surface)] text-center py-6 px-4 flex flex-col items-center justify-center transition-all duration-200 hover:border-[var(--accent-color)] hover:-translate-y-0.5 shadow-sm"
           >
-            <p className="page-title text-3xl sm:text-5xl font-extrabold text-[var(--accent-color)] tracking-tight">
+            <p className="page-title text-3xl sm:text-4xl font-extrabold text-[var(--accent-color)] tracking-tight">
               {item.value}
             </p>
-            <p className="card-title text-xs sm:text-base mt-2 font-semibold text-[var(--text-secondary)]">
+            <p className="card-title text-xs sm:text-sm mt-1.5 font-semibold text-[var(--text-secondary)]">
               {item.label}
             </p>
           </motion.div>
@@ -86,15 +95,21 @@ export default function LandingPage() {
       </section>
 
       {/* 3. Why Catalyst - Bento Grid Section */}
-      <section className="saas-card shadow-glow space-y-6 sm:space-y-8 p-4 sm:p-8 lg:p-10 rounded-2xl sm:rounded-[28px] border border-[var(--border-main)] bg-[var(--bg-secondary)]">
-        <div className="text-center max-w-3xl mx-auto space-y-2 sm:space-y-3">
-          <p className="caption-text uppercase tracking-[0.24em] text-[var(--accent-color)] font-semibold text-xs sm:text-sm">
+      <motion.section
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true }}
+        variants={sectionVariants}
+        className="space-y-8 py-4"
+      >
+        <div className="text-center max-w-3xl mx-auto space-y-2.5">
+          <p className="caption-text uppercase tracking-widest text-[var(--text-metadata)] font-semibold text-xs sm:text-sm">
             Why Catalyst
           </p>
-          <h2 className="section-title text-xl sm:text-4xl font-extrabold text-[var(--text-primary)] tracking-tight leading-snug">
+          <h2 className="section-title text-2xl sm:text-4xl font-extrabold text-[var(--text-primary)] tracking-tight leading-snug">
             Built for personalized, high-efficiency learning.
           </h2>
-          <p className="body-text text-xs sm:text-base text-[var(--text-secondary)]">
+          <p className="body-text text-sm sm:text-base text-[var(--text-secondary)]">
             Explore the core ecosystem powers engineered to transform your academic journey.
           </p>
         </div>
@@ -155,22 +170,18 @@ export default function LandingPage() {
             return (
               <motion.div
                 key={item.title}
-                initial={{ opacity: 0, y: 25, scale: 0.96 }}
-                whileInView={{ opacity: 1, y: 0, scale: 1 }}
-                viewport={{ once: false, amount: 0.2 }}
-                transition={{ duration: 0.5, delay: idx * 0.06, ease: [0.16, 1, 0.3, 1] }}
-                whileHover={{ y: -6, scale: 1.015 }}
-                className={`group relative overflow-hidden rounded-2xl sm:rounded-[22px] border border-[var(--border-main)] bg-[var(--bg-elevated)] p-4.5 sm:p-6 shadow-md transition-all duration-300 hover:border-[var(--accent-color)] hover:shadow-[0_15px_35px_rgba(230,179,37,0.18)] flex flex-col justify-between ${item.colSpan || ''}`}
+                initial={{ opacity: 0, y: 16 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4, delay: idx * 0.05, ease: [0.22, 1, 0.36, 1] }}
+                className="group rounded-2xl border border-[var(--border-main)] bg-[var(--bg-surface)] p-5 sm:p-6 shadow-sm transition-all duration-200 hover:border-[var(--accent-color)] hover:-translate-y-1 flex flex-col justify-between"
               >
-                {/* Ambient Glow Pill Accent */}
-                <div className="absolute -top-16 -left-16 h-44 w-44 rounded-full bg-[var(--accent-light)] blur-3xl opacity-20 group-hover:opacity-70 transition-opacity duration-500 pointer-events-none" />
-
-                <div className="space-y-3 sm:space-y-4 relative z-10">
+                <div className="space-y-3.5">
                   <div className="flex items-center justify-between">
-                    <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-xl sm:rounded-[14px] bg-[var(--accent-light)] border border-[var(--accent-color)]/30 flex items-center justify-center text-[var(--accent-color)] group-hover:scale-110 group-hover:bg-[var(--accent-color)] group-hover:text-black transition-all duration-300 shadow-sm shrink-0">
-                      <IconComp className="h-4.5 w-4.5 sm:h-5 sm:w-5" />
+                    <div className="h-10 w-10 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-main)] flex items-center justify-center text-[var(--accent-color)] group-hover:border-[var(--accent-color)] transition-colors duration-200 shrink-0">
+                      <IconComp className="h-5 w-5" />
                     </div>
-                    <span className="px-2 sm:px-2.5 py-0.5 rounded-md bg-[var(--accent-light)] border border-[var(--accent-color)]/30 text-[10px] font-bold text-[var(--accent-color)] uppercase tracking-wider">
+                    <span className="px-2.5 py-0.5 rounded-md bg-[var(--bg-secondary)] border border-[var(--border-main)] text-[10px] font-semibold text-[var(--text-metadata)] uppercase tracking-wider">
                       {item.badge}
                     </span>
                   </div>
@@ -179,36 +190,39 @@ export default function LandingPage() {
                     <h3 className="card-title text-base sm:text-lg font-bold text-[var(--text-primary)] group-hover:text-[var(--accent-color)] transition-colors duration-200">
                       {item.title}
                     </h3>
-                    <p className="body-text text-xs sm:text-sm text-[var(--text-secondary)] mt-1.5 sm:mt-2 leading-relaxed">
+                    <p className="body-text text-xs sm:text-sm text-[var(--text-secondary)] mt-1.5 leading-relaxed">
                       {item.description}
                     </p>
                   </div>
                 </div>
-
-                {/* Bottom Border Accent Line */}
-                <div className="mt-4 sm:mt-5 h-[2px] w-0 bg-[var(--accent-color)] group-hover:w-full transition-all duration-500 rounded-full" />
               </motion.div>
             )
           })}
         </div>
-      </section>
+      </motion.section>
 
       {/* 4. How Catalyst Works - 7-Step Connected Workflow Section */}
-      <section className="saas-card shadow-glow space-y-6 sm:space-y-10 p-4 sm:p-8 lg:p-10 rounded-2xl sm:rounded-[28px] border border-[var(--border-main)] bg-[var(--bg-secondary)]">
-        <div className="text-center max-w-3xl mx-auto space-y-2 sm:space-y-3">
-          <p className="caption-text uppercase tracking-[0.24em] text-[var(--accent-color)] font-semibold text-xs sm:text-sm">
+      <motion.section
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true }}
+        variants={sectionVariants}
+        className="space-y-8 py-4"
+      >
+        <div className="text-center max-w-3xl mx-auto space-y-2.5">
+          <p className="caption-text uppercase tracking-widest text-[var(--text-metadata)] font-semibold text-xs sm:text-sm">
             How Catalyst Works
           </p>
-          <h2 className="section-title text-xl sm:text-4xl font-extrabold text-[var(--text-primary)] tracking-tight leading-snug">
+          <h2 className="section-title text-2xl sm:text-4xl font-extrabold text-[var(--text-primary)] tracking-tight leading-snug">
             Seven simple steps to master any subject.
           </h2>
-          <p className="body-text text-xs sm:text-base text-[var(--text-secondary)]">
+          <p className="body-text text-sm sm:text-base text-[var(--text-secondary)]">
             From seamless onboarding to career readiness, experience an end-to-end intelligent workflow.
           </p>
         </div>
 
         {/* Connected Step Cards Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 relative">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
           {[
             {
               step: 1,
@@ -258,28 +272,27 @@ export default function LandingPage() {
             return (
               <motion.div
                 key={stepItem.step}
-                initial={{ opacity: 0, y: 30, scale: 0.95 }}
-                whileInView={{ opacity: 1, y: 0, scale: 1 }}
-                viewport={{ once: false, amount: 0.2 }}
-                transition={{ duration: 0.5, delay: idx * 0.07, ease: [0.16, 1, 0.3, 1] }}
-                whileHover={{ y: -5 }}
-                className={`group relative rounded-2xl sm:rounded-[22px] border border-[var(--border-main)] bg-[var(--bg-elevated)] p-4.5 sm:p-6 shadow-md transition-all duration-300 hover:border-[var(--accent-color)] hover:shadow-[0_15px_35px_rgba(230,179,37,0.15)] flex flex-col justify-between ${stepItem.colSpan || ''}`}
+                initial={{ opacity: 0, y: 16 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4, delay: idx * 0.05, ease: [0.22, 1, 0.36, 1] }}
+                className={`group rounded-2xl border border-[var(--border-main)] bg-[var(--bg-surface)] p-5 sm:p-6 shadow-sm transition-all duration-200 hover:border-[var(--accent-color)] hover:-translate-y-1 flex flex-col justify-between ${stepItem.colSpan || ''}`}
               >
                 <div className="space-y-3.5">
                   <div className="flex items-center justify-between">
-                    <span className="inline-flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full bg-[var(--accent-color)] text-black font-extrabold text-xs sm:text-sm shadow-md group-hover:scale-110 transition-transform">
+                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[var(--accent-color)] text-white font-extrabold text-xs shadow-sm">
                       {stepItem.step}
                     </span>
-                    <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-xl bg-[var(--accent-light)] border border-[var(--accent-color)]/30 flex items-center justify-center text-[var(--accent-color)] shrink-0">
-                      <StepIcon className="h-4 w-4 sm:h-4.5 sm:w-4.5" />
+                    <div className="h-8 w-8 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-main)] flex items-center justify-center text-[var(--text-metadata)] shrink-0">
+                      <StepIcon className="h-4 w-4" />
                     </div>
                   </div>
 
                   <div>
-                    <h4 className="card-title text-sm sm:text-base font-bold text-[var(--text-primary)] group-hover:text-[var(--accent-color)] transition-colors">
+                    <h4 className="card-title text-base font-bold text-[var(--text-primary)] group-hover:text-[var(--accent-color)] transition-colors duration-200">
                       {stepItem.title}
                     </h4>
-                    <p className="body-text text-xs text-[var(--text-secondary)] mt-1.5 leading-relaxed">
+                    <p className="body-text text-xs sm:text-sm text-[var(--text-secondary)] mt-1.5 leading-relaxed">
                       {stepItem.description}
                     </p>
                   </div>
@@ -288,39 +301,47 @@ export default function LandingPage() {
             )
           })}
         </div>
-      </section>
+      </motion.section>
 
-      {/* 6. Core Features Section */}
-      <section id="core-features" className="w-full max-w-full overflow-hidden rounded-2xl sm:rounded-3xl">
+      {/* 5. Core Features Section */}
+      <section id="core-features" className="w-full py-4">
         <CoreFeaturesShowcase />
       </section>
 
-      {/* 7. Learning Journey Vertical Roadmap */}
-      <LearningJourneySection />
+      {/* 6. Learning Journey Vertical Roadmap */}
+      <section className="py-4">
+        <LearningJourneySection />
+      </section>
 
-      {/* 8. Why Choose Catalyst Comparison Table Section */}
-      <section className="saas-card shadow-glow space-y-6 sm:space-y-8 p-4 sm:p-8 lg:p-10 rounded-2xl sm:rounded-[28px] border border-[var(--border-main)] bg-[var(--bg-secondary)]">
-        <div className="text-center max-w-3xl mx-auto space-y-2 sm:space-y-3">
-          <p className="caption-text uppercase tracking-[0.24em] text-[var(--accent-color)] font-semibold text-xs sm:text-sm">
+      {/* 7. Why Choose Catalyst Comparison Table Section */}
+      <motion.section
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true }}
+        variants={sectionVariants}
+        className="space-y-8 py-4"
+      >
+        <div className="text-center max-w-3xl mx-auto space-y-2.5">
+          <p className="caption-text uppercase tracking-widest text-[var(--text-metadata)] font-semibold text-xs sm:text-sm">
             Why Choose Catalyst
           </p>
-          <h2 className="section-title text-xl sm:text-4xl font-extrabold text-[var(--text-primary)] tracking-tight leading-snug">
+          <h2 className="section-title text-2xl sm:text-4xl font-extrabold text-[var(--text-primary)] tracking-tight leading-snug">
             Designed specifically for student success.
           </h2>
-          <p className="body-text text-xs sm:text-base text-[var(--text-secondary)]">
+          <p className="body-text text-sm sm:text-base text-[var(--text-secondary)]">
             Compare Catalyst’s comprehensive learning suite against standard static platforms.
           </p>
         </div>
 
         {/* 12-Feature Ecosystem Table */}
-        <div className="max-w-4xl mx-auto overflow-hidden rounded-2xl sm:rounded-[22px] border border-[var(--border-main)] bg-[var(--bg-elevated)] shadow-xl">
+        <div className="max-w-4xl mx-auto overflow-hidden rounded-2xl border border-[var(--border-main)] bg-[var(--bg-surface)] shadow-sm">
           <div className="overflow-x-auto custom-scrollbar">
             <table className="w-full text-left border-collapse min-w-[320px]">
               <thead>
-                <tr className="border-b border-[var(--divider-main)] bg-[var(--bg-primary)]/80 text-xs sm:text-sm font-bold">
-                  <th className="p-3 sm:p-5 text-[var(--text-primary)]">Feature</th>
-                  <th className="p-3 sm:p-5 text-center text-[var(--accent-color)]">Catalyst</th>
-                  <th className="p-3 sm:p-5 text-center text-[var(--text-secondary)]">Status</th>
+                <tr className="border-b border-[var(--divider-main)] bg-[var(--bg-secondary)] text-xs sm:text-sm font-bold">
+                  <th className="p-4 text-[var(--text-primary)]">Feature</th>
+                  <th className="p-4 text-center text-[var(--accent-color)]">Catalyst</th>
+                  <th className="p-4 text-center text-[var(--text-secondary)]">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--divider-main)] text-xs sm:text-sm font-medium">
@@ -340,19 +361,19 @@ export default function LandingPage() {
                 ].map((row) => (
                   <tr
                     key={row.name}
-                    className="hover:bg-[var(--accent-light)]/20 transition-colors duration-200 group"
+                    className="hover:bg-[var(--bg-secondary)] transition-colors duration-150 group"
                   >
-                    <td className="p-3 sm:p-5 font-semibold text-[var(--text-primary)] group-hover:text-[var(--accent-color)] transition-colors">
+                    <td className="p-4 font-semibold text-[var(--text-primary)] group-hover:text-[var(--accent-color)] transition-colors">
                       {row.name}
                     </td>
-                    <td className="p-3 sm:p-5 text-center">
-                      <span className="inline-flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-full bg-[var(--accent-light)] border border-[var(--accent-color)]/40 text-[var(--accent-color)] font-extrabold text-xs sm:text-sm shadow-sm group-hover:scale-110 transition-transform">
+                    <td className="p-4 text-center">
+                      <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[var(--accent-color)] text-white font-extrabold text-xs shadow-sm">
                         ✓
                       </span>
                     </td>
-                    <td className="p-3 sm:p-5 text-center">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-[10px] sm:text-[11px] font-bold text-emerald-400">
-                        <span className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-emerald-400 animate-pulse" />
+                    <td className="p-4 text-center">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-xs font-semibold text-emerald-400">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
                         {row.status}
                       </span>
                     </td>
@@ -362,44 +383,44 @@ export default function LandingPage() {
             </table>
           </div>
         </div>
-      </section>
+      </motion.section>
 
-      {/* 9. Final Call To Action */}
-      <section className="saas-elevated-card shadow-glow text-center p-6 sm:p-12 space-y-4 sm:space-y-6 border border-[var(--accent-color)]/30 bg-gradient-to-b from-[var(--bg-elevated)] to-[var(--bg-secondary)] rounded-2xl sm:rounded-3xl">
-        <h2 className="page-title text-2xl sm:text-4xl font-extrabold">Ready to Learn Smarter?</h2>
-        <p className="body-text text-sm sm:text-lg max-w-xl mx-auto">
+      {/* 8. Final Call To Action */}
+      <section className="text-center p-8 sm:p-14 space-y-5 rounded-2xl border border-[var(--border-main)] bg-[var(--bg-surface)] shadow-sm">
+        <h2 className="page-title text-2xl sm:text-4xl font-extrabold text-[var(--text-primary)]">Ready to Learn Smarter?</h2>
+        <p className="body-text text-sm sm:text-base text-[var(--text-secondary)] max-w-xl mx-auto">
           Join thousands of students learning with Catalyst.
         </p>
         <div className="pt-2">
-          <Link to={user ? "/dashboard" : "/register"} className="saas-button-primary inline-flex items-center justify-center min-h-[48px] px-8 sm:px-10 text-sm sm:text-base font-semibold cursor-pointer w-full sm:w-auto">
+          <Link to={user ? "/dashboard" : "/register"} className="saas-button-primary inline-flex items-center justify-center min-h-[48px] px-8 text-base font-semibold text-white bg-[var(--accent-color)] hover:bg-[var(--accent-hover)] transition-all duration-200 cursor-pointer w-full sm:w-auto rounded-xl shadow-sm">
             Get Started
           </Link>
         </div>
       </section>
 
-      {/* 10. Footer */}
-      <footer className="saas-card p-5 sm:p-8 space-y-6 sm:space-y-8 border-t border-[var(--border-main)] rounded-2xl sm:rounded-3xl">
+      {/* 9. Footer */}
+      <footer className="pt-8 pb-4 border-t border-[var(--border-main)] space-y-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           {/* Left Footer Branding */}
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <div className="flex items-center gap-3">
               <img
                 src="/favicon.png"
                 alt="Catalyst Logo"
-                className="h-8 w-8 sm:h-9 sm:w-9 shrink-0 rounded-[12px] object-cover shadow-sm border border-[var(--accent-color)]/30"
+                className="h-8 w-8 shrink-0 rounded-[12px] object-cover shadow-sm border border-[var(--border-main)]"
               />
-              <span className="card-title font-bold text-lg sm:text-xl">Catalyst</span>
+              <span className="card-title font-bold text-lg text-[var(--text-primary)]">Catalyst</span>
             </div>
-            <p className="small-text text-[var(--text-secondary)] text-xs sm:text-sm">AI Powered Personalized Learning</p>
+            <p className="small-text text-[var(--text-secondary)] text-xs">AI Powered Personalized Learning</p>
           </div>
 
           {/* Right Footer Links */}
           <div className="flex flex-wrap gap-4 sm:gap-6 text-xs sm:text-sm font-medium text-[var(--text-secondary)]">
-            <a href="#core-features" onClick={scrollToFeatures} className="hover:text-[var(--accent-color)] transition py-1">Features</a>
-            <Link to="/about" className="hover:text-[var(--accent-color)] transition py-1">About</Link>
-            <Link to="/privacy" className="hover:text-[var(--accent-color)] transition py-1">Privacy Policy</Link>
-            <Link to="/terms" className="hover:text-[var(--accent-color)] transition py-1">Terms</Link>
-            <Link to="/contact" className="hover:text-[var(--accent-color)] transition py-1">Contact</Link>
+            <a href="#core-features" onClick={scrollToFeatures} className="hover:text-[var(--text-primary)] transition py-1">Features</a>
+            <Link to="/about" className="hover:text-[var(--text-primary)] transition py-1">About</Link>
+            <Link to="/privacy" className="hover:text-[var(--text-primary)] transition py-1">Privacy Policy</Link>
+            <Link to="/terms" className="hover:text-[var(--text-primary)] transition py-1">Terms</Link>
+            <Link to="/contact" className="hover:text-[var(--text-primary)] transition py-1">Contact</Link>
           </div>
         </div>
 

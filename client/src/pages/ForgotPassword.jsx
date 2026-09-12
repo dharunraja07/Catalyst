@@ -57,7 +57,7 @@ export default function ForgotPassword() {
     <main className="min-h-[calc(100vh-8rem)] flex items-center justify-center px-3 sm:px-6 py-6 sm:py-10 max-w-full overflow-x-hidden">
       <div className="w-full max-w-[440px] saas-card bg-[var(--bg-surface)] border border-[var(--border-main)] rounded-2xl sm:rounded-3xl shadow-xl p-5 sm:p-8 space-y-6 relative overflow-hidden">
         {/* Top Gradient Accent Line */}
-        <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-[var(--accent-color)] via-amber-400 to-[var(--accent-color)]" />
+        <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-[var(--accent-color)] via-[var(--accent-hover)] to-[var(--accent-color)]" />
 
         <div className="space-y-1.5 text-center">
           <p className="page-label text-xs uppercase tracking-widest text-[var(--accent-color)] font-bold">Password Recovery</p>

@@ -11,7 +11,7 @@
     "dev": "nodemon src/index.js",
     "start": "node src/index.js",
     "build": "echo \"No build step required for this API\"",
-    "seed": "node src/seed.js"
+    "seed": "node ../scripts/seed.js"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

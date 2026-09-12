@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
-import FileCard from '../components/FileCard.jsx'
-import FileUploadZone from '../components/FileUploadZone.jsx'
-import FilePreviewModal from '../components/FilePreviewModal.jsx'
+import FileCard from '../features/documents/components/FileCard.jsx'
+import FileUploadZone from '../features/documents/components/FileUploadZone.jsx'
+import FilePreviewModal from '../features/documents/components/FilePreviewModal.jsx'
 
 export default function AssessmentPage() {
   const { api, user } = useAuth()

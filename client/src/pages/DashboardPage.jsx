@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useNotifications } from '../context/NotificationContext.jsx'
-import ProductivityHub from '../components/ProductivityHub.jsx'
+import ProductivityHub from '../features/productivity/components/ProductivityHub.jsx'
 
 const TIMER_STORAGE_KEY = 'catalyst_active_goal_timer'
 const PRACTICE_DAYS_KEY = 'catalyst_practice_days'

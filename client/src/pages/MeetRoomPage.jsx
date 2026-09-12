@@ -2,12 +2,12 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import getSocket from '../api/socket.js'
-import CopyButton from '../components/CopyButton.jsx'
-import { useJitsiMeet } from '../hooks/useJitsiMeet.js'
-import MeetChatPanel from '../components/MeetChatPanel.jsx'
-import FileCard from '../components/FileCard.jsx'
-import FileUploadZone from '../components/FileUploadZone.jsx'
-import FilePreviewModal from '../components/FilePreviewModal.jsx'
+import { useJitsiMeet } from '../features/meeting/hooks/useJitsiMeet.js'
+import CopyButton from '../components/common/CopyButton.jsx'
+import MeetChatPanel from '../features/meeting/components/MeetChatPanel.jsx'
+import FileCard from '../features/documents/components/FileCard.jsx'
+import FileUploadZone from '../features/documents/components/FileUploadZone.jsx'
+import FilePreviewModal from '../features/documents/components/FilePreviewModal.jsx'
 
 const REACTION_EMOJIS = ['👍', '❤️', '😂', '👏', '🎉', '🤔', '✋', '🔥']
 const COLOR_SWATCHES = ['#F59E0B', '#EF4444', '#10B981', '#3B82F6', '#8B5CF6', '#FFFFFF', '#1E293B']

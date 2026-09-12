@@ -29,10 +29,10 @@ import todoRoutes from './routes/todoRoutes.js'
 import meetRoutes from './routes/meetRoutes.js'
 import statsRoutes from './routes/statsRoutes.js'
 import documentRoutes from './routes/documentRoutes.js'
-import { setupChatSocket } from './sockets/chatSocket.js'
-import { setupMeetSocket } from './sockets/meetSocket.js'
+import { setupSockets } from './sockets/index.js'
 import { errorHandler } from './middleware/errorMiddleware.js'
 import { env, ensureRequiredEnv } from './config/env.js'
+import { connectDatabase } from './config/database.js'
 
 const app = express()
 
@@ -126,8 +126,7 @@ const io = new Server(httpServer, {
 })
 
 app.set('io', io)
-setupChatSocket(io)
-setupMeetSocket(io)
+setupSockets(io)
 
 function startServer(port, attemptsLeft = 5) {
   const host = '0.0.0.0'
@@ -166,27 +165,6 @@ function startServer(port, attemptsLeft = 5) {
   process.on('SIGINT', () => shutdown('SIGINT'))
 }
 
-async function connectDatabase() {
-  const localMongoUri = 'mongodb://127.0.0.1:27017/catalyst'
-  try {
-    await mongoose.connect(env.MONGO_URI, {
-      serverSelectionTimeoutMS: 5000,
-      autoIndex: env.NODE_ENV !== 'production'
-    })
-    console.log('MongoDB connected successfully (Cloud Atlas)')
-  } catch (err) {
-    console.warn('MongoDB Atlas connection failed, trying local fallback:', err.message)
-    try {
-      await mongoose.connect(localMongoUri, {
-        serverSelectionTimeoutMS: 3000,
-        autoIndex: env.NODE_ENV !== 'production'
-      })
-      console.log('MongoDB connected successfully (Local Fallback)')
-    } catch {
-      console.log('MongoDB connection pending...')
-    }
-  }
-}
 
 process.on('uncaughtException', (err) => {
   console.error('[Server Warning] Uncaught Exception:', err?.message || err)

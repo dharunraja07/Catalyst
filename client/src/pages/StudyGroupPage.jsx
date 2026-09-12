@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
-import MarkdownRenderer from '../components/MarkdownRenderer.jsx'
-import CopyButton from '../components/CopyButton.jsx'
+import MarkdownRenderer from '../components/common/MarkdownRenderer.jsx'
+import CopyButton from '../components/common/CopyButton.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { useNotifications } from '../context/NotificationContext.jsx'
-import AIChatSurface from '../components/AIChatSurface.jsx'
-import FileCard from '../components/FileCard.jsx'
-import FileUploadZone from '../components/FileUploadZone.jsx'
-import FilePreviewModal from '../components/FilePreviewModal.jsx'
+import AIChatSurface from '../features/ai-mentor/components/AIChatSurface.jsx'
+import FileCard from '../features/documents/components/FileCard.jsx'
+import FileUploadZone from '../features/documents/components/FileUploadZone.jsx'
+import FilePreviewModal from '../features/documents/components/FilePreviewModal.jsx'
 import getSocket from '../api/socket.js'
 
 const MAX_MEMBERS = 70
